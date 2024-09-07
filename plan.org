@@ -1,0 +1,44 @@
+* Goals
+display unifont bdf in vulkan
+draw in unicode
+
+* Gameplay
+Turn based
+hand-made characters
+fixed world size
+player can walk into the wilderness/void like fallout 4
+
+** Multiple Z Levels
+can see enemies on multiple Z levels
+
+** woodcutting, firestarting
+trees
+lighters
+usable objects
+
+** combat
+
+* Examples
+#include "BearLibTerminal.h"
+  
+int main()
+{
+    terminal_open();
+  
+    // Printing text
+    terminal_print(1, 1, "Hello, world!");
+    terminal_refresh();
+  
+    // Wait until user close the window
+    while (terminal_read() != TK_CLOSE);
+  
+    terminal_close();
+}
+
+* Functions
+gfx_start(); / start vulkan renderer /
+gfx_mv(int x, int y); / move cursor /
+gfx_addch(char c); / add character /
+gfx_clear(); / clear current buffer /
+gfx_present(); / print back buffer, swap buffers /
+gfx_close();
