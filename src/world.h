@@ -1,23 +1,28 @@
+#ifndef WORLD_H
+#define WORLD_H
+
 typedef struct{
   int x;
   int y;
-} pos_t;
+} Pos;
 
 typedef struct{
-  pos_t pos;
+  Pos pos;
   char ch;
-} entity_t;
+} Entity;
 
 typedef struct{
-  entity_t* tiles;
+  Entity* tiles;
   int width;
   int size;
-  entity_t* props;
-  entity_t* actors;
+  Entity* props;
+  Entity* actors;
   int actors_count;
-} gameWorld_t;
+} GameWorld;
 
-int mapPutTile(gameWorld_t*, entity_t, int, int);
-int worldInit(gameWorld_t*, int);
-int entityMove(entity_t*, int, int);
-int entityAdd(gameWorld_t*, entity_t);
+int mapPutTile(GameWorld*, Entity, int, int);
+int worldInit(GameWorld*, int);
+int entityMove_f(Entity*, int, int);
+int entityAdd(GameWorld*, Entity);
+
+#endif // WORLD_H

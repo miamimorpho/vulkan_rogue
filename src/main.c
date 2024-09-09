@@ -1,6 +1,7 @@
 #include "vulkan_public.h"
 #include "input.h"
 #include "world.h"
+#include "action.h"
 #include <stdio.h>
 
 int main(void){
@@ -11,27 +12,32 @@ int main(void){
   inputInit();
   gfxTilesetLoad("textures/spleen-8x16-437-custom.bdf");
 
-  gameWorld_t world;
+  GameWorld world;
   worldInit(&world, 16);
 
-  entityAdd(&world, (entity_t){
+  entityAdd(&world, (Entity){
       .ch = 1,
       .pos= {1,1},
     });
     
-  while(userInput() == 0){
+  while(getExitState() == 0){
+    
     gfxDrawStart();
 
     for(int i = 0; i < world.size; i++){
-      entity_t tile = world.tiles[i];
+      Entity tile = world.tiles[i];
       gfxDrawChar(tile.ch, tile.pos.x, tile.pos.y);
     }
     for(int i = 0; i < world.actors_count; i++){
-      entity_t actor = world.actors[i];
+      Entity actor = world.actors[i];
       gfxDrawChar(actor.ch, actor.pos.x, actor.pos.y);
     }
     
     gfxDrawEnd();
+
+    GameAction user_action = userInput();
+    doAction(&world, &user_action);
+
   }
   
   gfxClose();
