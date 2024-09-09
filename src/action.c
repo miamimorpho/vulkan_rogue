@@ -3,33 +3,35 @@
 #include <stdio.h>
 #include "action.h"
 
-/* Parameters
- * arg_c 3
- * 0 int entity_ndex;
- * 1 int vector_x
- * 2 int vector_y
- */
-int moveEntityAction(GameWorld* w, int args_c, Argument* args){
-  if(w == NULL) return 1;
-  if(args_c > 3) return 1;
-  int entity_index = args[0].val.i;
-  int vector_x = args[1].val.i;
-  int vector_y = args[2].val.i;
-  
-  Entity* e = &w->actors[entity_index];
-  e->pos.x += vector_x;
-  e->pos.y += vector_y;
+typedef enum{
+  ARG_INT,
+  ARG_FLOAT,
+  ARG_STRING,
+}ArgType;
 
-  return 0;
-}
+typedef union{
+  int i;
+  float f;
+  const char* s;
+  void* ptr;
+}ArgValue;
 
-int noAction(GameWorld* w, int args_c, Argument* args){
-  return 0;
-}
+typedef struct {
+  ArgType type;
+  ArgValue val;
+}Argument;
+
+typedef int (*Action_f)(GameWorld* w, int args_c, Argument* args);
+
+struct _GameAction{
+    Action_f func;
+    int args_c;
+    Argument* args;
+};
 
 GameAction requestAction(Action_f func, int args_c, ...){
 
-  GameAction action;
+  struct _GameAction action;
   action.func = func;
   action.args_c = args_c;
   action.args = malloc(sizeof(Argument) * args_c);
@@ -56,10 +58,41 @@ GameAction requestAction(Action_f func, int args_c, ...){
    
   }
   va_end(args);
-  return action;
+  struct _GameAction* action_ptr = malloc(sizeof(struct _GameAction));
+  *action_ptr = action;
+  return action_ptr;
 }
 
-void doAction(GameWorld* w, GameAction* action){
+int _moveEntityAction(GameWorld* w, int args_c, Argument* args){
+  if(w == NULL) return 1;
+  if(args_c > 3) return 1;
+  int entity_index = args[0].val.i;
+  int vector_x = args[1].val.i;
+  int vector_y = args[2].val.i;
+  
+  Entity* e = &w->actors[entity_index];
+  e->pos.x += vector_x;
+  e->pos.y += vector_y;
+
+  return 0;
+}
+
+GameAction moveEntityAction(int entity_index, int x, int y){
+  return requestAction(_moveEntityAction, 3,
+                  ARG_INT, entity_index,
+                  ARG_INT, x,
+                  ARG_INT, y);
+}
+
+int _noAction(GameWorld* w, int args_c, Argument* args){
+  return 0;
+}
+
+GameAction noAction(void){
+  return requestAction(_noAction, 0, NULL);
+}
+
+void doAction(GameWorld* w, GameAction action){
   int err = action->func(w, action->args_c, action->args);
   if(err == 1){
     printf("action error\n");

@@ -36,7 +36,7 @@ int main(void){
     gfxDrawEnd();
 
     GameAction user_action = userInput();
-    doAction(&world, &user_action);
+    doAction(&world, user_action);
 
   }
   

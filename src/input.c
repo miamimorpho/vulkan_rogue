@@ -44,36 +44,32 @@ GameAction userInput(void){
   glfwPollEvents();
 
   if (s_state.to_exit == 1) {
-    return requestAction(noAction, 0, NULL);
+    return noAction();
   }
   
   if(s_state.pressed == 1){
 
-    Pos v = { 0, 0};
+    int x, y = 0;
     
     switch(s_state.key) {
     case GLFW_KEY_S:
-      v.x = 0;
-      v.y = 1;
+      x = 0;
+      y = 1;
       break;
     case GLFW_KEY_W:
-      v.x = 0;
-      v.y = -1;
+      x = 0;
+      y = -1;
       break;
     case GLFW_KEY_A:
-      v.x = -1;
-      v.y = 0;
+      x = -1;
+      y = 0;
       break;
     case GLFW_KEY_D:
-      v.x = 1;
-      v.y = 0;
+      x = 1;
+      y = 0;
       break;
     }
-    GameAction action = requestAction
-      (moveEntityAction, 3,
-       ARG_INT, 0,
-       ARG_INT, v.x,
-       ARG_INT, v.y);
+    GameAction action = moveEntityAction(0, x, y);
     
     s_state.pressed = 0;
     s_state.key = GLFW_KEY_UNKNOWN;
@@ -81,5 +77,5 @@ GameAction userInput(void){
     return action;
   }
 
-  return requestAction(noAction, 0, NULL);
+  return noAction();
 }
