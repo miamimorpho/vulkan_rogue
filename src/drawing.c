@@ -1,4 +1,5 @@
 #include "vulkan_helper.h"
+#include <stdio.h>
 #include <string.h>
 
 int _gfxDrawStart(GfxConst gfx, GfxGlobal* global){
@@ -65,13 +66,13 @@ int gfxBufferAppend(VmaAllocator allocator, GfxBuffer *dest,
   return 0;
 }
 
-int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, char ch, int x, int y){
+int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, char ch, int x, int y, ivec3 color){
 
   GfxTileset texture = global->textures[0];
   // ncurses space to screen space
   vec2 stride;
-  stride[0] = (2.0f * texture.glyph_width) / (float)gfx.extent.width;
-  stride[1] = (2.0f * texture.height) / (float)gfx.extent.height;
+  stride.x = (2.0f * texture.glyph_width) / (float)gfx.extent.width;
+  stride.y = (2.0f * texture.height) / (float)gfx.extent.height;
 
   // chars are arranged as a 1D line for now
   float uv_stride = (float)texture.glyph_width /
@@ -82,26 +83,26 @@ int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, char ch, int x, int y){
   const size_t index_c = 6;
   uint32_t indices[index_c];
   
-  float cursor_x = -1 + (stride[0] * (float)x);
-  float cursor_y = -1 + (stride[1] * (float)y); 
+  float cursor_x = -1 + (stride.x * (float)x);
+  float cursor_y = -1 + (stride.y * (float)y); 
 
-  /* START OF COMPOSITING LOOP */
   vertex2 top_left = {
     .pos = { cursor_x, cursor_y},
-    .uv = { (float)ch * uv_stride, 0}
+    .uv = { (float)ch * uv_stride, 0},
+    .color = color
   };
 
   vertex2 bottom_left = top_left;
-  bottom_left.pos[1] += stride[1]; // Y
-  bottom_left.uv[1] += 1; // Y
+  bottom_left.pos.y += stride.y;
+  bottom_left.uv.y += 1;
     
   vertex2 top_right = top_left;
-  top_right.pos[0] += stride[0];
-  top_right.uv[0] += uv_stride;
+  top_right.pos.x += stride.x;
+  top_right.uv.x += uv_stride;
   
   vertex2 bottom_right = top_right;
-  bottom_right.pos[1] += stride[1]; // Y
-  bottom_right.uv[1] += 1.0f;  // Y
+  bottom_right.pos.y += stride.y;
+  bottom_right.uv.y += 1.0f;
   
   const int TL = 0;
   const int TR = 1;

@@ -18,8 +18,8 @@ int gfxDrawStart(void){
   return 0;
 }
 
-int gfxDrawChar(char ch, int x, int y){
-  _gfxDrawChar(gfxGetConst(), &s_global, ch, x, y);
+int gfxDrawChar(char ch, int x, int y, ivec3 color){
+  _gfxDrawChar(gfxGetConst(), &s_global, ch, x, y, color);
   return 0;
 }
 

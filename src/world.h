@@ -21,6 +21,7 @@ typedef struct{
 } GameWorld;
 
 int mapPutTile(GameWorld*, Entity, int, int);
+Entity mapGetTile(GameWorld* map, int x, int y);
 int worldInit(GameWorld*, int);
 int entityMove_f(Entity*, int, int);
 int entityAdd(GameWorld*, Entity);

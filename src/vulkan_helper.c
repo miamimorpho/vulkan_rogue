@@ -2,6 +2,8 @@
 #include "config.h"
 #include "macros.h"
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 const char *DEV_EXT_NAMES[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, };
 const unsigned int DEV_EXT_C = 1;
@@ -845,7 +847,7 @@ int gfxPipelineInit(GfxConst* gfx){
   };
 
   // Vertex Buffer Creation
-  VkVertexInputAttributeDescription attribute_descriptions[2];
+  VkVertexInputAttributeDescription attribute_descriptions[3];
   attribute_descriptions[0].binding = 0;
   attribute_descriptions[0].location = 0;
   attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT; // 2 double
@@ -855,6 +857,11 @@ int gfxPipelineInit(GfxConst* gfx){
   attribute_descriptions[1].location = 1;
   attribute_descriptions[1].format = VK_FORMAT_R32G32_SFLOAT; // 2 float
   attribute_descriptions[1].offset = offsetof(vertex2, uv);
+
+  attribute_descriptions[2].binding = 0;
+  attribute_descriptions[2].location = 2;
+  attribute_descriptions[2].format = VK_FORMAT_R32G32B32_SINT;
+  attribute_descriptions[2].offset = offsetof(vertex2, color);
   
   VkVertexInputBindingDescription binding_description = {
     .binding = 0,
@@ -865,7 +872,7 @@ int gfxPipelineInit(GfxConst* gfx){
   VkPipelineVertexInputStateCreateInfo vertex_input_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
     .vertexBindingDescriptionCount = 1,
-    .vertexAttributeDescriptionCount = 2,
+    .vertexAttributeDescriptionCount = 3,
     .pVertexBindingDescriptions = &binding_description,
     .pVertexAttributeDescriptions = attribute_descriptions,
   };

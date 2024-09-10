@@ -1,6 +1,6 @@
 #include "vulkan_helper.h"
 #include "action.h"
-#include <time.h>
+#include <stdio.h>
 
 typedef struct{
   int key;
@@ -35,11 +35,11 @@ void _inputInit(GfxConst gfx){
   glfwSetKeyCallback(gfx.window, keyCallback);
   
   s_state.key = GLFW_KEY_UNKNOWN;
-  s_state.pressed = 1;
+  s_state.pressed = 0;
   s_state.to_exit = 0;
 }
 
-GameAction userInput(void){
+GameAction userInput(int entity_index){
   
   glfwPollEvents();
 
@@ -48,32 +48,27 @@ GameAction userInput(void){
   }
   
   if(s_state.pressed == 1){
-
-    int x, y = 0;
+    GameAction action = noAction();
     
     switch(s_state.key) {
     case GLFW_KEY_S:
-      x = 0;
-      y = 1;
+      action = moveEntityAction(entity_index, 0, 1);
       break;
     case GLFW_KEY_W:
-      x = 0;
-      y = -1;
+      action = moveEntityAction(entity_index, 0, -1);
       break;
     case GLFW_KEY_A:
-      x = -1;
-      y = 0;
+      action = moveEntityAction(entity_index, -1, 0);
       break;
     case GLFW_KEY_D:
-      x = 1;
-      y = 0;
+      action = moveEntityAction(entity_index, 1, 0);
       break;
+    case GLFW_KEY_PERIOD:
+      action = buildWallAction(entity_index);
     }
-    GameAction action = moveEntityAction(0, x, y);
-    
     s_state.pressed = 0;
     s_state.key = GLFW_KEY_UNKNOWN;
-
+    
     return action;
   }
 

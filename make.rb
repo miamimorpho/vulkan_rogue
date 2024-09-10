@@ -4,7 +4,7 @@ require 'fileutils'
 
 # Configuration
 prog = 'rogue'
-cflags = '-O2 -g -Wall -Wextra -Wpedantic -fdiagnostics-color=always -Wno-nullability-extension'
+cflags = '-O0 -g -Wall -Wextra -Wpedantic -fdiagnostics-color=always -Wno-nullability-extension'
 cflags += ' -I/usr/local/include -I/usr/X11R6/include'
 ldflags = '-L/usr/local/lib'
 ldadd = '-lglfw -lstdc++ -lpthread -lvulkan'

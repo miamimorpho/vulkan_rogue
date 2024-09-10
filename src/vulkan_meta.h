@@ -6,7 +6,7 @@
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <cglm/cglm.h>
+#include "maths.h"
 #include "config.h"
 
 typedef struct {
@@ -67,6 +67,7 @@ typedef struct{
 typedef struct{
   vec2 pos;
   vec2 uv;
+  ivec3 color;
 } vertex2;
 
 GfxConst* gfxSetConst(void);

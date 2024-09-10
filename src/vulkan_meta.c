@@ -1,4 +1,5 @@
 #include "vulkan_meta.h"
+#include <stdlib.h>
 
 static GfxConst s_global;
 

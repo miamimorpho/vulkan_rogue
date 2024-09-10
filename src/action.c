@@ -63,6 +63,38 @@ GameAction requestAction(Action_f func, int args_c, ...){
   return action_ptr;
 }
 
+void doAction(GameWorld* w, GameAction action){
+  int err = action->func(w, action->args_c, action->args);
+  // segfault on _noAction
+  if(err == 1){
+    printf("action error\n");
+  }
+  free(action->args);
+  free(action);
+}
+
+/* Start of in-game functions */
+
+int _buildWallAction(GameWorld* w, int args_c, Argument* args){
+  if(w == NULL) return 1;
+  if(args_c > 1) return 1;
+  int x = w->actors[0].pos.x;
+  int y = w->actors[0].pos.y;
+
+  Entity wall = {
+    .ch = 219, // full block
+    .pos.x = x,
+    .pos.y = y,
+  };
+  
+  mapPutTile(w, wall, x, y);
+  return 0;
+}
+GameAction buildWallAction(int entity_index){
+  return requestAction(_buildWallAction, 1,
+		       ARG_INT, entity_index);
+}
+
 int _moveEntityAction(GameWorld* w, int args_c, Argument* args){
   if(w == NULL) return 1;
   if(args_c > 3) return 1;
@@ -89,12 +121,5 @@ int _noAction(GameWorld* w, int args_c, Argument* args){
 }
 
 GameAction noAction(void){
-  return requestAction(_noAction, 0, NULL);
-}
-
-void doAction(GameWorld* w, GameAction action){
-  int err = action->func(w, action->args_c, action->args);
-  if(err == 1){
-    printf("action error\n");
-  }
+  return requestAction(_noAction, 1, 1);
 }

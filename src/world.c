@@ -8,8 +8,8 @@ int worldInit(GameWorld* w, int size){
   Entity terrain = {
     .ch = '.'
   };
-  for(int x = 0; x < w->width; x++){
-    for(int y = 0; y < w->width; y++){
+  for(int y = 0; y < w->width; y++){
+    for(int x = 0; x < w->width; x++){
       mapPutTile(w, terrain, x, y);
     }
   }
@@ -21,27 +21,32 @@ int worldInit(GameWorld* w, int size){
 
 Entity mapGetTile(GameWorld* map, int x, int y){
   Entity null_ent = {
-    .ch = '.',
+    .ch = '?',
     .pos = (Pos){ x, y},
   };
+  if(x >= map->width) return null_ent;
+  if(x < 0) return null_ent;
+  if(y >= map->width) return null_ent;
+  if(y < 0) return null_ent;
+
   int offset = (y * map->width) + x;
   if(offset > map->size) return null_ent;
   return map->tiles[offset];
 }
 
 int mapPutTile(GameWorld* map, Entity entity, int x, int y){
-  int offset = (y * map->width) + x;
+
+  if(x >= map->width) return 1;
+  if(x < 0) return 1;
+  if(y >= map->width) return 1;
+  if(y < 0) return 1;
+
+  int offset = (y * map->width) + x;  
   if(offset > map->size) return 1;
+  
   entity.pos.x = x;
   entity.pos.y = y;
   map->tiles[offset] = entity;
-  return 0;
-}
-
-int entityMove_f(Entity* e, int x, int y){
-  e->pos.x += x;
-  e->pos.y += y;
-  
   return 0;
 }
 

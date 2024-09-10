@@ -2,5 +2,5 @@
 #include "action.h"
 
 void _inputInit(GfxConst);
-GameAction userInput(void);
+GameAction userInput(int);
 int getExitState(void);

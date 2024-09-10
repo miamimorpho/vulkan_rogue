@@ -1,4 +1,8 @@
 
+/* ASCII Options */
+#define ASCII_SCREEN_WIDTH 80
+#define ASCII_SCREEN_HEIGHT 30
+
 /* Renderer Options */
 #define WIDTH 800
 #define HEIGHT 600
