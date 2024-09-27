@@ -1,6 +1,15 @@
 #include "vulkan_helper.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+
+ivec3 hexColor(uint32_t color) {
+    ivec3 rgb;
+    rgb.x = ((color >> 16) & 0xFF);
+    rgb.y = ((color >> 8) & 0xFF);
+    rgb.z = (color & 0xFF);
+    return rgb;
+}
 
 int _gfxDrawStart(GfxConst gfx, GfxGlobal* global){
   
@@ -66,17 +75,75 @@ int gfxBufferAppend(VmaAllocator allocator, GfxBuffer *dest,
   return 0;
 }
 
-int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, char ch, int x, int y, ivec3 color){
+int _gfxDrawTexture(GfxConst gfx, GfxGlobal* global, int texture_index){
 
+  const size_t vertex_c = 4;
+  vertex2 vertices[vertex_c];
+  const size_t index_c = 6;
+  uint32_t indices[index_c];
+  
+  vertex2 top_left = {
+    .pos = { 0, 0},
+    .uv = { 0, 0},
+    .color = hexColor(0xFFFFFF),
+  };
+  vertex2 bottom_left = top_left;
+  bottom_left.pos.y += 1;
+  bottom_left.uv.y += 1;
+    
+  vertex2 top_right = top_left;
+  top_right.pos.x += 1;
+  top_right.uv.x += 1;
+  vertex2 bottom_right = top_right;
+  bottom_right.pos.y += 1;
+  bottom_right.uv.y += 1;
+  
+  const int TL = 0;
+  const int TR = 1;
+  const int BL = 2;
+  const int BR = 3;
+  
+  vertices[TL] = top_left;
+  vertices[TR] = top_right;
+  vertices[BL] = bottom_left;
+  vertices[BR] = bottom_right;
+
+  int buffer_offset = global->vertices.used_size / sizeof(vertex2);
+ 
+  gfxBufferAppend(gfx.allocator, &global->vertices, vertices, vertex_c * sizeof(vertex2));
+  GfxBuffer* dest_indices = gfxBufferNext
+    (gfx.allocator, &global->vertices);
+  
+  // get rid of indexed drawing at some point  
+  indices[0] = TL + buffer_offset;
+  indices[1] = BL + buffer_offset;
+  indices[2] = TR + buffer_offset;
+  
+  indices[3] = TR + buffer_offset;
+  indices[4] = BL + buffer_offset;
+  indices[5] = BR + buffer_offset;
+  
+  gfxBufferAppend(gfx.allocator, dest_indices, indices, index_c * sizeof(uint32_t));
+  
+  return 0;
+}
+
+int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint16_t ch, int x, int y, int hex_color){
+
+  ivec3 color = hexColor(hex_color);
+  
   GfxTileset texture = global->textures[0];
   // ncurses space to screen space
   vec2 stride;
-  stride.x = (2.0f * texture.glyph_width) / (float)gfx.extent.width;
-  stride.y = (2.0f * texture.height) / (float)gfx.extent.height;
+  stride.x = (6.0f * texture.glyph_width) / (float)gfx.extent.width;
+  stride.y = (6.0f * texture.glyph_height) / (float)gfx.extent.height;
 
-  // chars are arranged as a 1D line for now
-  float uv_stride = (float)texture.glyph_width /
-    (float)(texture.glyph_c * texture.glyph_width);
+  int width_in_tiles = texture.width / texture.glyph_width;
+  vec2 uv_stride;
+  uv_stride.x = (float)texture.glyph_width /
+    (float)texture.width;
+  uv_stride.y = (float)texture.glyph_height /
+    (float)texture.height;
   
   const size_t vertex_c = 4;
   vertex2 vertices[vertex_c];
@@ -85,24 +152,25 @@ int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, char ch, int x, int y, ivec3 c
   
   float cursor_x = -1 + (stride.x * (float)x);
   float cursor_y = -1 + (stride.y * (float)y); 
-
+  
   vertex2 top_left = {
     .pos = { cursor_x, cursor_y},
-    .uv = { (float)ch * uv_stride, 0},
+    .uv = { (float)(ch % width_in_tiles) * uv_stride.x,
+	    (float)(ch / width_in_tiles) * uv_stride.y},
     .color = color
   };
 
   vertex2 bottom_left = top_left;
   bottom_left.pos.y += stride.y;
-  bottom_left.uv.y += 1;
+  bottom_left.uv.y += uv_stride.y;
     
   vertex2 top_right = top_left;
   top_right.pos.x += stride.x;
-  top_right.uv.x += uv_stride;
+  top_right.uv.x += uv_stride.x;
   
   vertex2 bottom_right = top_right;
   bottom_right.pos.y += stride.y;
-  bottom_right.uv.y += 1.0f;
+  bottom_right.uv.y += uv_stride.y;
   
   const int TL = 0;
   const int TR = 1;

@@ -5,6 +5,6 @@
 #include <stdlib.h>
 
 int _gfxTexturesInit(GfxTileset**);
-int _gfxTilesetLoad(GfxConst, char*, GfxTileset*);
+int _gfxTextureLoad(GfxConst, const char*, GfxTileset*);
 
 #endif //TEXTURES_H

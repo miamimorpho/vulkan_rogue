@@ -1,14 +1,18 @@
 #include "world.h"
 #include <stdlib.h>
 
-int worldInit(GameWorld* w, int size){
-  w->width = size;
-  w->size = size * size;
+int worldInit(GameWorld* w, int width, int height){
+  w->width = width;
+  w->size = width * height;
   w->tiles = (Entity*)malloc(w->size * sizeof(Entity));
+
   Entity terrain = {
-    .ch = '.'
+    .ch = 80,
+    .color = 0x834664,
+    .collide = 0,
   };
-  for(int y = 0; y < w->width; y++){
+  
+  for(int y = 0; y < height; y++){
     for(int x = 0; x < w->width; x++){
       mapPutTile(w, terrain, x, y);
     }
@@ -21,12 +25,14 @@ int worldInit(GameWorld* w, int size){
 
 Entity mapGetTile(GameWorld* map, int x, int y){
   Entity null_ent = {
-    .ch = '?',
+    .ch = '~',
+    .color = 0x160712,
+    .collide = 0,
     .pos = (Pos){ x, y},
   };
   if(x >= map->width) return null_ent;
   if(x < 0) return null_ent;
-  if(y >= map->width) return null_ent;
+  //  if(y >= map->width) return null_ent;
   if(y < 0) return null_ent;
 
   int offset = (y * map->width) + x;
@@ -38,7 +44,7 @@ int mapPutTile(GameWorld* map, Entity entity, int x, int y){
 
   if(x >= map->width) return 1;
   if(x < 0) return 1;
-  if(y >= map->width) return 1;
+  //if(y >= map->width) return 1;
   if(y < 0) return 1;
 
   int offset = (y * map->width) + x;  

@@ -1,10 +1,12 @@
-#include "maths.h"
 
 int inputInit(void);
 int gfxConstInit(void);
 int gfxGlobalInit(void);
-int gfxTilesetLoad(char* filename);
+
+int gfxTextureLoad(const char*);
+
 int gfxDrawStart(void);
-int gfxDrawChar(char, int, int, ivec3);
+int gfxDrawTexture(int);
+int gfxDrawChar(char, int, int, int);
 int gfxDrawEnd(void);
 int gfxClose(void);

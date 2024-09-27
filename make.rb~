@@ -21,7 +21,7 @@ FileUtils.mkdir_p(objdir)
 
 # Clean up build artifacts
 if ARGV.include?('clean')
-  FileUtils.rm_f([prog, 'obj/vma.o', 'shaders/vert.spv', 'shaders/frag.spv'] + objs)
+  FileUtils.rm_f([prog, 'vma.o', 'shaders/vert.spv', 'shaders/frag.spv'] + objs)
   exit
 end
 

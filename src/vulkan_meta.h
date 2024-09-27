@@ -24,9 +24,11 @@ typedef struct {
 
 typedef struct{
   GfxImage image;
-  uint32_t glyph_c;
   uint32_t glyph_width;
+  uint32_t glyph_height;
   uint32_t height;
+  uint32_t width;
+  uint32_t channels;
 } GfxTileset;
 
 typedef struct{

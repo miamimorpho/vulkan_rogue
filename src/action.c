@@ -82,7 +82,9 @@ int _buildWallAction(GameWorld* w, int args_c, Argument* args){
   int y = w->actors[0].pos.y;
 
   Entity wall = {
-    .ch = 219, // full block
+    .ch = 176, // full block
+    .color = 0x8f9389,
+    .collide = 1,
     .pos.x = x,
     .pos.y = y,
   };
@@ -99,12 +101,15 @@ int _moveEntityAction(GameWorld* w, int args_c, Argument* args){
   if(w == NULL) return 1;
   if(args_c > 3) return 1;
   int entity_index = args[0].val.i;
-  int vector_x = args[1].val.i;
-  int vector_y = args[2].val.i;
+  int vx = args[1].val.i;
+  int vy = args[2].val.i;
   
   Entity* e = &w->actors[entity_index];
-  e->pos.x += vector_x;
-  e->pos.y += vector_y;
+  Entity dst = mapGetTile(w, e->pos.x + vx, e->pos.y + vy);
+  if(dst.collide == 0){
+    e->pos.x += vx;
+    e->pos.y += vy;
+  }
 
   return 0;
 }

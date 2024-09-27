@@ -6,6 +6,7 @@ typedef struct{
   int key;
   int pressed;
   int to_exit;
+  double time;
 } inputState_t;
 
 static inputState_t s_state;
@@ -16,9 +17,15 @@ void closeCallback(GLFWwindow* window) {
 }
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-  if (action == GLFW_PRESS) {
+  if (action == GLFW_PRESS || action == GLFW_REPEAT) {
     s_state.key = key;
     s_state.pressed = 1;
+    s_state.time = glfwGetTime();
+  }
+  if(action == GLFW_RELEASE){
+    s_state.key = key;
+    s_state.pressed = 0;
+    s_state.time = glfwGetTime();
   }
 }
 
@@ -37,17 +44,20 @@ void _inputInit(GfxConst gfx){
   s_state.key = GLFW_KEY_UNKNOWN;
   s_state.pressed = 0;
   s_state.to_exit = 0;
+  s_state.time = 0;
 }
 
 GameAction userInput(int entity_index){
+
+  static double last_key_time = 0;
   
   glfwPollEvents();
-
   if (s_state.to_exit == 1) {
     return noAction();
   }
-  
-  if(s_state.pressed == 1){
+
+  if(s_state.time - last_key_time > 0.06 && s_state.pressed == 1){
+    last_key_time = s_state.time;
     GameAction action = noAction();
     
     switch(s_state.key) {
@@ -65,6 +75,7 @@ GameAction userInput(int entity_index){
       break;
     case GLFW_KEY_PERIOD:
       action = buildWallAction(entity_index);
+      break;
     }
     s_state.pressed = 0;
     s_state.key = GLFW_KEY_UNKNOWN;

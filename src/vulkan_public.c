@@ -18,8 +18,13 @@ int gfxDrawStart(void){
   return 0;
 }
 
-int gfxDrawChar(char ch, int x, int y, ivec3 color){
-  _gfxDrawChar(gfxGetConst(), &s_global, ch, x, y, color);
+int gfxDrawTexture(int index){
+  _gfxDrawTexture(gfxGetConst(), &s_global, index);
+  return 0;
+}
+
+int gfxDrawChar(char ch, int x, int y, int hex_color){
+  _gfxDrawChar(gfxGetConst(), &s_global, ch, x, y, hex_color);
   return 0;
 }
 
@@ -29,8 +34,8 @@ int gfxDrawEnd(void){
 }
 
 // textures.c
-int gfxTilesetLoad(char* filename){
-  _gfxTilesetLoad(gfxGetConst(), filename, s_global.textures);
+int gfxTextureLoad(const char* filename){
+  _gfxTextureLoad(gfxGetConst(), filename, s_global.textures);
   return 0;
 }
 

@@ -10,13 +10,15 @@ int main(void){
   }
   gfxGlobalInit();
   inputInit();
-  gfxTilesetLoad("textures/spleen-8x16-437-custom.bdf");
-
+  gfxTextureLoad("textures/spleen-8x16-437-custom.bdf");
+  gfxTextureLoad("textures/forest.png");
+  
   GameWorld world;
-  worldInit(&world, 32);
+  worldInit(&world, 16, 32);
 
   entityAdd(&world, (Entity){
-      .ch = 1,
+      .ch = 2,
+      .color = 0xFFFFFF,
       .pos= {1,1},
     });
     
@@ -32,7 +34,7 @@ int main(void){
       for(int x = 0; x < ASCII_SCREEN_WIDTH; x++){
 	Entity tile = mapGetTile(&world, camera.x +x, camera.y +y);
 	gfxDrawChar(tile.ch, x, y,
-		    (ivec3){255,100,100});
+		    tile.color);
       }
     }
 
@@ -42,7 +44,7 @@ int main(void){
       gfxDrawChar(actor.ch,
 		  ASCII_SCREEN_WIDTH / 2,
 		  ASCII_SCREEN_HEIGHT / 2,
-		  (ivec3){255, 255, 255});
+		  actor.color);
     }
     
     gfxDrawEnd();
