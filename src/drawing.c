@@ -75,89 +75,37 @@ int gfxBufferAppend(VmaAllocator allocator, GfxBuffer *dest,
   return 0;
 }
 
-int _gfxDrawTexture(GfxConst gfx, GfxGlobal* global, int texture_index){
+int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint16_t code, int x, int y, int hex_color, int texture_index){
 
-  const size_t vertex_c = 4;
-  vertex2 vertices[vertex_c];
-  const size_t index_c = 6;
-  uint32_t indices[index_c];
+  ivec3 color = hexColor(hex_color);  
+  GfxTileset texture = global->textures[texture_index];
+  uint32_t ch = texture.tiles[code].uv;
   
-  vertex2 top_left = {
-    .pos = { 0, 0},
-    .uv = { 0, 0},
-    .color = hexColor(0xFFFFFF),
-  };
-  vertex2 bottom_left = top_left;
-  bottom_left.pos.y += 1;
-  bottom_left.uv.y += 1;
-    
-  vertex2 top_right = top_left;
-  top_right.pos.x += 1;
-  top_right.uv.x += 1;
-  vertex2 bottom_right = top_right;
-  bottom_right.pos.y += 1;
-  bottom_right.uv.y += 1;
-  
-  const int TL = 0;
-  const int TR = 1;
-  const int BL = 2;
-  const int BR = 3;
-  
-  vertices[TL] = top_left;
-  vertices[TR] = top_right;
-  vertices[BL] = bottom_left;
-  vertices[BR] = bottom_right;
-
-  int buffer_offset = global->vertices.used_size / sizeof(vertex2);
- 
-  gfxBufferAppend(gfx.allocator, &global->vertices, vertices, vertex_c * sizeof(vertex2));
-  GfxBuffer* dest_indices = gfxBufferNext
-    (gfx.allocator, &global->vertices);
-  
-  // get rid of indexed drawing at some point  
-  indices[0] = TL + buffer_offset;
-  indices[1] = BL + buffer_offset;
-  indices[2] = TR + buffer_offset;
-  
-  indices[3] = TR + buffer_offset;
-  indices[4] = BL + buffer_offset;
-  indices[5] = BR + buffer_offset;
-  
-  gfxBufferAppend(gfx.allocator, dest_indices, indices, index_c * sizeof(uint32_t));
-  
-  return 0;
-}
-
-int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint16_t ch, int x, int y, int hex_color){
-
-  ivec3 color = hexColor(hex_color);
-  
-  GfxTileset texture = global->textures[0];
   // ncurses space to screen space
   vec2 stride;
-  stride.x = (6.0f * texture.glyph_width) / (float)gfx.extent.width;
-  stride.y = (6.0f * texture.glyph_height) / (float)gfx.extent.height;
+  stride.x = (ASCII_SCALE * ASCII_TILE_SIZE) / (float)gfx.extent.width;
+  stride.y = (ASCII_SCALE * ASCII_TILE_SIZE) / (float)gfx.extent.height;
 
-  int width_in_tiles = texture.width / texture.glyph_width;
   vec2 uv_stride;
   uv_stride.x = (float)texture.glyph_width /
     (float)texture.width;
   uv_stride.y = (float)texture.glyph_height /
     (float)texture.height;
+
+  int width_in_tiles = texture.width / texture.glyph_width;
+  vec2 uv_index;
+  uv_index.x = (float)(ch % width_in_tiles) * uv_stride.x;
+  uv_index.y = (float)(ch / width_in_tiles) * uv_stride.y;
+  uv_index.y += (float)texture_index;
   
-  const size_t vertex_c = 4;
-  vertex2 vertices[vertex_c];
-  const size_t index_c = 6;
-  uint32_t indices[index_c];
-  
-  float cursor_x = -1 + (stride.x * (float)x);
-  float cursor_y = -1 + (stride.y * (float)y); 
+  vec2 cursor;
+  cursor.x = -1 + (stride.x * (float)x);
+  cursor.y = -1 + (stride.y * (float)y); 
   
   vertex2 top_left = {
-    .pos = { cursor_x, cursor_y},
-    .uv = { (float)(ch % width_in_tiles) * uv_stride.x,
-	    (float)(ch / width_in_tiles) * uv_stride.y},
-    .color = color
+    .pos = cursor,
+    .uv = uv_index,
+    .color = color,
   };
 
   vertex2 bottom_left = top_left;
@@ -172,6 +120,11 @@ int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint16_t ch, int x, int y, int
   bottom_right.pos.y += stride.y;
   bottom_right.uv.y += uv_stride.y;
   
+  const size_t vertex_c = 4;
+  vertex2 vertices[vertex_c];
+  const size_t index_c = 6;
+  uint32_t indices[index_c];
+  
   const int TL = 0;
   const int TR = 1;
   const int BL = 2;
@@ -199,6 +152,28 @@ int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint16_t ch, int x, int y, int
   
   gfxBufferAppend(gfx.allocator, dest_indices, indices, index_c * sizeof(uint32_t));
 
+  return 0;
+}
+
+int _gfxDrawString(GfxConst gfx, GfxGlobal* global, const char* str, int x, int y, int hex_color){
+
+  //convert to unicode
+  
+  int i = 0;
+  int start_x = 0;
+  while(str[i] != '\0') {
+    if(str[i] == '\n'){
+      y++;
+      x = start_x;
+    }else{
+      int err = _gfxDrawChar(gfx, global, str[i],
+			     x++, y, hex_color, 1);
+      if(err != 0){
+	return 1;
+      }
+    }
+    i++;
+  }
   return 0;
 }
 

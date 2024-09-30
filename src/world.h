@@ -9,7 +9,7 @@ typedef struct{
 
 typedef struct{
   Pos pos;
-  char ch;
+  char unicode;
   uint32_t color;
   int collide;
 } Entity;

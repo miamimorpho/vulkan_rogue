@@ -7,7 +7,7 @@ int worldInit(GameWorld* w, int width, int height){
   w->tiles = (Entity*)malloc(w->size * sizeof(Entity));
 
   Entity terrain = {
-    .ch = 80,
+    .unicode = 112,
     .color = 0x834664,
     .collide = 0,
   };
@@ -25,7 +25,7 @@ int worldInit(GameWorld* w, int width, int height){
 
 Entity mapGetTile(GameWorld* map, int x, int y){
   Entity null_ent = {
-    .ch = '~',
+    .unicode = 33,
     .color = 0x160712,
     .collide = 0,
     .pos = (Pos){ x, y},

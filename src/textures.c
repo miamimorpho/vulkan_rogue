@@ -235,11 +235,22 @@ int pngFileLoad(const char* filename, GfxTileset* img, uint8_t** pixels, size_t*
   *size = x * y * n;
   img->width = (uint32_t)x;
   img->height = (uint32_t)y;
-  img->glyph_width = TILE_SIZE;
-  img->glyph_height = TILE_SIZE;
+  img->glyph_width = ASCII_TILE_SIZE;
+  img->glyph_height = ASCII_TILE_SIZE;
   img->channels = n;
   
   return 0;
+}
+
+int hexToInt(char ch)
+{
+    if (ch >= '0' && ch <= '9')
+        return ch - '0';
+    if (ch >= 'A' && ch <= 'F')
+        return ch - 'A' + 10;
+    if (ch >= 'a' && ch <= 'f')
+        return ch - 'a' + 10;
+    return -1;
 }
 
 int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, size_t* size ){
@@ -252,20 +263,21 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
     printf("Error opening font file\n");
     return 1;
   }
- 
+
+  // bdf files are parsed line by plaintext line
   char line[L_LEN];
-  char setting[L_LEN];
+  char prefix[L_LEN];
   
   uint32_t glyph_c;
-  int supported = 0;
+  int supported_c = 0;
   /* METADATA LOADING START */
   while(fgets(line, sizeof(line), fp) != NULL) {
 
-    if(supported == 3)break;
+    if(supported_c == 2)break;
     
-    sscanf(line, " %s", setting);
+    sscanf(line, " %s", prefix);
 
-    if(strcmp(setting, "FONTBOUNDINGBOX") == 0){
+    if(strcmp(prefix, "FONTBOUNDINGBOX") == 0){
 
       char x_s[W_LEN];
       char y_s[W_LEN];
@@ -276,97 +288,97 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
 	     x_s, y_s, x_offset_s, y_offset_s);
 
       font->glyph_width = atoi(x_s);
-      font->height = atoi(y_s);
+      font->glyph_height = atoi(y_s);
   
-      supported += 1;
+      supported_c += 1;
       continue;
     }
 
-    if(strcmp(setting, "CHARSET_ENCODING") == 0){
-      char encoding[W_LEN]; 
-      
-      sscanf(line, "%*s %s", encoding);
-      if(strcmp(encoding, "\"437\"") != 0 )printf("unsupported font format");
-
-      supported += 1;
-      continue;
-    }
-
-    if(strcmp(setting, "CHARS") == 0){
+    if(strcmp(prefix, "CHARS") == 0){
       char glyph_c_s[W_LEN];
       sscanf(line, "%*s %s", glyph_c_s);
       glyph_c = atoi(glyph_c_s);
-      supported += 1;
+      supported_c += 1;
       continue;
     }
    
   }
-  
-  if(supported != 3){
+  if(supported_c != 2){
     printf("not enough config information\n");
     return 2;
   }/* META LOADING END */
 
+  font->tiles = malloc(glyph_c * sizeof(GfxTile));
+  for(uint i = 0; i < glyph_c; i++){
+    font->tiles[i].name = malloc(W_LEN * sizeof(char));
+  }
+  
+  // allocate pixel data to Z order array
   font->channels = 1;
-  font->width = font->glyph_width * glyph_c;
+  font->width = font->glyph_width;
+  font->height = font->glyph_height * glyph_c;
   *size = font->width * font->height;
   *ptr_pixels = malloc(*size);
-  font->glyph_height = font->height;
-  memset(*ptr_pixels, 255, *size);
-  
+  memset(*ptr_pixels, 0, *size);
   rewind(fp);
-  int in_bytes = 0;
-  int row_i = 0;
-  int code_i = 0;
-
+  int in_hex = 0;
+  int glyph_i = 0; // assuming C99 uses ASCII 437 
+  int glyph_y = 0;
+  
   /* BYTE LOADING START */
   while(fgets(line, sizeof(line), fp) != NULL) {
  
-    sscanf(line, "%s", setting);
+    sscanf(line, "%s", prefix);
+    
+    if(strcmp(prefix, "ENDCHAR") == 0){
+      in_hex = 0;
+      glyph_i++;
+      glyph_y = 0;
+      continue;
+    }
+   
+    /* bdf files store 4 1-bit pixels across
+     * as one hex char */
+    if(in_hex > 0){
+      int glyph_hex_width = strlen(line) -1;
 
-    if(strcmp(setting, "ENCODING") == 0){
-      char code[W_LEN];
-      sscanf(line, "%*s %s", code);
-      code_i = atoi(code);
- 
-   
-      continue;
-    }
-    
-    if(strcmp(setting, "ENDCHAR") == 0){
-      row_i = 0;
-      code_i = 0;
-      in_bytes = 0;
-    
-      continue;
-    }
-    
-    if(in_bytes == 1){
-   
-      uint8_t row = (uint8_t)strtol(line, NULL, 16);
-      int y = row_i++ * (font->width);
-    
-      for(signed int i = 7; i >= 0; --i){
-	int pixel_xy = y + (code_i * font->glyph_width) + i;
+      for(unsigned int i = 0; i < font->glyph_width; i++) {
+	int hex_index = i / 4;
+	if(hex_index >= glyph_hex_width) break;
+	uint8_t hex_value = hexToInt(line[hex_index]);
+	
 	uint8_t pixel = 0;
-	if((row >> (7 - i) ) & 0x01)pixel = 255;	
-	(*ptr_pixels)[pixel_xy] = pixel;
+	int bit_index = 3 - (i % 4);
+	if((hex_value >> bit_index) & 0x1){
+	  pixel = 255;
+	}
+	int dst_y = (glyph_i * font->glyph_height) + glyph_y;
+	int dst_xy = (dst_y * font->glyph_width) + i;
+
+	(*ptr_pixels)[dst_xy] = pixel;
       }
-   
+      glyph_y++;
       continue;
     }
-      
-    if(strcmp(setting, "STARTCHAR") == 0){
+    
+    if(strcmp(prefix, "STARTCHAR") == 0){
       char* glyph_name = strchr(line, ' ');
       if(glyph_name != NULL)glyph_name += 1;
       glyph_name[strlen(glyph_name)-1] = '\0';
- 
+      font->tiles[glyph_i].name = glyph_name;
+      continue;
+    }
+    
+    if(strcmp(prefix, "ENCODING") == 0){
+      char code[W_LEN];
+      sscanf(line, "%*s %s", code);
+      font->tiles[glyph_i].encoding = atoi(code);
+      font->tiles[glyph_i].uv = glyph_i;
       continue;
     }
 
-    if(strcmp(setting, "BITMAP") == 0){
-      in_bytes = 1;
-   
+    if(strcmp(prefix, "BITMAP") == 0){
+      in_hex = 1;
       continue;
     }
   }/* BYTE LOADING END*/

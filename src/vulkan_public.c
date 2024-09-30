@@ -18,13 +18,15 @@ int gfxDrawStart(void){
   return 0;
 }
 
-int gfxDrawTexture(int index){
-  _gfxDrawTexture(gfxGetConst(), &s_global, index);
+int gfxDrawChar(char ch, int x, int y, int hex_color, int texture_index){
+  _gfxDrawChar(gfxGetConst(), &s_global,
+	       ch, x, y, hex_color, texture_index);
   return 0;
 }
 
-int gfxDrawChar(char ch, int x, int y, int hex_color){
-  _gfxDrawChar(gfxGetConst(), &s_global, ch, x, y, hex_color);
+int gfxDrawString(const char* ch, int x, int y, int hex_color){
+  _gfxDrawString(gfxGetConst(), &s_global,
+		 ch, x, y, hex_color);
   return 0;
 }
 

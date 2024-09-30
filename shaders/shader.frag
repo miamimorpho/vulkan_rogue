@@ -11,7 +11,10 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
 
-    vec4 brightness = texture(texSampler[0], inUV);
+    int texture_index = int(floor(inUV.y));
+    vec2 textureUV = fract(inUV);
+
+    vec4 brightness = texture(texSampler[texture_index], textureUV);
     vec3 normalColor = vec3(inColor) / 255;
     outColor = vec4(brightness.r * normalColor, 1.0);
     //outColor = vec4(brightness.r, brightness.r, brightness.r, 255);

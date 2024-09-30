@@ -2,7 +2,8 @@
 /* ASCII Options */
 #define ASCII_SCREEN_WIDTH 18
 #define ASCII_SCREEN_HEIGHT 20
-#define TILE_SIZE 8
+#define ASCII_TILE_SIZE 8
+#define ASCII_SCALE 6.0f
 
 /* Renderer Options */
 #define WIDTH 800

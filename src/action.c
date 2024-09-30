@@ -82,7 +82,7 @@ int _buildWallAction(GameWorld* w, int args_c, Argument* args){
   int y = w->actors[0].pos.y;
 
   Entity wall = {
-    .ch = 176, // full block
+    .unicode = 176, // full block
     .color = 0x8f9389,
     .collide = 1,
     .pos.x = x,
