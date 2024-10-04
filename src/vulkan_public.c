@@ -40,6 +40,9 @@ int gfxTextureLoad(const char* filename){
   _gfxTextureLoad(gfxGetConst(), filename, s_global.textures);
   return 0;
 }
+GfxTileset gfxGetTexture(int texture_index){
+  return s_global.textures[texture_index];
+}
 
 // local
 int gfxGlobalInit(void){

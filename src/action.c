@@ -13,7 +13,6 @@ typedef union{
   int i;
   float f;
   const char* s;
-  void* ptr;
 }ArgValue;
 
 typedef struct {
@@ -74,7 +73,6 @@ void doAction(GameWorld* w, GameAction action){
 }
 
 /* Start of in-game functions */
-
 int _buildWallAction(GameWorld* w, int args_c, Argument* args){
   if(w == NULL) return 1;
   if(args_c > 1) return 1;
@@ -82,7 +80,7 @@ int _buildWallAction(GameWorld* w, int args_c, Argument* args){
   int y = w->actors[0].pos.y;
 
   Entity wall = {
-    .unicode = 176, // full block
+    .uv = '#',
     .color = 0x8f9389,
     .collide = 1,
     .pos.x = x,
@@ -113,7 +111,6 @@ int _moveEntityAction(GameWorld* w, int args_c, Argument* args){
 
   return 0;
 }
-
 GameAction moveEntityAction(int entity_index, int x, int y){
   return requestAction(_moveEntityAction, 3,
                   ARG_INT, entity_index,
@@ -121,10 +118,29 @@ GameAction moveEntityAction(int entity_index, int x, int y){
                   ARG_INT, y);
 }
 
+int _pickTileAction(GameWorld* w, int args_c, Argument* args){
+  if(w == NULL) return 1;
+  if(args_c > 2) return 1;
+  Entity src = {
+    .uv = args[0].val.i,
+    .color = 0xFFFFFF,
+    .collide = 0,
+    .pos.x = 0,
+    .pos.y = 0,
+  };
+  Entity* dst = &w->actors[ args[1].val.i ];
+  dst->inventory[0] = src;
+  return 0;
+}
+GameAction pickTileAction(int uv, int entity_index){
+  return requestAction(_pickTileAction, 2,
+		       ARG_INT, uv,
+		       ARG_INT, entity_index);
+}
+
 int _noAction(GameWorld* w, int args_c, Argument* args){
   return 0;
 }
-
 GameAction noAction(void){
   return requestAction(_noAction, 1, 1);
 }

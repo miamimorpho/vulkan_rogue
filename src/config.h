@@ -1,6 +1,6 @@
 
 /* ASCII Options */
-#define ASCII_SCREEN_WIDTH 18
+#define ASCII_SCREEN_WIDTH 24
 #define ASCII_SCREEN_HEIGHT 20
 #define ASCII_TILE_SIZE 8
 #define ASCII_SCALE 6.0f

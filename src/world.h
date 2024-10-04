@@ -7,12 +7,14 @@ typedef struct{
   int y;
 } Pos;
 
-typedef struct{
+typedef struct Entity Entity;
+struct Entity{
   Pos pos;
-  char unicode;
+  int uv;
   uint32_t color;
   int collide;
-} Entity;
+  Entity* inventory;
+};
 
 typedef struct{
   Entity* tiles;
@@ -22,6 +24,7 @@ typedef struct{
   Entity* actors;
   int actors_count;
 } GameWorld;
+
 
 int mapPutTile(GameWorld*, Entity, int, int);
 Entity mapGetTile(GameWorld* map, int x, int y);

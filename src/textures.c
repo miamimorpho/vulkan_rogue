@@ -2,6 +2,7 @@
 #include "../extern/stb_image.h"
 #include "textures.h"
 #include "vulkan_helper.h"
+#include "macros.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -195,32 +196,40 @@ gfxImageToGpu(VmaAllocator allocator, unsigned char* pixels,
 			    image_size);
   //memcpy(image_b.first_ptr, pixels, image_size);
 
-  gfxImageAlloc(allocator, texture, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, format, width, height);
+  CHECK_GT_ZERO
+    (gfxImageAlloc(allocator, texture,
+		   VK_IMAGE_USAGE_TRANSFER_DST_BIT
+		   | VK_IMAGE_USAGE_SAMPLED_BIT,
+		   format, width, height));
 
   /* Copy the image buffer to a VkImage proper */
-  transitionImageLayout(texture->handle,
-			  VK_IMAGE_LAYOUT_UNDEFINED,
-			  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  CHECK_GT_ZERO
+    (transitionImageLayout(texture->handle,
+			   VK_IMAGE_LAYOUT_UNDEFINED,
+			   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
 
 
-  copyBufferToImage(image_b.handle, texture->handle,
-		    (uint32_t)width, (uint32_t)height);
+  CHECK_GT_ZERO
+    (copyBufferToImage(image_b.handle, texture->handle,
+		       (uint32_t)width, (uint32_t)height));
   
   gfxBufferDestroy(allocator, &image_b);
 
-  transitionImageLayout
+  CHECK_GT_ZERO(transitionImageLayout
     (texture->handle,
      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
   
   /* Create image view */
-  gfxImageViewCreate(allocator_info.device, texture->handle,
-		    &texture->view, format,
-		    VK_IMAGE_ASPECT_COLOR_BIT);
-  gfxSamplerCreate(allocator_info.device,
-		 allocator_info.physicalDevice,
-		 &texture->sampler);
- 
+  CHECK_GT_ZERO
+    (gfxImageViewCreate(allocator_info.device, texture->handle,
+			&texture->view, format,
+			VK_IMAGE_ASPECT_COLOR_BIT));
+  CHECK_GT_ZERO
+    (gfxSamplerCreate(allocator_info.device,
+		      allocator_info.physicalDevice,
+		      &texture->sampler));
+
   return 0;
 }
 
@@ -237,7 +246,13 @@ int pngFileLoad(const char* filename, GfxTileset* img, uint8_t** pixels, size_t*
   img->height = (uint32_t)y;
   img->glyph_width = ASCII_TILE_SIZE;
   img->glyph_height = ASCII_TILE_SIZE;
+  img->glyph_c = ( x * y ) / ( ASCII_TILE_SIZE * ASCII_TILE_SIZE) ;
   img->channels = n;
+
+  img->encoding = malloc(img->glyph_c * sizeof(uint32_t));
+  for(uint i = 0; i < img->glyph_c; i++){
+    img->encoding[i] = i;
+  }
   
   return 0;
 }
@@ -268,7 +283,6 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
   char line[L_LEN];
   char prefix[L_LEN];
   
-  uint32_t glyph_c;
   int supported_c = 0;
   /* METADATA LOADING START */
   while(fgets(line, sizeof(line), fp) != NULL) {
@@ -297,7 +311,7 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
     if(strcmp(prefix, "CHARS") == 0){
       char glyph_c_s[W_LEN];
       sscanf(line, "%*s %s", glyph_c_s);
-      glyph_c = atoi(glyph_c_s);
+      font->glyph_c = atoi(glyph_c_s);
       supported_c += 1;
       continue;
     }
@@ -308,15 +322,12 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
     return 2;
   }/* META LOADING END */
 
-  font->tiles = malloc(glyph_c * sizeof(GfxTile));
-  for(uint i = 0; i < glyph_c; i++){
-    font->tiles[i].name = malloc(W_LEN * sizeof(char));
-  }
+  font->encoding = malloc(font->glyph_c * sizeof(uint32_t));
   
   // allocate pixel data to Z order array
   font->channels = 1;
   font->width = font->glyph_width;
-  font->height = font->glyph_height * glyph_c;
+  font->height = font->glyph_height * font->glyph_c;
   *size = font->width * font->height;
   *ptr_pixels = malloc(*size);
   memset(*ptr_pixels, 0, *size);
@@ -365,15 +376,13 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
       char* glyph_name = strchr(line, ' ');
       if(glyph_name != NULL)glyph_name += 1;
       glyph_name[strlen(glyph_name)-1] = '\0';
-      font->tiles[glyph_i].name = glyph_name;
       continue;
     }
     
     if(strcmp(prefix, "ENCODING") == 0){
       char code[W_LEN];
       sscanf(line, "%*s %s", code);
-      font->tiles[glyph_i].encoding = atoi(code);
-      font->tiles[glyph_i].uv = glyph_i;
+      font->encoding[glyph_i] = atoi(code);
       continue;
     }
 
@@ -411,18 +420,11 @@ int _gfxTextureLoad(GfxConst gfx, const char* filename, GfxTileset* textures){
   if(textures == NULL){
     return 1;
   }
+  int texture_index = -1;
+  while(textures[++texture_index].image.handle != NULL);
+  if(texture_index == -1 || texture_index > MAX_SAMPLERS) return 1;
+  GfxTileset* texture = &textures[texture_index];
   
-  // search for empty font texture slot
-  int index = -1;
-  for(uint32_t i = 0; i < MAX_SAMPLERS; i++){
-
-    if(textures[i].image.handle == VK_NULL_HANDLE){
-      index = i;
-      break;
-    }
-  }
-  GfxTileset* texture = &textures[index];
-
   /* load pixels from file */
   uint8_t* pixels = NULL;
   size_t size = 0;
@@ -438,7 +440,7 @@ int _gfxTextureLoad(GfxConst gfx, const char* filename, GfxTileset* textures){
 		   pixels,
 		   texture->width, texture->height,
 		   texture->channels, &texture->image) < 0) return 1;
-  gfxTexturesDescriptorsUpdate(gfx, textures, index +1);
+  gfxTexturesDescriptorsUpdate(gfx, textures, texture_index +1);
   
   /* stbi_free() is just a wrapper for free() */
   free(pixels);

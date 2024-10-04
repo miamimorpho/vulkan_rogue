@@ -1,4 +1,5 @@
 #include "world.h"
+#include "vulkan_public.h"
 #include <stdlib.h>
 
 int worldInit(GameWorld* w, int width, int height){
@@ -7,7 +8,7 @@ int worldInit(GameWorld* w, int width, int height){
   w->tiles = (Entity*)malloc(w->size * sizeof(Entity));
 
   Entity terrain = {
-    .unicode = 112,
+    .uv = 't',
     .color = 0x834664,
     .collide = 0,
   };
@@ -25,18 +26,17 @@ int worldInit(GameWorld* w, int width, int height){
 
 Entity mapGetTile(GameWorld* map, int x, int y){
   Entity null_ent = {
-    .unicode = 33,
+    .uv = 'N',
     .color = 0x160712,
     .collide = 0,
     .pos = (Pos){ x, y},
   };
   if(x >= map->width) return null_ent;
   if(x < 0) return null_ent;
-  //  if(y >= map->width) return null_ent;
   if(y < 0) return null_ent;
 
   int offset = (y * map->width) + x;
-  if(offset > map->size) return null_ent;
+  if(offset >= map->size) return null_ent;
   return map->tiles[offset];
 }
 
@@ -44,11 +44,9 @@ int mapPutTile(GameWorld* map, Entity entity, int x, int y){
 
   if(x >= map->width) return 1;
   if(x < 0) return 1;
-  //if(y >= map->width) return 1;
   if(y < 0) return 1;
-
   int offset = (y * map->width) + x;  
-  if(offset > map->size) return 1;
+  if(offset >= map->size) return 1;
   
   entity.pos.x = x;
   entity.pos.y = y;
@@ -57,6 +55,8 @@ int mapPutTile(GameWorld* map, Entity entity, int x, int y){
 }
 
 int entityAdd(GameWorld* world, Entity src){
+  src.inventory = malloc(sizeof(Entity)),
   world->actors[0] = src;
   return 0;
 }
+

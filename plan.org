@@ -1,30 +1,18 @@
 * TODO
-load in graphical tiles
-resizable screen dimensions to some extent
+tile picker/placer
 FOV
 enemies
 
-** Custom Tilesets
-load in png to vulkan
-load in uv lists for textures
-replace ascii with tiles referenced by ID
-
 * IDEAS
-
-** Renderer
-unicode support, gnu unifont
-custom tilesets
-slightly square-off fonts
-FOV
 
 ** Art
 randomly generated symbols
-1 bit 16x16
 
 ** Turn based
 https://journal.stuffwithstuff.com/2014/07/15/a-turn-based-game-loop/
 
 ** world
+entities as rooms, multi tile entities
 fixed interesting world size
 player can walk into the wilderness/void like fallout 4, random chance of enemies spawning near the player
 Multiple Z Levels
@@ -38,3 +26,4 @@ usable objects
 
 ** combat
 not annoying, tedious
+pokemon mysery dungeon

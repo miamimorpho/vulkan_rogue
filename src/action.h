@@ -7,6 +7,7 @@ typedef struct _GameAction* GameAction;
 
 GameAction moveEntityAction(int, int, int);
 GameAction buildWallAction(int);
+GameAction pickTileAction(int, int);
 GameAction noAction(void);
 void doAction(GameWorld*, GameAction);
 

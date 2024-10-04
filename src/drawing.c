@@ -59,27 +59,13 @@ int _gfxDrawStart(GfxConst gfx, GfxGlobal* global){
   return 0;
 }
 
-int gfxBufferAppend(VmaAllocator allocator, GfxBuffer *dest,
-		    const void* src, VkDeviceSize src_size)
-{
-  VmaAllocationInfo dest_info;
-  vmaGetAllocationInfo(allocator, dest->allocation, &dest_info);
+int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint16_t ch, int x, int y, int hex_color, int texture_index){
   
-  if(dest->used_size + src_size > dest_info.size)
-    return 1;
-  
-  vmaCopyMemoryToAllocation(allocator, src,
-			    dest->allocation, dest->used_size,
-			    src_size);
-  dest->used_size += src_size;
-  return 0;
-}
-
-int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint16_t code, int x, int y, int hex_color, int texture_index){
-
   ivec3 color = hexColor(hex_color);  
   GfxTileset texture = global->textures[texture_index];
-  uint32_t ch = texture.tiles[code].uv;
+  if(texture.image.handle == NULL){
+    return 1;
+  }
   
   // ncurses space to screen space
   vec2 stride;
@@ -166,8 +152,9 @@ int _gfxDrawString(GfxConst gfx, GfxGlobal* global, const char* str, int x, int 
       y++;
       x = start_x;
     }else{
-      int err = _gfxDrawChar(gfx, global, str[i],
-			     x++, y, hex_color, 1);
+      int uv = getUnicodeUV(global->textures[0], str[i]);
+      int err = _gfxDrawChar(gfx, global, uv,
+			     x++, y, hex_color, 0);
       if(err != 0){
 	return 1;
       }

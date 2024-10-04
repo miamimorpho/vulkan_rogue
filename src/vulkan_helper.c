@@ -9,6 +9,16 @@ const char *DEV_EXT_NAMES[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, };
 const unsigned int DEV_EXT_C = 1;
 const VkFormat cfg_format = VK_FORMAT_B8G8R8A8_SRGB;
 
+/* could be optimised, fast enough if results cached */
+int getUnicodeUV(GfxTileset tileset, uint unicode){
+  for(uint i = 0; i < tileset.glyph_c; i++){
+    if(tileset.encoding[i] == unicode){
+      return i;
+    }
+  }
+  return 0;
+}
+
 int
 gfxVertBufferCreate(GfxConst gfx, size_t estimated_size, GfxBuffer* dest_vertices)
 {
@@ -27,6 +37,22 @@ gfxVertBufferCreate(GfxConst gfx, size_t estimated_size, GfxBuffer* dest_vertice
 			   dest_vertices->allocation,
 			   dest_indices);
 
+  return 0;
+}
+
+int gfxBufferAppend(VmaAllocator allocator, GfxBuffer *dest,
+		    const void* src, VkDeviceSize src_size)
+{
+  VmaAllocationInfo dest_info;
+  vmaGetAllocationInfo(allocator, dest->allocation, &dest_info);
+  
+  if(dest->used_size + src_size > dest_info.size)
+    return 1;
+  
+  vmaCopyMemoryToAllocation(allocator, src,
+			    dest->allocation, dest->used_size,
+			    src_size);
+  dest->used_size += src_size;
   return 0;
 }
 
@@ -121,8 +147,8 @@ gfxImageAlloc(VmaAllocator allocator, GfxImage* image,
     .priority = 1.0f,
   };
   
-  vmaCreateImage(allocator, &image_info, &alloc_create_info,
-		 &image->handle, &image->allocation, NULL);
+  VK_CHECK(vmaCreateImage(allocator, &image_info, &alloc_create_info,
+			  &image->handle, &image->allocation, NULL));
   return 0;
 }
 
@@ -131,26 +157,23 @@ gfxImageViewCreate(VkDevice l_dev, VkImage image,
 		  VkImageView *view, VkFormat format,
 		  VkImageAspectFlags aspect_flags)
 {
- VkImageViewCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .image = image,
-      .viewType = VK_IMAGE_VIEW_TYPE_2D,
-      .format = format,
-      .components.r = VK_COMPONENT_SWIZZLE_IDENTITY,
-      .components.g = VK_COMPONENT_SWIZZLE_IDENTITY,
-      .components.b = VK_COMPONENT_SWIZZLE_IDENTITY,
-      .components.a = VK_COMPONENT_SWIZZLE_IDENTITY,
-      .subresourceRange.aspectMask = aspect_flags,
-      .subresourceRange.baseMipLevel = 0,
-      .subresourceRange.levelCount = 1,
-      .subresourceRange.baseArrayLayer = 0,
-      .subresourceRange.layerCount = 1,
-    };
-    if (vkCreateImageView(l_dev, &create_info, NULL, view)
-      != VK_SUCCESS){
-      return 1;
-    }
-    return 0;
+  VkImageViewCreateInfo create_info = {
+    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+    .image = image,
+    .viewType = VK_IMAGE_VIEW_TYPE_2D,
+    .format = format,
+    .components.r = VK_COMPONENT_SWIZZLE_IDENTITY,
+    .components.g = VK_COMPONENT_SWIZZLE_IDENTITY,
+    .components.b = VK_COMPONENT_SWIZZLE_IDENTITY,
+    .components.a = VK_COMPONENT_SWIZZLE_IDENTITY,
+    .subresourceRange.aspectMask = aspect_flags,
+    .subresourceRange.baseMipLevel = 0,
+    .subresourceRange.levelCount = 1,
+    .subresourceRange.baseArrayLayer = 0,
+    .subresourceRange.layerCount = 1,
+  };
+  VK_CHECK(vkCreateImageView(l_dev, &create_info, NULL, view));
+  return 0;
 }
 
 void

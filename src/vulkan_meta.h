@@ -23,14 +23,9 @@ typedef struct {
 } GfxImage;
 
 typedef struct{
-  uint32_t encoding;
-  const char* name;
-  uint32_t uv;
-} GfxTile;
-
-typedef struct{
   GfxImage image;
-  GfxTile* tiles;
+  uint32_t* encoding;
+  uint32_t glyph_c;
   uint32_t glyph_width;
   uint32_t glyph_height;
   uint32_t height;
