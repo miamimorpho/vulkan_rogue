@@ -9,7 +9,7 @@ GfxTileset gfxGetTexture(int);
 
 int gfxDrawStart(void);
 int gfxBlitImage(int);
-int gfxDrawChar(char, int, int, int, int);
+int gfxDrawChar(uint32_t, int, int, int, int);
 int gfxDrawString(const char*, int, int, int);
 
 int gfxDrawEnd(void);

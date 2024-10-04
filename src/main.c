@@ -18,7 +18,7 @@ int main(void){
   worldInit(&world, 16, 16);
 
   entityAdd(&world, (Entity){
-      .uv = '@',
+      .uv = 417,
       .color = 0xFFFFFF,
       .pos= {1,1},
       .collide = 1,
@@ -47,7 +47,7 @@ int main(void){
       gfxDrawChar(actor.uv,
 		  ASCII_SCREEN_WIDTH / 2,
 		  ASCII_SCREEN_HEIGHT / 2,
-		  actor.color, 0);
+		  actor.color, 1);
     }
 
     // user interface

@@ -10,8 +10,8 @@ const unsigned int DEV_EXT_C = 1;
 const VkFormat cfg_format = VK_FORMAT_B8G8R8A8_SRGB;
 
 /* could be optimised, fast enough if results cached */
-int getUnicodeUV(GfxTileset tileset, uint unicode){
-  for(uint i = 0; i < tileset.glyph_c; i++){
+int getUnicodeUV(GfxTileset tileset, uint32_t unicode){
+  for(uint32_t i = 0; i < tileset.glyph_c; i++){
     if(tileset.encoding[i] == unicode){
       return i;
     }

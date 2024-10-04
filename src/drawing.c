@@ -59,7 +59,7 @@ int _gfxDrawStart(GfxConst gfx, GfxGlobal* global){
   return 0;
 }
 
-int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint16_t ch, int x, int y, int hex_color, int texture_index){
+int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint32_t ch, uint32_t x, uint32_t y, uint32_t hex_color, uint32_t texture_index){
   
   ivec3 color = hexColor(hex_color);  
   GfxTileset texture = global->textures[texture_index];
@@ -69,8 +69,8 @@ int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint16_t ch, int x, int y, int
   
   // ncurses space to screen space
   vec2 stride;
-  stride.x = (ASCII_SCALE * ASCII_TILE_SIZE) / (float)gfx.extent.width;
-  stride.y = (ASCII_SCALE * ASCII_TILE_SIZE) / (float)gfx.extent.height;
+  stride.x = (2 * ASCII_SCALE * ASCII_TILE_SIZE) / (float)gfx.extent.width;
+  stride.y = (2 * ASCII_SCALE * ASCII_TILE_SIZE) / (float)gfx.extent.height;
 
   vec2 uv_stride;
   uv_stride.x = (float)texture.glyph_width /
@@ -83,6 +83,7 @@ int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint16_t ch, int x, int y, int
   uv_index.x = (float)(ch % width_in_tiles) * uv_stride.x;
   uv_index.y = (float)(ch / width_in_tiles) * uv_stride.y;
   uv_index.y += (float)texture_index;
+
   
   vec2 cursor;
   cursor.x = -1 + (stride.x * (float)x);

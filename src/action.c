@@ -73,25 +73,19 @@ void doAction(GameWorld* w, GameAction action){
 }
 
 /* Start of in-game functions */
-int _buildWallAction(GameWorld* w, int args_c, Argument* args){
+int _dropAction(GameWorld* w, int args_c, Argument* args){
   if(w == NULL) return 1;
   if(args_c > 1) return 1;
   int x = w->actors[0].pos.x;
   int y = w->actors[0].pos.y;
 
-  Entity wall = {
-    .uv = '#',
-    .color = 0x8f9389,
-    .collide = 1,
-    .pos.x = x,
-    .pos.y = y,
-  };
+  Entity target = w->actors[0].inventory[0];
   
-  mapPutTile(w, wall, x, y);
+  mapPutTile(w, target, x, y);
   return 0;
 }
-GameAction buildWallAction(int entity_index){
-  return requestAction(_buildWallAction, 1,
+GameAction dropAction(int entity_index){
+  return requestAction(_dropAction, 1,
 		       ARG_INT, entity_index);
 }
 

@@ -1,5 +1,9 @@
 * TODO
-tile picker/placer
+highlight cursor
+scroll up/down
+fix bdf font BBX
+png->bdf
+save
 FOV
 enemies
 

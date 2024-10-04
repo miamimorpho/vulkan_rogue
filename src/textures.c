@@ -248,9 +248,9 @@ int pngFileLoad(const char* filename, GfxTileset* img, uint8_t** pixels, size_t*
   img->glyph_height = ASCII_TILE_SIZE;
   img->glyph_c = ( x * y ) / ( ASCII_TILE_SIZE * ASCII_TILE_SIZE) ;
   img->channels = n;
-
+  
   img->encoding = malloc(img->glyph_c * sizeof(uint32_t));
-  for(uint i = 0; i < img->glyph_c; i++){
+  for(uint32_t i = 0; i < img->glyph_c; i++){
     img->encoding[i] = i;
   }
   
@@ -441,7 +441,6 @@ int _gfxTextureLoad(GfxConst gfx, const char* filename, GfxTileset* textures){
 		   texture->width, texture->height,
 		   texture->channels, &texture->image) < 0) return 1;
   gfxTexturesDescriptorsUpdate(gfx, textures, texture_index +1);
-  
   /* stbi_free() is just a wrapper for free() */
   free(pixels);
   

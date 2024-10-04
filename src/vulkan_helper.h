@@ -1,6 +1,6 @@
 #include "vulkan_meta.h"
 
-int getUnicodeUV(GfxTileset, unsigned int);
+int getUnicodeUV(GfxTileset, uint32_t);
 int gfxVertBufferCreate(GfxConst, size_t, GfxBuffer*);
 int gfxBufferAppend(VmaAllocator, GfxBuffer*,
 		    const void*, VkDeviceSize);

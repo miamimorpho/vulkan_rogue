@@ -18,7 +18,7 @@ int gfxDrawStart(void){
   return 0;
 }
 
-int gfxDrawChar(char ch, int x, int y, int hex_color, int texture_index){
+int gfxDrawChar(uint32_t ch, int x, int y, int hex_color, int texture_index){
   _gfxDrawChar(gfxGetConst(), &s_global,
 	       ch, x, y, hex_color, texture_index);
   return 0;

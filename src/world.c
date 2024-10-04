@@ -7,15 +7,15 @@ int worldInit(GameWorld* w, int width, int height){
   w->size = width * height;
   w->tiles = (Entity*)malloc(w->size * sizeof(Entity));
 
-  Entity terrain = {
-    .uv = 't',
+  Entity air = {
+    .uv = 0,
     .color = 0x834664,
     .collide = 0,
   };
   
   for(int y = 0; y < height; y++){
     for(int x = 0; x < w->width; x++){
-      mapPutTile(w, terrain, x, y);
+      mapPutTile(w, air, x, y);
     }
   }
   w->actors = malloc(1 * sizeof(Entity));
@@ -26,7 +26,7 @@ int worldInit(GameWorld* w, int width, int height){
 
 Entity mapGetTile(GameWorld* map, int x, int y){
   Entity null_ent = {
-    .uv = 'N',
+    .uv = 370,
     .color = 0x160712,
     .collide = 0,
     .pos = (Pos){ x, y},

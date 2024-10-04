@@ -77,8 +77,8 @@ GameAction guiPickTile(void){
   GfxConst gfx = gfxGetConst();
   GfxTileset tileset = gfxGetTexture(1);
   int width_in_tiles = tileset.width / tileset.glyph_width;
-  printf("%d\n", width_in_tiles);
-  
+
+  uint32_t target_uv = 0;
   int to_exit = 0;
   while(to_exit == 0){
 
@@ -87,7 +87,6 @@ GameAction guiPickTile(void){
     for(uint i = 0; i < tileset.glyph_c; i++){
       int x = i % width_in_tiles;
       int y = i / width_in_tiles;
-      //printf("%d [ x %d ] [ y %d] \n", i, x, y );
       gfxDrawChar(getUnicodeUV(tileset, i), x, y, 0xFFFFFF, 1 );
     }
 
@@ -96,15 +95,16 @@ GameAction guiPickTile(void){
     glfwPollEvents();
     if(s_state.pressed == 1){
       glfwGetCursorPos(gfx.window, &xpos, &ypos);
+      uint32_t target_x = xpos / (ASCII_SCALE * tileset.glyph_width);
+      uint32_t target_y = ypos / (ASCII_SCALE * tileset.glyph_height);
+      target_uv = (target_y * width_in_tiles) + target_x;
+      printf("uv %d", target_uv);
       to_exit = 1;
     }
   
   }
-  
-  // convert screen space to tile space
-  // check if button was clicked
-  // return "pick up item" action
-  return pickTileAction(0, 0);
+
+  return pickTileAction(target_uv, 0);
 }
 
 GameAction userInput(int entity_index){
@@ -134,7 +134,7 @@ GameAction userInput(int entity_index){
       action = guiPickTile();
       break;
     case GLFW_KEY_PERIOD:
-      action = buildWallAction(entity_index);
+      action = dropAction(entity_index);
       break;
     }
     resetInputState();
