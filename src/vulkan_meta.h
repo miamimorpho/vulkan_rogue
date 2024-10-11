@@ -8,6 +8,7 @@
 #include <GLFW/glfw3.h>
 #include "maths.h"
 #include "config.h"
+#include <stdint.h>
 
 typedef struct {
   VkBuffer handle;
@@ -45,8 +46,8 @@ typedef struct{
   /* const */ VkExtent2D extent;
   /* const */ VkSwapchainKHR swapchain;
   /* const */ uint32_t swapchain_c;
-  /* const */ VkImage *swapchain_images;
-  /* const */ VkImageView *swapchain_views;
+  VkImage *swapchain_images;
+  VkImageView *swapchain_views;
   /* const */ uint32_t frame_c;
   /* const */ VkRenderPass renderpass;
   /* const */ VkFramebuffer *framebuffer;
@@ -59,7 +60,7 @@ typedef struct{
   /* const */ VkDescriptorSet texture_descriptors;
   /* const */ VkPipelineLayout pipeline_layout;
   /* const */ VkPipeline pipeline;
-}GfxConst;
+}GfxContext;
 
 typedef struct{
     uint32_t swapchain_x;
@@ -71,14 +72,16 @@ typedef struct{
 typedef struct{
   vec2 pos;
   vec2 uv;
-  ivec3 color;
+  uint32_t fg;
+  uint32_t bg;
 } vertex2;
 
-GfxConst* gfxSetConst(void);
-GfxConst  gfxGetConst(void);
+GfxContext* gfxSetContext(void);
+GfxContext  gfxGetContext(void);
 
 VkCommandBuffer gfxCmdSingleBegin(void);
 int gfxCmdSingleEnd(VkCommandBuffer cmd_buffer);
-int _gfxConstFree(GfxConst);
+int _gfxSwapchainDestroy(GfxContext);
+int _gfxConstFree(GfxContext);
 
 #endif // VULKAN_META_H

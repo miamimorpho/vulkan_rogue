@@ -3,25 +3,36 @@
 #include <string.h>
 #include <stdint.h>
 
-ivec3 hexColor(uint32_t color) {
-    ivec3 rgb;
-    rgb.x = ((color >> 16) & 0xFF);
-    rgb.y = ((color >> 8) & 0xFF);
-    rgb.z = (color & 0xFF);
-    return rgb;
-}
+#define TOP_LEFT_INDEX 0
+#define TOP_RIGHT_INDEX 1
+#define BOTTOM_LEFT_INDEX 2
+#define BOTTOM_RIGHT_INDEX 3
 
-int _gfxDrawStart(GfxConst gfx, GfxGlobal* global){
+int _gfxDrawStart(GfxContext gfx, GfxGlobal* global){
   
-  VkFence fences[] = { gfx.fence[global->frame_x] };
-  vkWaitForFences(gfx.ldev, 1, fences, VK_TRUE, UINT64_MAX);
-  vkResetFences(gfx.ldev, 1, fences);
+  vkWaitForFences(gfx.ldev, 1,
+		  &gfx.fence[global->frame_x],
+		  VK_TRUE, UINT32_MAX);
 
-  vkAcquireNextImageKHR(gfx.ldev, gfx.swapchain, UINT64_MAX,
-			gfx.present_bit[global->frame_x],
-			VK_NULL_HANDLE,
-			&global->swapchain_x);
+  VkSemaphore* present_bit = &gfx.present_bit[global->frame_x];
+  VkResult result =
+    vkAcquireNextImageKHR(gfx.ldev, gfx.swapchain, UINT64_MAX,
+			  *present_bit,
+			  VK_NULL_HANDLE,
+			  &global->swapchain_x);
  
+  if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+    gfxRecreateSwapchain();
+    vkDestroySemaphore(gfx.ldev, *present_bit, NULL);
+    VkSemaphoreCreateInfo semaphore_info = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+    };
+    VK_CHECK(vkCreateSemaphore(gfx.ldev, &semaphore_info, NULL, present_bit));
+    return _gfxDrawStart(gfxGetContext(), global);
+  }
+
+  vkResetFences(gfx.ldev, 1, &gfx.fence[global->frame_x]);
+  
   VkCommandBuffer cmd_b = gfx.cmd_buffer[global->frame_x];
   vkResetCommandBuffer(cmd_b, 0);
 
@@ -59,10 +70,70 @@ int _gfxDrawStart(GfxConst gfx, GfxGlobal* global){
   return 0;
 }
 
-int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint32_t ch, uint32_t x, uint32_t y, uint32_t hex_color, uint32_t texture_index){
+int _gfxAddQuad(GfxContext gfx, GfxGlobal* global, vertex2 vertices[4]){
+ 
+  int buffer_offset = global->vertices.used_size / sizeof(vertex2);
+  gfxBufferAppend(gfx.allocator, &global->vertices, vertices, 4 * sizeof(vertex2));
   
-  ivec3 color = hexColor(hex_color);  
-  GfxTileset texture = global->textures[texture_index];
+  uint32_t indices[6];
+  indices[0] = TOP_LEFT_INDEX + buffer_offset;
+  indices[1] = BOTTOM_LEFT_INDEX + buffer_offset;
+  indices[2] = TOP_RIGHT_INDEX + buffer_offset;
+  
+  indices[3] = TOP_RIGHT_INDEX + buffer_offset;
+  indices[4] = BOTTOM_LEFT_INDEX + buffer_offset;
+  indices[5] = BOTTOM_RIGHT_INDEX + buffer_offset;
+
+  GfxBuffer* dest_indices = gfxBufferNext
+    (gfx.allocator, &global->vertices);
+  gfxBufferAppend(gfx.allocator, dest_indices, indices, 6 * sizeof(uint32_t));
+
+  return 0;
+}
+
+int _gfxDrawGradient(GfxContext gfx, GfxGlobal* global, vec2 start, vec2 end,
+		     uint32_t first_color, uint32_t last_color){
+
+  start.x = (start.x / gfx.extent.width) -1;
+  start.y = (start.y / gfx.extent.height) -1;
+  end.x = (end.x / gfx.extent.width) -1;
+  end.y = (end.y / gfx.extent.height) -1;
+  
+  vertex2 vertices[4];
+  vertices[TOP_LEFT_INDEX] = (vertex2){
+    .pos = start,
+    .uv = {0, 0},
+    .fg = first_color,
+    .bg = first_color,
+  };
+  vertices[BOTTOM_LEFT_INDEX] = (vertex2){
+    .pos.x = start.x,
+    .pos.y = end.y,
+    .uv = {0, 0},
+    .fg = first_color,
+    .bg = first_color,
+  };
+  vertices[TOP_RIGHT_INDEX] = (vertex2){
+    .pos.x = end.x,
+    .pos.y = start.y,
+    .uv = {0, 0},
+    .fg = last_color,
+    .bg = last_color,
+  };
+  vertices[BOTTOM_RIGHT_INDEX] = (vertex2){
+    .pos = end,
+    .uv = {0, 0},
+    .fg = last_color,
+    .bg = last_color,
+  };
+		     
+  return _gfxAddQuad(gfx, global, vertices);
+}
+
+int _gfxDrawChar(GfxContext gfx, GfxGlobal* global, uint32_t ch, uint32_t x, uint32_t y,
+		 uint32_t fg, uint32_t bg, uint32_t texture_i){
+  
+  GfxTileset texture = global->textures[texture_i];
   if(texture.image.handle == NULL){
     return 1;
   }
@@ -81,68 +152,39 @@ int _gfxDrawChar(GfxConst gfx, GfxGlobal* global, uint32_t ch, uint32_t x, uint3
   int width_in_tiles = texture.width / texture.glyph_width;
   vec2 uv_index;
   uv_index.x = (float)(ch % width_in_tiles) * uv_stride.x;
+  uv_index.x += (float)texture_i;
   uv_index.y = (float)(ch / width_in_tiles) * uv_stride.y;
-  uv_index.y += (float)texture_index;
 
-  
+
   vec2 cursor;
   cursor.x = -1 + (stride.x * (float)x);
   cursor.y = -1 + (stride.y * (float)y); 
   
-  vertex2 top_left = {
+  vertex2 vertices[4];
+  vertices[TOP_LEFT_INDEX] = (vertex2){
     .pos = cursor,
     .uv = uv_index,
-    .color = color,
+    .fg = fg,
+    .bg = bg,
   };
 
-  vertex2 bottom_left = top_left;
-  bottom_left.pos.y += stride.y;
-  bottom_left.uv.y += uv_stride.y;
+  vertices[BOTTOM_LEFT_INDEX] = vertices[TOP_LEFT_INDEX];
+  vertices[BOTTOM_LEFT_INDEX].pos.y += stride.y;
+  vertices[BOTTOM_LEFT_INDEX].uv.y += uv_stride.y;
     
-  vertex2 top_right = top_left;
-  top_right.pos.x += stride.x;
-  top_right.uv.x += uv_stride.x;
+  vertices[TOP_RIGHT_INDEX] = vertices[TOP_LEFT_INDEX];
+  vertices[TOP_RIGHT_INDEX].pos.x += stride.x;
+  vertices[TOP_RIGHT_INDEX].uv.x += uv_stride.x;
   
-  vertex2 bottom_right = top_right;
-  bottom_right.pos.y += stride.y;
-  bottom_right.uv.y += uv_stride.y;
-  
-  const size_t vertex_c = 4;
-  vertex2 vertices[vertex_c];
-  const size_t index_c = 6;
-  uint32_t indices[index_c];
-  
-  const int TL = 0;
-  const int TR = 1;
-  const int BL = 2;
-  const int BR = 3;
-  
-  vertices[TL] = top_left;
-  vertices[TR] = top_right;
-  vertices[BL] = bottom_left;
-  vertices[BR] = bottom_right;
+  vertices[BOTTOM_RIGHT_INDEX] = vertices[TOP_RIGHT_INDEX];
+  vertices[BOTTOM_RIGHT_INDEX].pos.y += stride.y;
+  vertices[BOTTOM_RIGHT_INDEX].uv.y += uv_stride.y;
 
-  int buffer_offset = global->vertices.used_size / sizeof(vertex2);
- 
-  gfxBufferAppend(gfx.allocator, &global->vertices, vertices, vertex_c * sizeof(vertex2));
-  GfxBuffer* dest_indices = gfxBufferNext
-    (gfx.allocator, &global->vertices);
-  
-  // get rid of indexed drawing at some point  
-  indices[0] = TL + buffer_offset;
-  indices[1] = BL + buffer_offset;
-  indices[2] = TR + buffer_offset;
-  
-  indices[3] = TR + buffer_offset;
-  indices[4] = BL + buffer_offset;
-  indices[5] = BR + buffer_offset;
-  
-  gfxBufferAppend(gfx.allocator, dest_indices, indices, index_c * sizeof(uint32_t));
-
+  _gfxAddQuad(gfx, global, vertices);
   return 0;
 }
 
-int _gfxDrawString(GfxConst gfx, GfxGlobal* global, const char* str, int x, int y, int hex_color){
+int _gfxDrawString(GfxContext gfx, GfxGlobal* global, const char* str, uint32_t x, uint32_t y, uint32_t fg, uint32_t bg){
 
   //convert to unicode
   
@@ -153,9 +195,9 @@ int _gfxDrawString(GfxConst gfx, GfxGlobal* global, const char* str, int x, int 
       y++;
       x = start_x;
     }else{
-      int uv = getUnicodeUV(global->textures[0], str[i]);
+      int uv = getUnicodeUV(global->textures[ASCII_TEXTURE_INDEX], str[i]);
       int err = _gfxDrawChar(gfx, global, uv,
-			     x++, y, hex_color, 0);
+			     x++, y, fg, bg, ASCII_TEXTURE_INDEX);
       if(err != 0){
 	return 1;
       }
@@ -165,7 +207,7 @@ int _gfxDrawString(GfxConst gfx, GfxGlobal* global, const char* str, int x, int 
   return 0;
 }
 
-int _gfxDrawEnd(GfxConst gfx, GfxGlobal* global){
+int _gfxDrawEnd(GfxContext gfx, GfxGlobal* global){
 
   VkCommandBuffer cmd_b = gfx.cmd_buffer[global->frame_x];
   
@@ -193,14 +235,12 @@ int _gfxDrawEnd(GfxConst gfx, GfxGlobal* global){
   vmaGetAllocationInfo(gfx.allocator, global->vertices.allocation, &g_vertices_info);
   GfxBuffer* g_indices = (GfxBuffer*)g_vertices_info.pUserData;
 
-  VkBuffer vertex_buffers[] = {global->vertices.handle};
   VkDeviceSize offsets[] = {0};
   vkCmdBindVertexBuffers(cmd_b,
-			 0, 1, vertex_buffers, offsets);
+			 0, 1, &global->vertices.handle, offsets);
   vkCmdBindIndexBuffer(cmd_b,
 		       g_indices->handle,
 		       0, VK_INDEX_TYPE_UINT32);
-
 
   vkCmdDrawIndexed(cmd_b, g_indices->used_size / sizeof(uint32_t),
 		   1, 0, 0, 0);

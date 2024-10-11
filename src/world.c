@@ -9,7 +9,8 @@ int worldInit(GameWorld* w, int width, int height){
 
   Entity air = {
     .uv = 0,
-    .color = 0x834664,
+    .fg = HEX_COLOR_WHITE,
+    .bg = HEX_COLOR_BLACK,
     .collide = 0,
   };
   
@@ -27,7 +28,8 @@ int worldInit(GameWorld* w, int width, int height){
 Entity mapGetTile(GameWorld* map, int x, int y){
   Entity null_ent = {
     .uv = 370,
-    .color = 0x160712,
+    .fg = HEX_COLOR_WHITE,
+    .bg = HEX_COLOR_BLACK,
     .collide = 0,
     .pos = (Pos){ x, y},
   };

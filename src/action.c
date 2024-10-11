@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include "config.h"
 #include "action.h"
 
 typedef enum{
@@ -117,7 +118,8 @@ int _pickTileAction(GameWorld* w, int args_c, Argument* args){
   if(args_c > 2) return 1;
   Entity src = {
     .uv = args[0].val.i,
-    .color = 0xFFFFFF,
+    .fg = 0xFFFFFFFF,
+    .bg = 0x00000000,
     .collide = 0,
     .pos.x = 0,
     .pos.y = 0,

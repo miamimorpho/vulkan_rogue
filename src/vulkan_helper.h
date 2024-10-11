@@ -1,7 +1,8 @@
 #include "vulkan_meta.h"
+#include "macros.h"
 
-int getUnicodeUV(GfxTileset, uint32_t);
-int gfxVertBufferCreate(GfxConst, size_t, GfxBuffer*);
+uint32_t getUnicodeUV(GfxTileset, uint32_t);
+int gfxVertBufferCreate(GfxContext, size_t, GfxBuffer*);
 int gfxBufferAppend(VmaAllocator, GfxBuffer*,
 		    const void*, VkDeviceSize);
 GfxBuffer* gfxBufferNext(VmaAllocator, GfxBuffer*);
@@ -12,20 +13,21 @@ int gfxImageAlloc(VmaAllocator, GfxImage*, VkImageUsageFlags, VkFormat, uint32_t
 int gfxImageViewCreate(VkDevice, VkImage, VkImageView *, VkFormat, VkImageAspectFlags);
 void gfxImageDestroy(VmaAllocator allocator, GfxImage image);
 
-int gfxAllocatorInit(GfxConst*);
-int gfxGlfwInit(GfxConst*);
-int gfxInstanceInit(GfxConst*);
-int gfxPhysicalDeviceInit(GfxConst*);
-int gfxQueueIndex(GfxConst*);
-int gfxLogicalDeviceInit(GfxConst*);
-int gfxCmdPoolInit(GfxConst*);
-int gfxSurfaceInit(GfxConst*);
-int gfxSwapchainInit(GfxConst*);
-int gfxDepthFormatCheck(GfxConst*);
-int gfxRenderpassInit(GfxConst*);
-int gfxFramebufferInit(GfxConst*);
-int gfxDescriptorsPool(GfxConst*);
-int gfxSyncInit(GfxConst*);
-int gfxCmdBuffersInit(GfxConst*);
-int gfxTextureDescriptorsInit(GfxConst*);
-int gfxPipelineInit(GfxConst*);
+int gfxRecreateSwapchain(void);
+int gfxAllocatorInit(GfxContext*);
+int gfxGlfwInit(GfxContext*);
+int gfxInstanceInit(GfxContext*);
+int gfxPhysicalDeviceInit(GfxContext*);
+int gfxQueueIndex(GfxContext*);
+int gfxLogicalDeviceInit(GfxContext*);
+int gfxCmdPoolInit(GfxContext*);
+int gfxSurfaceInit(GfxContext*);
+int gfxSwapchainInit(GfxContext*);
+int gfxDepthFormatCheck(GfxContext*);
+int gfxRenderpassInit(GfxContext*);
+int gfxFramebufferInit(GfxContext*);
+int gfxDescriptorsPool(GfxContext*);
+int gfxSyncInit(GfxContext*);
+int gfxCmdBuffersInit(GfxContext*);
+int gfxTextureDescriptorsInit(GfxContext*);
+int gfxPipelineInit(GfxContext*);

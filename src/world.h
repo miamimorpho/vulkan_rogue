@@ -11,7 +11,8 @@ typedef struct Entity Entity;
 struct Entity{
   Pos pos;
   int uv;
-  uint32_t color;
+  uint32_t fg;
+  uint32_t bg;
   int collide;
   Entity* inventory;
 };

@@ -1,16 +1,24 @@
 * TODO
-highlight cursor
-scroll up/down
-fix bdf font BBX
-png->bdf
+
+gradient box draw
+buttons, sliders
+color picker
 save
+scroll up/down
+further Ui refinement;
+limit rendering to 60fps
+right click menu
 FOV
 enemies
+png->bdf
 
 * IDEAS
 
 ** Art
-randomly generated symbols
+timur novikov style landscapes for long distances, some towns
+background of horizon can change for weather/time/biome
+foreground is game area, could be follow cam or static cam.k
+mayan glyphs in textmode appear as characters.
 
 ** Turn based
 https://journal.stuffwithstuff.com/2014/07/15/a-turn-based-game-loop/

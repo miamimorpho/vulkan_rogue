@@ -10,7 +10,7 @@
 typedef int (*Opener_f)(const char* filename, GfxTileset* img, uint8_t** pixels, size_t* size);
 
 int
-gfxTexturesDescriptorsUpdate(GfxConst global, GfxTileset* textures, uint32_t count)
+gfxTexturesDescriptorsUpdate(GfxContext global, GfxTileset* textures, uint32_t count)
 {
   VkDescriptorImageInfo infos[count];
   VkWriteDescriptorSet writes[count];
@@ -239,6 +239,7 @@ int pngFileLoad(const char* filename, GfxTileset* img, uint8_t** pixels, size_t*
   stbi_info(filename, &x, &y, &n);
   *pixels = stbi_load(filename, &x, &y, &n, n);
   if(*pixels == NULL){
+    printf("%s\n", stbi_failure_reason());
     return 1;
   }
   *size = x * y * n;
@@ -272,6 +273,10 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
 
   const int L_LEN = 80;
   const int W_LEN = 8;
+  char x_s[W_LEN];
+  char y_s[W_LEN];
+  char x_offset_s[W_LEN];
+  char y_offset_s[W_LEN];
   
   FILE *fp = fopen(filename, "r");
   if(fp == NULL) {
@@ -292,18 +297,13 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
     sscanf(line, " %s", prefix);
 
     if(strcmp(prefix, "FONTBOUNDINGBOX") == 0){
-
-      char x_s[W_LEN];
-      char y_s[W_LEN];
-      char x_offset_s[W_LEN];
-      char y_offset_s[W_LEN];
       
       sscanf(line, "%*s %s %s %s %s",
 	     x_s, y_s, x_offset_s, y_offset_s);
 
       font->glyph_width = atoi(x_s);
       font->glyph_height = atoi(y_s);
-  
+   
       supported_c += 1;
       continue;
     }
@@ -331,11 +331,16 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
   *size = font->width * font->height;
   *ptr_pixels = malloc(*size);
   memset(*ptr_pixels, 0, *size);
+
   rewind(fp);
   int in_hex = 0;
   int glyph_i = 0; // assuming C99 uses ASCII 437 
   int glyph_y = 0;
-  
+
+  int bbx = 0;
+  int bby = 0;
+  int bbx_offset = 0;
+ 
   /* BYTE LOADING START */
   while(fgets(line, sizeof(line), fp) != NULL) {
  
@@ -347,7 +352,7 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
       glyph_y = 0;
       continue;
     }
-   
+
     /* bdf files store 4 1-bit pixels across
      * as one hex char */
     if(in_hex > 0){
@@ -363,15 +368,16 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
 	if((hex_value >> bit_index) & 0x1){
 	  pixel = 255;
 	}
-	int dst_y = (glyph_i * font->glyph_height) + glyph_y;
-	int dst_xy = (dst_y * font->glyph_width) + i;
+	int dst_y = (glyph_i * font->glyph_height) + glyph_y + (8 - bby);
+	int dst_xy = (dst_y * font->glyph_width) + i + (8 - bbx) - bbx_offset;
 
 	(*ptr_pixels)[dst_xy] = pixel;
       }
       glyph_y++;
       continue;
     }
-    
+
+        
     if(strcmp(prefix, "STARTCHAR") == 0){
       char* glyph_name = strchr(line, ' ');
       if(glyph_name != NULL)glyph_name += 1;
@@ -386,6 +392,13 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
       continue;
     }
 
+    if(strcmp(prefix, "BBX") == 0){
+      sscanf(line, "%*s %s %s %s", x_s, y_s, x_offset_s);
+      bbx = atoi(x_s);
+      bby = atoi(y_s);
+      bbx_offset = atoi(x_offset_s);
+    }
+    
     if(strcmp(prefix, "BITMAP") == 0){
       in_hex = 1;
       continue;
@@ -415,7 +428,7 @@ Opener_f getFileOpener(const char *filename) {
     return &errFileLoad;
 }
 
-int _gfxTextureLoad(GfxConst gfx, const char* filename, GfxTileset* textures){
+int _gfxTextureLoad(GfxContext gfx, const char* filename, GfxTileset* textures){
 
   if(textures == NULL){
     return 1;

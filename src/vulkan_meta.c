@@ -1,13 +1,13 @@
 #include "vulkan_meta.h"
 #include <stdlib.h>
 
-static GfxConst s_global;
+static GfxContext s_global;
 
-GfxConst* gfxSetConst(void){
+GfxContext* gfxSetContext(void){
   return &s_global;
 }
 
-GfxConst gfxGetConst(void){
+GfxContext gfxGetContext(void){
   return s_global;
 }
 
@@ -51,7 +51,23 @@ int gfxCmdSingleEnd(VkCommandBuffer cmd_buffer)
   return 0;
 }
 
-int _gfxConstFree(GfxConst gfx){
+int _gfxSwapchainDestroy(GfxContext gfx){
+  for(uint32_t i = 0; i < gfx.swapchain_c; i++){
+    vkDestroyFramebuffer(gfx.ldev, gfx.framebuffer[i], NULL); 
+  }
+  for(uint32_t i = 0; i < gfx.swapchain_c; i++){
+    vkDestroyImageView(gfx.ldev, gfx.swapchain_views[i], NULL);
+  }
+  vkDestroySwapchainKHR(gfx.ldev, gfx.swapchain, NULL);
+
+  free(gfx.framebuffer);
+  free(gfx.swapchain_images);
+  free(gfx.swapchain_views);
+
+  return 0;
+}
+
+int _gfxConstFree(GfxContext gfx){
 
   // destroy sync objects
   for(unsigned int i = 0; i < gfx.frame_c; i++){
@@ -70,22 +86,11 @@ int _gfxConstFree(GfxConst gfx){
   vkDestroyPipeline(gfx.ldev, gfx.pipeline, NULL);
   vkDestroyDescriptorSetLayout(gfx.ldev, gfx.texture_descriptors_layout, NULL);
   vkDestroyDescriptorPool(gfx.ldev, gfx.descriptor_pool, NULL);
-  
-  for(uint32_t i = 0; i < gfx.swapchain_c; i++){
-    vkDestroyFramebuffer(gfx.ldev, gfx.framebuffer[i], NULL);
-  }
-  free(gfx.framebuffer);
+
+  _gfxSwapchainDestroy(gfx);
     
   vkDestroyRenderPass(gfx.ldev, gfx.renderpass, NULL);
   
-  for(uint32_t i = 0; i < gfx.swapchain_c; i++)
-    vkDestroyImageView(gfx.ldev, gfx.swapchain_views[i], NULL);
-
-  free(gfx.swapchain_images);
-  free(gfx.swapchain_views);
-
-  vkDestroySwapchainKHR(gfx.ldev, gfx.swapchain, NULL);
-
   vmaDestroyAllocator(gfx.allocator);
   
   vkDestroyDevice(gfx.ldev, NULL);

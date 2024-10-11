@@ -1,9 +1,10 @@
 #include "vulkan_meta.h"
 
 ivec3 hexColor(uint32_t);
-int _gfxDrawStart(GfxConst, GfxGlobal*);
-int _gfxBlitImage(GfxConst, GfxGlobal*, int);
-int _gfxDrawChar(GfxConst, GfxGlobal*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-int _gfxDrawString(GfxConst, GfxGlobal*, const char*, int, int, int);
-int _gfxDrawTileset(GfxConst, GfxGlobal*, int);
-int _gfxDrawEnd(GfxConst, GfxGlobal*);
+int _gfxDrawStart(GfxContext, GfxGlobal*);
+int _gfxBlitImage(GfxContext, GfxGlobal*, int);
+int _gfxDrawChar(GfxContext, GfxGlobal*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+int _gfxDrawString(GfxContext, GfxGlobal*, const char*, uint32_t, uint32_t, uint32_t, uint32_t);
+int _gfxDrawGradient(GfxContext, GfxGlobal*, vec2, vec2, uint32_t, uint32_t);
+int _gfxDrawTileset(GfxContext, GfxGlobal*, int);
+int _gfxDrawEnd(GfxContext, GfxGlobal*);

@@ -11,7 +11,8 @@ int main(void){
   gfxGlobalInit();
   inputInit();
 
-  gfxTextureLoad("textures/ic8x8u.bdf");
+  gfxTextureLoad("textures/color.png");
+  gfxTextureLoad("textures/icl8x8u.bdf");
   gfxTextureLoad("textures/mrmotext-ex11.png");
   
   GameWorld world;
@@ -19,10 +20,10 @@ int main(void){
 
   entityAdd(&world, (Entity){
       .uv = 417,
-      .color = 0xFFFFFF,
+      .fg = HEX_COLOR_WHITE,
+      .bg = HEX_COLOR_BLACK,
       .pos= {1,1},
       .collide = 1,
-
     });
     
   while(getExitState() == 0){
@@ -37,7 +38,7 @@ int main(void){
       for(int x = 0; x < ASCII_SCREEN_WIDTH; x++){
 	Entity tile = mapGetTile(&world, camera.x +x, camera.y +y);
 	gfxDrawChar(tile.uv, x, y,
-		    tile.color, 1);
+		    tile.fg, tile.bg, DRAW_TEXTURE_INDEX);
       }
     }
 
@@ -47,11 +48,11 @@ int main(void){
       gfxDrawChar(actor.uv,
 		  ASCII_SCREEN_WIDTH / 2,
 		  ASCII_SCREEN_HEIGHT / 2,
-		  actor.color, 1);
+		  actor.fg, actor.bg, DRAW_TEXTURE_INDEX);
     }
 
     // user interface
-    gfxDrawString("hello world", 0, 0, 0xFFFFF);
+    //gfxDrawString("hello world", 0, 0, 0xFFFFFFFF, 0xFF000000);
 
     gfxDrawEnd();
 

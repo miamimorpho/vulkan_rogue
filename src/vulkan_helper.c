@@ -1,6 +1,5 @@
 #include "vulkan_helper.h"
 #include "config.h"
-#include "macros.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,7 +9,7 @@ const unsigned int DEV_EXT_C = 1;
 const VkFormat cfg_format = VK_FORMAT_B8G8R8A8_SRGB;
 
 /* could be optimised, fast enough if results cached */
-int getUnicodeUV(GfxTileset tileset, uint32_t unicode){
+uint32_t getUnicodeUV(GfxTileset tileset, uint32_t unicode){
   for(uint32_t i = 0; i < tileset.glyph_c; i++){
     if(tileset.encoding[i] == unicode){
       return i;
@@ -20,7 +19,7 @@ int getUnicodeUV(GfxTileset tileset, uint32_t unicode){
 }
 
 int
-gfxVertBufferCreate(GfxConst gfx, size_t estimated_size, GfxBuffer* dest_vertices)
+gfxVertBufferCreate(GfxContext gfx, size_t estimated_size, GfxBuffer* dest_vertices)
 {
   gfxBufferCreate(gfx.allocator,
 		  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -187,7 +186,7 @@ gfxImageDestroy(VmaAllocator allocator, GfxImage image)
   vmaDestroyImage(allocator, image.handle, image.allocation);
 }
 
-int gfxAllocatorInit(GfxConst* gfx) {
+int gfxAllocatorInit(GfxContext* gfx) {
   
   VmaAllocatorCreateInfo allocator_info = {
     .physicalDevice = gfx->pdev,
@@ -198,21 +197,23 @@ int gfxAllocatorInit(GfxConst* gfx) {
   return 0;
 }
 
-int gfxGlfwInit(GfxConst* gfx){
+int gfxGlfwInit(GfxContext* gfx){
   
   if(!glfwInit()){
     printf("glfw init failure\n");
     return 1;
   }
 
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-  gfx->window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan/GLFW", NULL, NULL);
+  int width = ASCII_SCREEN_WIDTH * ASCII_TILE_SIZE * ASCII_SCALE;
+  int height = ASCII_SCREEN_HEIGHT * ASCII_TILE_SIZE * ASCII_SCALE;
+  gfx->window = glfwCreateWindow(width, height, "Vulkan/GLFW", NULL, NULL);
 
   return 0;
 }
 
-int gfxInstanceInit(GfxConst* gfx){
+int gfxInstanceInit(GfxContext* gfx){
   uint32_t vk_version;
   vkEnumerateInstanceVersion(&vk_version);
 
@@ -283,7 +284,7 @@ int gfxInstanceInit(GfxConst* gfx){
   return 0;
 }
 
-int gfxPhysicalDeviceInit(GfxConst* gfx){
+int gfxPhysicalDeviceInit(GfxContext* gfx){
   uint32_t dev_c = 0;
   vkEnumeratePhysicalDevices(gfx->instance, &dev_c, NULL);
   if(dev_c > 1) return 1;
@@ -317,7 +318,7 @@ int gfxPhysicalDeviceInit(GfxConst* gfx){
   return 0;
 }
 
-int gfxQueueIndex(GfxConst* gfx){
+int gfxQueueIndex(GfxContext* gfx){
   uint32_t q_fam_c;
   vkGetPhysicalDeviceQueueFamilyProperties(gfx->pdev, &q_fam_c, NULL);
   VkQueueFamilyProperties q_fam[q_fam_c];
@@ -334,7 +335,7 @@ int gfxQueueIndex(GfxConst* gfx){
   return queue_index;
 }
 
-int gfxLogicalDeviceInit(GfxConst* gfx){
+int gfxLogicalDeviceInit(GfxContext* gfx){
 
 
  uint32_t avail_ext_c;
@@ -388,7 +389,7 @@ int gfxLogicalDeviceInit(GfxConst* gfx){
   
   VkDeviceCreateInfo dev_create_info = {
     .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-    .pQueueCreateInfos = & q_create_info,
+    .pQueueCreateInfos = &q_create_info,
     .queueCreateInfoCount = 1,
     //.pEnabledFeatures = &dev_features,
     .enabledExtensionCount = DEV_EXT_C,
@@ -410,7 +411,7 @@ int gfxLogicalDeviceInit(GfxConst* gfx){
   return 0;
 }
 
-int gfxCmdPoolInit(GfxConst* gfx){
+int gfxCmdPoolInit(GfxContext* gfx){
    VkCommandPoolCreateInfo command_pool_info = {
     .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
     .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
@@ -425,7 +426,7 @@ int gfxCmdPoolInit(GfxConst* gfx){
   return 0;
 }
 
-int gfxSurfaceInit(GfxConst* gfx){
+int gfxSurfaceInit(GfxContext* gfx){
   
   if(glfwCreateWindowSurface(gfx->instance, gfx->window,
 			     NULL, &gfx->surface)){
@@ -483,9 +484,10 @@ int gfxSurfaceInit(GfxConst* gfx){
   return 0;
 }
 
-int gfxSwapchainInit(GfxConst* gfx){
-    gfx->extent.width = WIDTH;
-  gfx->extent.height = HEIGHT;
+int gfxSwapchainInit(GfxContext* gfx){
+  glfwGetWindowSize(gfx->window,
+		    (int*)&gfx->extent.width,
+		    (int*)&gfx->extent.height);
   
   VkSurfaceCapabilitiesKHR capable;
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR
@@ -561,7 +563,7 @@ int gfxSwapchainInit(GfxConst* gfx){
   return 0;
 }
 
-int gfxRenderpassInit(GfxConst* gfx){
+int gfxRenderpassInit(GfxContext* gfx){
  VkAttachmentDescription color_attachment = {
     .format = cfg_format,
     .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -614,7 +616,7 @@ int gfxRenderpassInit(GfxConst* gfx){
   return 0;
 }
 
-int gfxFramebufferInit(GfxConst* gfx){
+int gfxFramebufferInit(GfxContext* gfx){
    gfx->framebuffer = malloc(gfx->swapchain_c * sizeof(VkFramebuffer));
 
   for(size_t i = 0; i < gfx->swapchain_c; i++){
@@ -629,20 +631,33 @@ int gfxFramebufferInit(GfxConst* gfx){
       .layers = 1,
     };
 
-    if(vkCreateFramebuffer(gfx->ldev, &framebuffer_info,
-			   NULL, &gfx->framebuffer[i] )
-       != VK_SUCCESS) {
-      return 1;
-      printf("!failed to create framebuffer!\n");
-    }
+    VK_CHECK
+      (vkCreateFramebuffer(gfx->ldev, &framebuffer_info,
+			   NULL, &gfx->framebuffer[i] ));
   }
-
+    
   gfx->frame_c = DRAW_BUFFER_COUNT;
   
   return 0;
 }
 
-int gfxDescriptorsPool(GfxConst* gfx){
+int gfxRecreateSwapchain(void){
+
+  GfxContext* gfx = gfxSetContext();
+  
+  vkDeviceWaitIdle(gfx->ldev);
+  
+  _gfxSwapchainDestroy(*gfx);
+  
+  gfxSwapchainInit(gfx);
+  gfxFramebufferInit(gfx);
+
+  vkDeviceWaitIdle(gfx->ldev);
+  
+  return 0;
+}
+
+int gfxDescriptorsPool(GfxContext* gfx){
   
   VkDescriptorPoolSize pool_sizes[2];
   pool_sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -660,13 +675,14 @@ int gfxDescriptorsPool(GfxConst* gfx){
   };
 
   if(vkCreateDescriptorPool(gfx->ldev, &descriptor_pool_info, NULL, &gfx->descriptor_pool) != VK_SUCCESS) {
-    return 1;
+   return 1;
   }
 
   return 0;
 }
 
-int gfxSyncInit(GfxConst* gfx){
+
+int gfxSyncInit(GfxContext* gfx){
   
   VkSemaphoreCreateInfo semaphore_info = {
     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -676,7 +692,7 @@ int gfxSyncInit(GfxConst* gfx){
     .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
     .flags = VK_FENCE_CREATE_SIGNALED_BIT,
   };
-
+  
   gfx->render_bit = (VkSemaphore*)malloc( gfx->frame_c * sizeof(VkSemaphore));
   gfx->present_bit = (VkSemaphore*)malloc( gfx->frame_c * sizeof(VkSemaphore));
   gfx->fence = (VkFence*)malloc( gfx->frame_c * sizeof(VkFence));
@@ -696,7 +712,7 @@ int gfxSyncInit(GfxConst* gfx){
   return 0;
 }
 
-int gfxCmdBuffersInit(GfxConst* gfx){
+int gfxCmdBuffersInit(GfxContext* gfx){
     gfx->cmd_buffer =
     (VkCommandBuffer*)malloc( gfx->frame_c * sizeof(VkCommandBuffer));
   
@@ -718,7 +734,7 @@ int gfxCmdBuffersInit(GfxConst* gfx){
   return 0;
 }
 
-int gfxTextureDescriptorsInit(GfxConst* gfx){
+int gfxTextureDescriptorsInit(GfxContext* gfx){
   
   VkDescriptorSetLayoutBinding binding = {
     .binding = 0,
@@ -809,7 +825,7 @@ gfxSpvLoad(VkDevice l_dev, const char* filename, VkShaderModule* shader)
   return 0;
 }
 
-int gfxPipelineInit(GfxConst* gfx){
+int gfxPipelineInit(GfxContext* gfx){
     
   VkPipelineLayoutCreateInfo pipeline_layout_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -823,7 +839,7 @@ int gfxPipelineInit(GfxConst* gfx){
       return 1;
     }
 
- VkShaderModule vert_shader;
+  VkShaderModule vert_shader;
   gfxSpvLoad(gfx->ldev, "shaders/vert.spv", &vert_shader);
   VkShaderModule frag_shader;
   gfxSpvLoad(gfx->ldev, "shaders/frag.spv", &frag_shader);
@@ -870,22 +886,34 @@ int gfxPipelineInit(GfxConst* gfx){
   };
 
   // Vertex Buffer Creation
-  VkVertexInputAttributeDescription attribute_descriptions[3];
+  VkVertexInputAttributeDescription attribute_descriptions[4];
+
+  // Position
   attribute_descriptions[0].binding = 0;
   attribute_descriptions[0].location = 0;
-  attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT; // 2 double
+  attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
   attribute_descriptions[0].offset = offsetof(vertex2, pos);
 
+  /* UV
+   * normalised between 0-1, the floor of y also
+   * describes texture index to sample from
+   */
   attribute_descriptions[1].binding = 0;
   attribute_descriptions[1].location = 1;
-  attribute_descriptions[1].format = VK_FORMAT_R32G32_SFLOAT; // 2 float
+  attribute_descriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
   attribute_descriptions[1].offset = offsetof(vertex2, uv);
 
+  // Colors, expects a valid 32-bit hex number
   attribute_descriptions[2].binding = 0;
   attribute_descriptions[2].location = 2;
-  attribute_descriptions[2].format = VK_FORMAT_R32G32B32_SINT;
-  attribute_descriptions[2].offset = offsetof(vertex2, color);
-  
+  attribute_descriptions[2].format = VK_FORMAT_R32_UINT;
+  attribute_descriptions[2].offset = offsetof(vertex2, fg);
+
+  attribute_descriptions[3].binding = 0;
+  attribute_descriptions[3].location = 3;
+  attribute_descriptions[3].format = VK_FORMAT_R32_UINT;
+  attribute_descriptions[3].offset = offsetof(vertex2, bg);
+
   VkVertexInputBindingDescription binding_description = {
     .binding = 0,
     .stride = sizeof(vertex2),
@@ -895,7 +923,7 @@ int gfxPipelineInit(GfxConst* gfx){
   VkPipelineVertexInputStateCreateInfo vertex_input_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
     .vertexBindingDescriptionCount = 1,
-    .vertexAttributeDescriptionCount = 3,
+    .vertexAttributeDescriptionCount = 4,
     .pVertexBindingDescriptions = &binding_description,
     .pVertexAttributeDescriptions = attribute_descriptions,
   };

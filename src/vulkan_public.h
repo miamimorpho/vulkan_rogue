@@ -9,8 +9,9 @@ GfxTileset gfxGetTexture(int);
 
 int gfxDrawStart(void);
 int gfxBlitImage(int);
-int gfxDrawChar(uint32_t, int, int, int, int);
-int gfxDrawString(const char*, int, int, int);
+int gfxDrawChar(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+int gfxDrawString(const char*, uint32_t, uint32_t, uint32_t, uint32_t);
+int gfxDrawGradient(vec2, vec2, uint32_t, uint32_t);
 
 int gfxDrawEnd(void);
 int gfxClose(void);
