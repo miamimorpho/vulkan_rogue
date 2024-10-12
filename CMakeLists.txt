@@ -26,7 +26,7 @@ find_package(Vulkan REQUIRED)
 # This is a workaround for msys/mingw not playing nice with glfw
 if (MINGW)
     target_link_libraries(${PROJECT_NAME} PUBLIC
-            glfw
+            glfw3
             gdi32
             ${Vulkan_LIBRARIES})
 else()

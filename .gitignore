@@ -1,6 +1,7 @@
 **/obj/
 **/textures/
 rogue
+*.spv
 rogue.core
 .idea/
 *.slo
