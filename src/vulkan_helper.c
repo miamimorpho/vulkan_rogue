@@ -210,6 +210,11 @@ int gfxGlfwInit(GfxContext* gfx){
   int height = ASCII_SCREEN_HEIGHT * ASCII_TILE_SIZE * ASCII_SCALE;
   gfx->window = glfwCreateWindow(width, height, "Vulkan/GLFW", NULL, NULL);
 
+  if(gfx->window == NULL){
+    printf("glfw init failed\n");
+    return 1;
+  }
+  
   return 0;
 }
 
@@ -314,7 +319,10 @@ int gfxQueueIndex(GfxContext* gfx){
       break;
     }
   }
-  
+  if(queue_index < 0){
+    printf("FATAL valid queue family not found\n");
+  }
+
   return queue_index;
 }
 
@@ -339,8 +347,7 @@ int gfxLogicalDeviceInit(GfxContext* gfx){
       return 1;
     }
   }
-  printf("]\n");
-
+ 
   int queue_index = gfxQueueIndex(gfx);
   float priority = 1.0f;
   VkDeviceQueueCreateInfo q_create_info = {
@@ -365,8 +372,6 @@ int gfxLogicalDeviceInit(GfxContext* gfx){
     printf("FATAL: driver missing 'descriptor Binding Partially Bound'\n");
   if(!descriptor_indexing_features.runtimeDescriptorArray)
     printf("FATAL: driver missing 'runtime descriptor array'\n");
-
-  printf("]\n");
   
   VkDeviceCreateInfo dev_create_info = {
     .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -382,7 +387,7 @@ int gfxLogicalDeviceInit(GfxContext* gfx){
   if(vkCreateDevice(gfx->pdev, &dev_create_info, NULL,
 		    &gfx->ldev)
      != VK_SUCCESS) {
-    printf("!failed to create logical device!\n");
+    printf("FATAL failed to create logical device!\n");
     return 2;
   }
 
