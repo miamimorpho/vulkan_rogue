@@ -279,7 +279,13 @@ int gfxInstanceInit(GfxContext* gfx){
 int gfxPhysicalDeviceInit(GfxContext* gfx){
   uint32_t dev_c = 0;
   vkEnumeratePhysicalDevices(gfx->instance, &dev_c, NULL);
-  if(dev_c > 1) return 1;
+  if(dev_c == 0){
+    printf("FATAL no devices found\n");
+    return 1;
+  }
+  if(dev_c > 1 ){
+    printf("Warning: multiple graphics devices found, dont have the logic to choose\n");
+  }
   VkPhysicalDevice devs[dev_c];
   vkEnumeratePhysicalDevices(gfx->instance, &dev_c, devs);
   gfx->pdev = devs[0];

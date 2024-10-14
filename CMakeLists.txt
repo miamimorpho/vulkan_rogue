@@ -30,7 +30,7 @@ if (MINGW)
             gdi32
             ${Vulkan_LIBRARIES})
 else()
-    find_package(glfw REQUIRED)
+    find_package(glfw3 3.3 REQUIRED)
     target_link_libraries(${PROJECT_NAME} PUBLIC
             glfw
             ${Vulkan_LIBRARIES})

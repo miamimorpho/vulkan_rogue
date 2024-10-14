@@ -229,6 +229,9 @@ Vulkan_INCLUDE_DIR:PATH=/usr/local/include
 //Path to a library.
 Vulkan_LIBRARY:FILEPATH=/usr/local/lib/libvulkan.so.1.1
 
+//The directory containing a CMake configuration file for glfw3.
+glfw3_DIR:PATH=/usr/local/lib/cmake/glfw3
+
 //The directory containing a CMake configuration file for glfw.
 glfw_DIR:PATH=glfw_DIR-NOTFOUND
 
