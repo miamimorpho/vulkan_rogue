@@ -288,11 +288,13 @@ int gfxPhysicalDeviceInit(GfxContext* gfx){
   }
   VkPhysicalDevice devs[dev_c];
   vkEnumeratePhysicalDevices(gfx->instance, &dev_c, devs);
-  gfx->pdev = devs[0];
+  for(uint32_t i = 0; i < dev_c; i++){
+    VkPhysicalDeviceProperties dev_properties;
+    vkGetPhysicalDeviceProperties(devs[i], &dev_properties);
+    printf("DEBUG %s\n", dev_properties.deviceName);
+  }
 
-  /* Request Basic Features */
-  VkPhysicalDeviceProperties dev_properties;
-  vkGetPhysicalDeviceProperties(gfx->pdev, &dev_properties);
+  gfx->pdev = devs[0];
   
   VkPhysicalDeviceFeatures dev_features;
   vkGetPhysicalDeviceFeatures(gfx->pdev, &dev_features);  
