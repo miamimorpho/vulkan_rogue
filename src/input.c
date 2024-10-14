@@ -101,7 +101,7 @@ GameAction guiPickTile(void){
 
   GfxContext gfx = gfxGetContext();
   GfxTileset tileset = gfxGetTexture(DRAW_TEXTURE_INDEX);
-  int width_in_tiles = gfx.extent.width / (tileset.glyph_width * ASCII_SCALE);
+  int width_in_tiles = (int)(gfx.extent.width / (tileset.glyph_width * ASCII_SCALE));
 
   uint32_t target_uv = 0;
   int to_exit = 0;
@@ -109,7 +109,7 @@ GameAction guiPickTile(void){
 
     gfxDrawStart();
 
-    for(uint i = 0; i < tileset.glyph_c; i++){
+    for(uint32_t i = 0; i < tileset.glyph_c; i++){
       int x = i % width_in_tiles;
       int y = i / width_in_tiles;
 
@@ -129,8 +129,8 @@ GameAction guiPickTile(void){
     double xpos, ypos;
     glfwGetCursorPos(gfx.window, &xpos, &ypos);
 
-    uint32_t target_x = xpos / (ASCII_SCALE * tileset.glyph_width);
-    uint32_t target_y = ypos / (ASCII_SCALE * tileset.glyph_height);
+    uint32_t target_x = (int)(xpos / (ASCII_SCALE * tileset.glyph_width));
+    uint32_t target_y = (int)(ypos / (ASCII_SCALE * tileset.glyph_height));
     target_uv = (target_y * width_in_tiles) + target_x;
 
     if(s_state.pressed == 1){
