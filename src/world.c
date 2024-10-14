@@ -9,8 +9,8 @@ int worldInit(GameWorld* w, int width, int height){
 
   Entity air = {
     .uv = 0,
-    .fg = HEX_COLOR_WHITE,
-    .bg = HEX_COLOR_BLACK,
+    .fg = 15,
+    .bg = 0,
     .collide = 0,
   };
   

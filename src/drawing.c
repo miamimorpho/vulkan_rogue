@@ -91,45 +91,6 @@ int _gfxAddQuad(GfxContext gfx, GfxGlobal* global, vertex2 vertices[4]){
   return 0;
 }
 
-int _gfxDrawGradient(GfxContext gfx, GfxGlobal* global, vec2 start, vec2 end,
-		     uint32_t first_color, uint32_t last_color){
-
-  start.x = (start.x / gfx.extent.width) -1;
-  start.y = (start.y / gfx.extent.height) -1;
-  end.x = (end.x / gfx.extent.width) -1;
-  end.y = (end.y / gfx.extent.height) -1;
-  
-  vertex2 vertices[4];
-  vertices[TOP_LEFT_INDEX] = (vertex2){
-    .pos = start,
-    .uv = {0, 0},
-    .fg = first_color,
-    .bg = first_color,
-  };
-  vertices[BOTTOM_LEFT_INDEX] = (vertex2){
-    .pos.x = start.x,
-    .pos.y = end.y,
-    .uv = {0, 0},
-    .fg = first_color,
-    .bg = first_color,
-  };
-  vertices[TOP_RIGHT_INDEX] = (vertex2){
-    .pos.x = end.x,
-    .pos.y = start.y,
-    .uv = {0, 0},
-    .fg = last_color,
-    .bg = last_color,
-  };
-  vertices[BOTTOM_RIGHT_INDEX] = (vertex2){
-    .pos = end,
-    .uv = {0, 0},
-    .fg = last_color,
-    .bg = last_color,
-  };
-		     
-  return _gfxAddQuad(gfx, global, vertices);
-}
-
 int _gfxDrawChar(GfxContext gfx, GfxGlobal* global, uint32_t ch, uint32_t x, uint32_t y,
 		 uint32_t fg, uint32_t bg, uint32_t texture_i){
   
@@ -164,8 +125,7 @@ int _gfxDrawChar(GfxContext gfx, GfxGlobal* global, uint32_t ch, uint32_t x, uin
   vertices[TOP_LEFT_INDEX] = (vertex2){
     .pos = cursor,
     .uv = uv_index,
-    .fg = fg,
-    .bg = bg,
+    .fgIndex_bgIndex = (uint32_t)fg << 16 | (uint32_t)bg
   };
 
   vertices[BOTTOM_LEFT_INDEX] = vertices[TOP_LEFT_INDEX];

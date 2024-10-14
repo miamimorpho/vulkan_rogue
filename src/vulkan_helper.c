@@ -886,7 +886,8 @@ int gfxPipelineInit(GfxContext* gfx){
   };
 
   // Vertex Buffer Creation
-  VkVertexInputAttributeDescription attribute_descriptions[4];
+  int attribute_count = 3;
+  VkVertexInputAttributeDescription attribute_descriptions[attribute_count];
 
   // Position
   attribute_descriptions[0].binding = 0;
@@ -903,16 +904,11 @@ int gfxPipelineInit(GfxContext* gfx){
   attribute_descriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
   attribute_descriptions[1].offset = offsetof(vertex2, uv);
 
-  // Colors, expects a valid 32-bit hex number
+  // Colors, two 16 bit numbers packed into a 32bit
   attribute_descriptions[2].binding = 0;
   attribute_descriptions[2].location = 2;
   attribute_descriptions[2].format = VK_FORMAT_R32_UINT;
-  attribute_descriptions[2].offset = offsetof(vertex2, fg);
-
-  attribute_descriptions[3].binding = 0;
-  attribute_descriptions[3].location = 3;
-  attribute_descriptions[3].format = VK_FORMAT_R32_UINT;
-  attribute_descriptions[3].offset = offsetof(vertex2, bg);
+  attribute_descriptions[2].offset = offsetof(vertex2, fgIndex_bgIndex);
 
   VkVertexInputBindingDescription binding_description = {
     .binding = 0,
@@ -923,7 +919,7 @@ int gfxPipelineInit(GfxContext* gfx){
   VkPipelineVertexInputStateCreateInfo vertex_input_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
     .vertexBindingDescriptionCount = 1,
-    .vertexAttributeDescriptionCount = 4,
+    .vertexAttributeDescriptionCount = attribute_count,
     .pVertexBindingDescriptions = &binding_description,
     .pVertexAttributeDescriptions = attribute_descriptions,
   };

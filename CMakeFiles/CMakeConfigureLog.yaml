@@ -1,0 +1,317 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake/Modules/CMakeDetermineSystem.cmake:233 (message)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      The system is: OpenBSD - 7.5 - amd64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler: /usr/bin/cc 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+      
+      The C compiler identification is Clang, found in:
+        /home/morpho/C/vulkan_rogue/CMakeFiles/3.28.3/CompilerIdC/a.out
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler: /usr/bin/c++ 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "a.out"
+      
+      The CXX compiler identification is Clang, found in:
+        /home/morpho/C/vulkan_rogue/CMakeFiles/3.28.3/CompilerIdCXX/a.out
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:57 (try_compile)"
+      - "/usr/local/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-lkraGr"
+      binary: "/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-lkraGr"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_C_FLAGS: ""
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: '/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-lkraGr'
+        
+        Run Build Command(s): /usr/local/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_0b700/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_0b700.dir/build.make CMakeFiles/cmTC_0b700.dir/build
+        Building C object CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o
+        /usr/bin/cc   -v -MD -MT CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -MF CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o.d -o CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -c /usr/local/share/cmake/Modules/CMakeCCompilerABI.c
+        OpenBSD clang version 16.0.6
+        Target: amd64-unknown-openbsd7.5
+        Thread model: posix
+        InstalledDir: /usr/bin
+         (in-process)
+         "/usr/bin/cc" -cc1 -triple amd64-unknown-openbsd7.5 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 1 -pic-is-pie -mframe-pointer=all -relaxed-aliasing -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=gdb -v -fcoverage-compilation-dir=/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-lkraGr -resource-dir /usr/lib/clang/16 -dependency-file CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o.d -MT CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -sys-header-deps -internal-isystem /usr/lib/clang/16/include -internal-externc-isystem /usr/include -fdebug-compilation-dir=/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-lkraGr -ferror-limit 19 -fwrapv -D_RET_PROTECTOR -ret-protector -fcf-protection=branch -fno-jump-tables -fgnuc-version=4.2.1 -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-valloc -fno-builtin-free -fno-builtin-strdup -fno-builtin-strndup -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -x c /usr/local/share/cmake/Modules/CMakeCCompilerABI.c
+        clang -cc1 version 16.0.6 based upon LLVM 16.0.6 default target amd64-unknown-openbsd7.5
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/lib/clang/16/include
+         /usr/include
+        End of search list.
+        Linking C executable cmTC_0b700
+        /usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_0b700.dir/link.txt --verbose=1
+        /usr/bin/cc  -v CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -o cmTC_0b700  -Wl,-rpath-link,/usr/X11R6/lib:/usr/local/lib 
+        OpenBSD clang version 16.0.6
+        Target: amd64-unknown-openbsd7.5
+        Thread model: posix
+        InstalledDir: /usr/bin
+         "/usr/bin/ld" -e __start --eh-frame-hdr -Bdynamic -dynamic-linker /usr/libexec/ld.so -o cmTC_0b700 /usr/lib/crt0.o /usr/lib/crtbegin.o -L/usr/lib CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -rpath-link /usr/X11R6/lib:/usr/local/lib -lcompiler_rt -lc -lcompiler_rt /usr/lib/crtend.o
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:127 (message)"
+      - "/usr/local/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Parsed C implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/lib/clang/16/include]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/lib/clang/16/include] ==> [/usr/lib/clang/16/include]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/lib/clang/16/include;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:159 (message)"
+      - "/usr/local/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld\\.lld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        ignore line: [Change Dir: '/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-lkraGr']
+        ignore line: []
+        ignore line: [Run Build Command(s): /usr/local/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_0b700/fast]
+        ignore line: [/usr/bin/make  -f CMakeFiles/cmTC_0b700.dir/build.make CMakeFiles/cmTC_0b700.dir/build]
+        ignore line: [Building C object CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/usr/bin/cc   -v -MD -MT CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -MF CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o.d -o CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -c /usr/local/share/cmake/Modules/CMakeCCompilerABI.c]
+        ignore line: [OpenBSD clang version 16.0.6]
+        ignore line: [Target: amd64-unknown-openbsd7.5]
+        ignore line: [Thread model: posix]
+        ignore line: [InstalledDir: /usr/bin]
+        ignore line: [ (in-process)]
+        ignore line: [ "/usr/bin/cc" -cc1 -triple amd64-unknown-openbsd7.5 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 1 -pic-is-pie -mframe-pointer=all -relaxed-aliasing -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=gdb -v -fcoverage-compilation-dir=/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-lkraGr -resource-dir /usr/lib/clang/16 -dependency-file CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o.d -MT CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -sys-header-deps -internal-isystem /usr/lib/clang/16/include -internal-externc-isystem /usr/include -fdebug-compilation-dir=/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-lkraGr -ferror-limit 19 -fwrapv -D_RET_PROTECTOR -ret-protector -fcf-protection=branch -fno-jump-tables -fgnuc-version=4.2.1 -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-valloc -fno-builtin-free -fno-builtin-strdup -fno-builtin-strndup -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -x c /usr/local/share/cmake/Modules/CMakeCCompilerABI.c]
+        ignore line: [clang -cc1 version 16.0.6 based upon LLVM 16.0.6 default target amd64-unknown-openbsd7.5]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/lib/clang/16/include]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Linking C executable cmTC_0b700]
+        ignore line: [/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_0b700.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/cc  -v CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -o cmTC_0b700  -Wl -rpath-link /usr/X11R6/lib:/usr/local/lib ]
+        ignore line: [OpenBSD clang version 16.0.6]
+        ignore line: [Target: amd64-unknown-openbsd7.5]
+        ignore line: [Thread model: posix]
+        ignore line: [InstalledDir: /usr/bin]
+        link line: [ "/usr/bin/ld" -e __start --eh-frame-hdr -Bdynamic -dynamic-linker /usr/libexec/ld.so -o cmTC_0b700 /usr/lib/crt0.o /usr/lib/crtbegin.o -L/usr/lib CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o -rpath-link /usr/X11R6/lib:/usr/local/lib -lcompiler_rt -lc -lcompiler_rt /usr/lib/crtend.o]
+          arg [/usr/bin/ld] ==> ignore
+          arg [-e] ==> ignore
+          arg [__start] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-Bdynamic] ==> search dynamic
+          arg [-dynamic-linker] ==> ignore
+          arg [/usr/libexec/ld.so] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_0b700] ==> ignore
+          arg [/usr/lib/crt0.o] ==> obj [/usr/lib/crt0.o]
+          arg [/usr/lib/crtbegin.o] ==> obj [/usr/lib/crtbegin.o]
+          arg [-L/usr/lib] ==> dir [/usr/lib]
+          arg [CMakeFiles/cmTC_0b700.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [-rpath-link] ==> ignore
+          arg [/usr/X11R6/lib:/usr/local/lib] ==> ignore
+          arg [-lcompiler_rt] ==> lib [compiler_rt]
+          arg [-lc] ==> lib [c]
+          arg [-lcompiler_rt] ==> lib [compiler_rt]
+          arg [/usr/lib/crtend.o] ==> obj [/usr/lib/crtend.o]
+        collapse library dir [/usr/lib] ==> [/usr/lib]
+        implicit libs: [compiler_rt;c;compiler_rt]
+        implicit objs: [/usr/lib/crt0.o;/usr/lib/crtbegin.o;/usr/lib/crtend.o]
+        implicit dirs: [/usr/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:57 (try_compile)"
+      - "/usr/local/share/cmake/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-kLL2IZ"
+      binary: "/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-kLL2IZ"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: '/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-kLL2IZ'
+        
+        Run Build Command(s): /usr/local/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_1cd39/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_1cd39.dir/build.make CMakeFiles/cmTC_1cd39.dir/build
+        Building CXX object CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o
+        /usr/bin/c++   -v -MD -MT CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -MF CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o.d -o CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -c /usr/local/share/cmake/Modules/CMakeCXXCompilerABI.cpp
+        OpenBSD clang version 16.0.6
+        Target: amd64-unknown-openbsd7.5
+        Thread model: posix
+        InstalledDir: /usr/bin
+         (in-process)
+         "/usr/bin/c++" -cc1 -triple amd64-unknown-openbsd7.5 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 1 -pic-is-pie -mframe-pointer=all -relaxed-aliasing -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=gdb -v -fcoverage-compilation-dir=/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-kLL2IZ -resource-dir /usr/lib/clang/16 -dependency-file CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -internal-isystem /usr/include/c++/v1 -internal-isystem /usr/lib/clang/16/include -internal-externc-isystem /usr/include -fdeprecated-macro -fdebug-compilation-dir=/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-kLL2IZ -ferror-limit 19 -fwrapv -D_RET_PROTECTOR -ret-protector -fcf-protection=branch -fno-jump-tables -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-valloc -fno-builtin-free -fno-builtin-strdup -fno-builtin-strndup -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -x c++ /usr/local/share/cmake/Modules/CMakeCXXCompilerABI.cpp
+        clang -cc1 version 16.0.6 based upon LLVM 16.0.6 default target amd64-unknown-openbsd7.5
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/include/c++/v1
+         /usr/lib/clang/16/include
+         /usr/include
+        End of search list.
+        Linking CXX executable cmTC_1cd39
+        /usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1cd39.dir/link.txt --verbose=1
+        /usr/bin/c++  -v CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_1cd39  -Wl,-rpath-link,/usr/X11R6/lib:/usr/local/lib 
+        OpenBSD clang version 16.0.6
+        Target: amd64-unknown-openbsd7.5
+        Thread model: posix
+        InstalledDir: /usr/bin
+         "/usr/bin/ld" -e __start --eh-frame-hdr -Bdynamic -dynamic-linker /usr/libexec/ld.so -o cmTC_1cd39 /usr/lib/crt0.o /usr/lib/crtbegin.o -L/usr/lib CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -rpath-link /usr/X11R6/lib:/usr/local/lib -lc++ -lc++abi -lpthread -lm -lcompiler_rt -lc -lcompiler_rt /usr/lib/crtend.o
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:127 (message)"
+      - "/usr/local/share/cmake/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Parsed CXX implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/include/c++/v1]
+          add: [/usr/lib/clang/16/include]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/include/c++/v1] ==> [/usr/include/c++/v1]
+        collapse include dir [/usr/lib/clang/16/include] ==> [/usr/lib/clang/16/include]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/include/c++/v1;/usr/lib/clang/16/include;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:159 (message)"
+      - "/usr/local/share/cmake/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Parsed CXX implicit link information:
+        link line regex: [^( *|.*[/\\])(ld\\.lld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        ignore line: [Change Dir: '/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-kLL2IZ']
+        ignore line: []
+        ignore line: [Run Build Command(s): /usr/local/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_1cd39/fast]
+        ignore line: [/usr/bin/make  -f CMakeFiles/cmTC_1cd39.dir/build.make CMakeFiles/cmTC_1cd39.dir/build]
+        ignore line: [Building CXX object CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o]
+        ignore line: [/usr/bin/c++   -v -MD -MT CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -MF CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o.d -o CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -c /usr/local/share/cmake/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [OpenBSD clang version 16.0.6]
+        ignore line: [Target: amd64-unknown-openbsd7.5]
+        ignore line: [Thread model: posix]
+        ignore line: [InstalledDir: /usr/bin]
+        ignore line: [ (in-process)]
+        ignore line: [ "/usr/bin/c++" -cc1 -triple amd64-unknown-openbsd7.5 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 1 -pic-is-pie -mframe-pointer=all -relaxed-aliasing -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=gdb -v -fcoverage-compilation-dir=/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-kLL2IZ -resource-dir /usr/lib/clang/16 -dependency-file CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -internal-isystem /usr/include/c++/v1 -internal-isystem /usr/lib/clang/16/include -internal-externc-isystem /usr/include -fdeprecated-macro -fdebug-compilation-dir=/home/morpho/C/vulkan_rogue/CMakeFiles/CMakeScratch/TryCompile-kLL2IZ -ferror-limit 19 -fwrapv -D_RET_PROTECTOR -ret-protector -fcf-protection=branch -fno-jump-tables -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-valloc -fno-builtin-free -fno-builtin-strdup -fno-builtin-strndup -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -x c++ /usr/local/share/cmake/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [clang -cc1 version 16.0.6 based upon LLVM 16.0.6 default target amd64-unknown-openbsd7.5]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/include/c++/v1]
+        ignore line: [ /usr/lib/clang/16/include]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Linking CXX executable cmTC_1cd39]
+        ignore line: [/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1cd39.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/c++  -v CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_1cd39  -Wl -rpath-link /usr/X11R6/lib:/usr/local/lib ]
+        ignore line: [OpenBSD clang version 16.0.6]
+        ignore line: [Target: amd64-unknown-openbsd7.5]
+        ignore line: [Thread model: posix]
+        ignore line: [InstalledDir: /usr/bin]
+        link line: [ "/usr/bin/ld" -e __start --eh-frame-hdr -Bdynamic -dynamic-linker /usr/libexec/ld.so -o cmTC_1cd39 /usr/lib/crt0.o /usr/lib/crtbegin.o -L/usr/lib CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o -rpath-link /usr/X11R6/lib:/usr/local/lib -lc++ -lc++abi -lpthread -lm -lcompiler_rt -lc -lcompiler_rt /usr/lib/crtend.o]
+          arg [/usr/bin/ld] ==> ignore
+          arg [-e] ==> ignore
+          arg [__start] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-Bdynamic] ==> search dynamic
+          arg [-dynamic-linker] ==> ignore
+          arg [/usr/libexec/ld.so] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_1cd39] ==> ignore
+          arg [/usr/lib/crt0.o] ==> obj [/usr/lib/crt0.o]
+          arg [/usr/lib/crtbegin.o] ==> obj [/usr/lib/crtbegin.o]
+          arg [-L/usr/lib] ==> dir [/usr/lib]
+          arg [CMakeFiles/cmTC_1cd39.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+          arg [-rpath-link] ==> ignore
+          arg [/usr/X11R6/lib:/usr/local/lib] ==> ignore
+          arg [-lc++] ==> lib [c++]
+          arg [-lc++abi] ==> lib [c++abi]
+          arg [-lpthread] ==> lib [pthread]
+          arg [-lm] ==> lib [m]
+          arg [-lcompiler_rt] ==> lib [compiler_rt]
+          arg [-lc] ==> lib [c]
+          arg [-lcompiler_rt] ==> lib [compiler_rt]
+          arg [/usr/lib/crtend.o] ==> obj [/usr/lib/crtend.o]
+        collapse library dir [/usr/lib] ==> [/usr/lib]
+        implicit libs: [c++;c++abi;pthread;m;compiler_rt;c;compiler_rt]
+        implicit objs: [/usr/lib/crt0.o;/usr/lib/crtbegin.o;/usr/lib/crtend.o]
+        implicit dirs: [/usr/lib]
+        implicit fwks: []
+      
+      
+...

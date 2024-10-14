@@ -72,8 +72,7 @@ typedef struct{
 typedef struct{
   vec2 pos;
   vec2 uv;
-  uint32_t fg;
-  uint32_t bg;
+  uint32_t fgIndex_bgIndex;
 } vertex2;
 
 GfxContext* gfxSetContext(void);

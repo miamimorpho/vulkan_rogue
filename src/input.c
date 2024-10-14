@@ -89,8 +89,6 @@ GameAction guiPickColor(void){
       to_exit = 1;
     }
 
-    gfxDrawGradient((vec2){0, 0}, (vec2){100, 100}, 0xFFFFFFFF, 0xFFFFFFFF);
-    
     gfxDrawEnd();
   }
   return noAction();
@@ -113,11 +111,11 @@ GameAction guiPickTile(void){
       int x = i % width_in_tiles;
       int y = i / width_in_tiles;
 
-      uint32_t bg = HEX_COLOR_BLACK;
-      if((x % 2) - (y % 2) == 0) bg = HEX_COLOR_GRAY;
+      uint32_t bg = 0;
+      if((x % 2) - (y % 2) == 0) bg = 1;
       
       gfxDrawChar(i, x, y,
-		  HEX_COLOR_WHITE,
+		  15,
 		  bg,
 		  DRAW_TEXTURE_INDEX );
       //printf("i %d %d\n", i, getUnicodeUV(tileset,i));

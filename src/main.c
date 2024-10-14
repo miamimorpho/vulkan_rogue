@@ -20,8 +20,8 @@ int main(void){
 
   entityAdd(&world, (Entity){
       .uv = 417,
-      .fg = HEX_COLOR_WHITE,
-      .bg = HEX_COLOR_BLACK,
+      .fg = 15,
+      .bg = 0,
       .pos= {1,1},
       .collide = 1,
     });

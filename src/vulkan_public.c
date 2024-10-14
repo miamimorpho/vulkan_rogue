@@ -32,10 +32,6 @@ int gfxDrawString(const char* ch, uint32_t x, uint32_t y, uint32_t fg, uint32_t 
   return 0;
 }
 
-int gfxDrawGradient(vec2 start, vec2 end, uint32_t first_color, uint32_t last_color){
-  return _gfxDrawGradient(gfxGetContext(), &s_global, start, end, first_color, last_color);
-}
-
 int gfxDrawEnd(void){
   _gfxDrawEnd(gfxGetContext(), &s_global);
   return 0;
