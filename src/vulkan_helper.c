@@ -257,29 +257,16 @@ int gfxInstanceInit(GfxContext* gfx){
   };
 
   /* Enable validation_layers debugging */
-  if(1){
-    const char *explicit_layers[] = { "VK_LAYER_KHRONOS_validation"};
-    printf("/** DEBUG ENABLED **/\n");
-    uint32_t debug_layer_c;
-    vkEnumerateInstanceLayerProperties(&debug_layer_c, NULL);
-    VkLayerProperties debug_layers[debug_layer_c];
-    vkEnumerateInstanceLayerProperties(&debug_layer_c, debug_layers);
- 
-    const char* debug_layer_names[debug_layer_c];
-    for(uint32_t a = 0; a < debug_layer_c; a++){
-      printf("adding layer '%s'...", debug_layers[a].layerName);
-      debug_layer_names[a] = debug_layers[a].layerName;
-    }
-    printf("\n");
-    instance_create_info.enabledLayerCount = 1;
-    instance_create_info.ppEnabledLayerNames = explicit_layers;
-  }
+  const char *explicit_layers[] = { "VK_LAYER_KHRONOS_validation"};
+  uint32_t debug_layer_c;
+  vkEnumerateInstanceLayerProperties(&debug_layer_c, NULL);
+  VkLayerProperties debug_layers[debug_layer_c];
+  vkEnumerateInstanceLayerProperties(&debug_layer_c, debug_layers);
+  
+  instance_create_info.enabledLayerCount = 1;
+  instance_create_info.ppEnabledLayerNames = explicit_layers;
 
-  VkResult init_error;
-  init_error = vkCreateInstance(&instance_create_info, NULL, &gfx->instance);
-  if(init_error == VK_ERROR_LAYER_NOT_PRESENT){
-    printf("layer not present\n");
-  }
+  VK_CHECK(vkCreateInstance(&instance_create_info, NULL, &gfx->instance));
 
   return 0;
 }
@@ -296,23 +283,19 @@ int gfxPhysicalDeviceInit(GfxContext* gfx){
   VkPhysicalDeviceProperties dev_properties;
   vkGetPhysicalDeviceProperties(gfx->pdev, &dev_properties);
   
-  printf("GPU [ %s ]\n", dev_properties.deviceName);      
-  printf("device features [ ");
-
   VkPhysicalDeviceFeatures dev_features;
   vkGetPhysicalDeviceFeatures(gfx->pdev, &dev_features);  
-  if(dev_features.geometryShader){
-    // should be enabled by default
-    printf("geometry sampler, ");
-  }else{
-    printf("[error] no geometry shader");
+  if(!dev_features.geometryShader){
+    printf("FATAL: driver missing geometry shader\n");
     return 1;
   }
-  if(dev_features.samplerAnisotropy){
-     printf("sampler anisotropy, ");
+  if(!dev_features.samplerAnisotropy){
+     printf("FATAL: driver missing sampler anisotropy\n");
+     return 1;
   }
-  if(dev_features.multiDrawIndirect){
-    printf("multidrawing, ");
+  if(!dev_features.multiDrawIndirect){
+     printf("FATAL: driving missing indirect drawing\n");
+     return 1;
   }
 
   return 0;
@@ -344,17 +327,15 @@ int gfxLogicalDeviceInit(GfxContext* gfx){
   vkEnumerateDeviceExtensionProperties(gfx->pdev, NULL, &avail_ext_c, avail_ext);
   
   int layer_found;
-  printf("device_extensions [ ");
   for(uint32_t i = 0; i < DEV_EXT_C; i++){
     layer_found = 0;
     for(uint32_t a = 0; a < avail_ext_c; a++){
       if(strcmp(DEV_EXT_NAMES[i], avail_ext[a].extensionName) == 0){
-	printf("%s, ", avail_ext[a].extensionName);
 	layer_found = 1;
       }
     }
     if(!layer_found){
-      printf("[MISSING %s]", DEV_EXT_NAMES[i]);
+      printf("FATAL: driver missing %s\n", DEV_EXT_NAMES[i]);
       return 1;
     }
   }
@@ -380,10 +361,10 @@ int gfxLogicalDeviceInit(GfxContext* gfx){
   };
   vkGetPhysicalDeviceFeatures2(gfx->pdev, &dev_features2 );
  
-  if(descriptor_indexing_features.descriptorBindingPartiallyBound)
-    printf("descriptor Binding Partially Bound, ");
-  if(descriptor_indexing_features.runtimeDescriptorArray)
-    printf("runtime descriptor array, ");
+  if(!descriptor_indexing_features.descriptorBindingPartiallyBound)
+    printf("FATAL: driver missing 'descriptor Binding Partially Bound'\n");
+  if(!descriptor_indexing_features.runtimeDescriptorArray)
+    printf("FATAL: driver missing 'runtime descriptor array'\n");
 
   printf("]\n");
   

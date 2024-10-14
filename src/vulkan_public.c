@@ -76,10 +76,6 @@ int gfxConstInit(void){
   gfxCmdBuffersInit(gfx);
   gfxTextureDescriptorsInit(gfx);
   gfxPipelineInit(gfx );
-
-  VkPhysicalDeviceProperties devProperties;
-  vkGetPhysicalDeviceProperties(gfx->pdev, &devProperties);
-  printf("Physical Device Name: %s %p\n", devProperties.deviceName, (void*)gfx->pdev);
   
   return 0;
 }
