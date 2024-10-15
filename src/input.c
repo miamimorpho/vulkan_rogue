@@ -77,8 +77,12 @@ GameAction guiPickColor(void){
   resetInputState();
   int to_exit = 0;
 
-  uint32_t hex_color = 0xFFFFFFFF;
+  GfxContext gfx = gfxGetContext();
   
+  uint32_t hex_color = 0xFFFFFFFF;
+
+  uint32_t fgIndex = -1;
+  uint32_t bgIndex = -1;
   while(to_exit == 0){
     gfxDrawStart();
     gfxDrawString("color", 0, 1, hex_color, 0xFF000000);
@@ -94,13 +98,19 @@ GameAction guiPickColor(void){
     
     glfwPollEvents();
 
+    double xpos, ypos;
+    glfwGetCursorPos(gfx.window, &xpos, &ypos);
+
+    fgIndex = xpos / (ASCII_TILE_SIZE * ASCII_SCALE);
+    bgIndex = ypos / (ASCII_TILE_SIZE * ASCII_SCALE);
+    
     if(s_state.pressed == 1){
       to_exit = 1;
     }
 
     gfxDrawEnd();
   }
-  return noAction();
+  return paintEntityAction(-1, fgIndex, bgIndex);
 }
 
 GameAction guiPickTile(void){
@@ -146,16 +156,14 @@ GameAction guiPickTile(void){
     }
 
     gfxDrawChar(target_uv, target_x, target_y,
-		HEX_COLOR_ORANGE, HEX_COLOR_BLACK,
+		11, 0,
 		DRAW_TEXTURE_INDEX);
-
-
     
     gfxDrawEnd();
     
   }
 
-  return pickTileAction(target_uv, 0);
+  return paintEntityAction(target_uv, -1, -1);
 }
 
 GameAction userInput(int entity_index){

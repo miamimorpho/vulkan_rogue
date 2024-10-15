@@ -3,6 +3,7 @@
 #include "world.h"
 #include "action.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(void){
   if(gfxConstInit() != 0){
@@ -18,20 +19,21 @@ int main(void){
   GameWorld world;
   worldInit(&world, 16, 16);
 
-  entityAdd(&world, (Entity){
-      .uv = 417,
-      .fg = 15,
-      .bg = 0,
-      .pos= {1,1},
-      .collide = 1,
-    });
-    
+  Entity* player = entityInit(&world, 0);
+  player->uv = 417;
+  player->inventory_c = 1;
+  player->inventory = malloc(sizeof(Entity));
+  player->inventory[0].fg = 15;
+  player->inventory[0].bg = 0;
+  player->inventory[0].uv = 1;
+  player->inventory[0].collide = 0;
+     
   while(getExitState() == 0){
     
     gfxDrawStart();
 
     // render world map
-    Pos camera = world.actors[0].pos;
+    Pos camera = player->pos;
     camera.x -= ASCII_SCREEN_WIDTH / 2;
     camera.y -= ASCII_SCREEN_HEIGHT / 2;
     for(int y = 0; y < ASCII_SCREEN_HEIGHT; y++){
@@ -43,12 +45,14 @@ int main(void){
     }
 
     // render list of entities (actors)
-    for(int i = 0; i < world.actors_count; i++){
+    for(uint i = 0; i < world.actors_count; i++){
       Entity actor = world.actors[i];
-      gfxDrawChar(actor.uv,
-		  ASCII_SCREEN_WIDTH / 2,
-		  ASCII_SCREEN_HEIGHT / 2,
-		  actor.fg, actor.bg, DRAW_TEXTURE_INDEX);
+      if(actor.is_init == 1){
+	gfxDrawChar(actor.uv,
+		    ASCII_SCREEN_WIDTH / 2,
+		    ASCII_SCREEN_HEIGHT / 2,
+		    actor.fg, actor.bg, DRAW_TEXTURE_INDEX);
+      }
     }
 
     // user interface

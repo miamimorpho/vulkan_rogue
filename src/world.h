@@ -9,12 +9,14 @@ typedef struct{
 
 typedef struct Entity Entity;
 struct Entity{
+  int is_init;
   Pos pos;
   int uv;
   uint32_t fg;
   uint32_t bg;
   int collide;
   Entity* inventory;
+  int inventory_c;
 };
 
 typedef struct{
@@ -23,14 +25,13 @@ typedef struct{
   int size;
   Entity* props;
   Entity* actors;
-  int actors_count;
+  unsigned int actors_count;
 } GameWorld;
 
 
 int mapPutTile(GameWorld*, Entity, int, int);
 Entity mapGetTile(GameWorld* map, int x, int y);
 int worldInit(GameWorld*, int, int);
-int entityMove_f(Entity*, int, int);
-int entityAdd(GameWorld*, Entity);
+Entity* entityInit(GameWorld*, unsigned int);
 
 #endif // WORLD_H

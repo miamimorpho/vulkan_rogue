@@ -113,25 +113,26 @@ GameAction moveEntityAction(int entity_index, int x, int y){
                   ARG_INT, y);
 }
 
-int _pickTileAction(GameWorld* w, int args_c, Argument* args){
+int _paintEntityAction(GameWorld* w, int args_c, Argument* args){
   if(w == NULL) return 1;
-  if(args_c > 2) return 1;
-  Entity src = {
-    .uv = args[0].val.i,
-    .fg = 0xFFFFFFFF,
-    .bg = 0x00000000,
-    .collide = 0,
-    .pos.x = 0,
-    .pos.y = 0,
-  };
-  Entity* dst = &w->actors[ args[1].val.i ];
-  dst->inventory[0] = src;
+  if(args_c > 3) return 1;
+
+  Entity* dst = &w->actors[0].inventory[0];
+  if(args[0].val.i >= 0)
+    dst->uv = args[0].val.i;
+  if(args[1].val.i >= 0)
+    dst->fg = args[1].val.i;
+  if(args[2].val.i >= 0)
+    dst->bg = args[2].val.i;
+
   return 0;
 }
-GameAction pickTileAction(int uv, int entity_index){
-  return requestAction(_pickTileAction, 2,
+
+GameAction paintEntityAction(int uv, int fg, int bg){
+  return requestAction(_paintEntityAction, 3,
 		       ARG_INT, uv,
-		       ARG_INT, entity_index);
+		       ARG_INT, fg,
+		       ARG_INT, bg);
 }
 
 int _noAction(GameWorld* w, int args_c, Argument* args){

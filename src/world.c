@@ -19,8 +19,12 @@ int worldInit(GameWorld* w, int width, int height){
       mapPutTile(w, air, x, y);
     }
   }
-  w->actors = malloc(1 * sizeof(Entity));
-  w->actors_count = 1;
+  int actor_c = 8;
+  w->actors = malloc(actor_c * sizeof(Entity));
+  w->actors_count = actor_c;
+  for(int i = 0; i < actor_c; i++){
+    w->actors[i].is_init = 0;
+  }
   
   return 0;
 }
@@ -56,9 +60,28 @@ int mapPutTile(GameWorld* map, Entity entity, int x, int y){
   return 0;
 }
 
-int entityAdd(GameWorld* world, Entity src){
-  src.inventory = malloc(sizeof(Entity)),
-  world->actors[0] = src;
-  return 0;
+Entity* entityInit(GameWorld* world, uint entity_index){
+
+  if(entity_index > world->actors_count){
+    return NULL;
+  }
+  
+  Entity* e = &world->actors[entity_index];
+  e->is_init = 1;
+  e->pos = (Pos){0, 0};
+  e->uv = 1024;
+  e->fg = 15;
+  e->bg = 0;
+  e->collide = 1;
+  e->inventory = NULL;
+  e->inventory_c = 0;
+    
+  return e;
 }
 
+Entity* entityGet(GameWorld* world, uint entity_index){
+  if(entity_index > world->actors_count){
+    return NULL;
+  }
+  return &world->actors[entity_index];
+}
