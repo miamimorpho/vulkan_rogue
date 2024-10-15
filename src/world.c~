@@ -60,7 +60,7 @@ int mapPutTile(GameWorld* map, Entity entity, int x, int y){
   return 0;
 }
 
-Entity* entityInit(GameWorld* world, unsigned int entity_index){
+Entity* entityInit(GameWorld* world, uint entity_index){
 
   if(entity_index > world->actors_count){
     return NULL;
@@ -79,7 +79,7 @@ Entity* entityInit(GameWorld* world, unsigned int entity_index){
   return e;
 }
 
-Entity* entityGet(GameWorld* world, unsigned int entity_index){
+Entity* entityGet(GameWorld* world, uint entity_index){
   if(entity_index > world->actors_count){
     return NULL;
   }

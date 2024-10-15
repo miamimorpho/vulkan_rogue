@@ -45,7 +45,7 @@ int main(void){
     }
 
     // render list of entities (actors)
-    for(unsigned int i = 0; i < world.actors_count; i++){
+    for(uint i = 0; i < world.actors_count; i++){
       Entity actor = world.actors[i];
       if(actor.is_init == 1){
 	gfxDrawChar(actor.uv,
