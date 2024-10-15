@@ -83,6 +83,15 @@ GameAction guiPickColor(void){
     gfxDrawStart();
     gfxDrawString("color", 0, 1, hex_color, 0xFF000000);
 
+    for(int i = 0; i < PALETTE_SIZE * PALETTE_SIZE; i++){
+      gfxDrawChar(939,
+		  i % PALETTE_SIZE,
+		  i / PALETTE_SIZE,
+		  i % PALETTE_SIZE,
+		  i / PALETTE_SIZE,
+		  DRAW_TEXTURE_INDEX);
+    }
+    
     glfwPollEvents();
 
     if(s_state.pressed == 1){

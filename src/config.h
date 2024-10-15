@@ -6,6 +6,7 @@
 
 /* Asset Loading Options */
 #define COLOR_TEXTURE_INDEX 0
+#define PALETTE_SIZE 16
 #define ASCII_TEXTURE_INDEX 1
 #define DRAW_TEXTURE_INDEX 2
 
