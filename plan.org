@@ -1,13 +1,15 @@
 * TODO
-reorganise. vulkan_files.c -> vulkan_core.h -> vulkan_public.h
-try to completely wrap vulkan
+
+move over as much to GPU as possible
+instanced rendering
+pre built quad in shader
+
 
 select -> dump ascii;
 multi tile entity;
 scroll up/down;
 event listeners;
 conglomerate paint UI;
-vsync, limit to 60fps;
 learn to benchmark in debugger;
 move vertex calculation to GPU, can send ints instead of floats
 cache CPU calculations, unicode to four UV's
