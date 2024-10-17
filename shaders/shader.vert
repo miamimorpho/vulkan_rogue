@@ -1,5 +1,7 @@
 #version 450
 
+#define PALETTE_SIZE 16.0f
+
 layout(location = 0) in vec2 inPosition;
 layout(location = 1) in vec2 inUV;
 layout(location = 2) in uint fgIndex_bgIndex;
@@ -10,11 +12,12 @@ layout(location = 2) flat out vec2 bgUV;
 
 void main() {
 
+  // cut the uint32 into uint16
   uint fgIndex = (fgIndex_bgIndex >> 16) & 0xFFFFu;
   uint bgIndex =  fgIndex_bgIndex        & 0xFFFFu;
 
-  fgUV = vec2(float(fgIndex) / 16.0f, 0.5);
-  bgUV = vec2(float(bgIndex) / 16.0f, 0.5);
+  fgUV = vec2(float(fgIndex) / PALETTE_SIZE, 0.5);
+  bgUV = vec2(float(bgIndex) / PALETTE_SIZE, 0.5);
 
   outUV = inUV;
   gl_Position = vec4(inPosition, 0, 1.0);

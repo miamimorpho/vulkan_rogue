@@ -32,8 +32,8 @@ int worldInit(GameWorld* w, int width, int height){
 Entity mapGetTile(GameWorld* map, int x, int y){
   Entity null_ent = {
     .uv = 370,
-    .fg = HEX_COLOR_WHITE,
-    .bg = HEX_COLOR_BLACK,
+    .fg = 1,
+    .bg = 0,
     .collide = 0,
     .pos = (Pos){ x, y},
   };

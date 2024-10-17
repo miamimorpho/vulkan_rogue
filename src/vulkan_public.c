@@ -1,4 +1,4 @@
-#include "vulkan_helper.h"
+#include "vulkan_meta.h"
 #include "textures.h"
 #include "drawing.h"
 #include "input.h"
@@ -51,7 +51,7 @@ int gfxGlobalInit(void){
   GfxContext gfx = gfxGetContext();
   _inputInit(gfx);
   _gfxTexturesInit(&s_global.textures);
-  gfxVertBufferCreate(gfx, 30000,
+  gfxVertBufferCreate(gfx, 10000,
 		      &s_global.vertices);
   return 0;
 }

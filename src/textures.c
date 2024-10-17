@@ -1,7 +1,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../extern/stb_image.h"
 #include "textures.h"
-#include "vulkan_helper.h"
 #include "macros.h"
 #include <stdio.h>
 #include <string.h>
@@ -76,87 +75,6 @@ gfxSamplerCreate(VkDevice ldev, VkPhysicalDevice pdev, VkSampler *sampler)
   
   return 0;
   
-}
-
-int
-copyBufferToImage(VkBuffer buffer, VkImage image,
-		  uint32_t width, uint32_t height)
-{
-  VkCommandBuffer command = gfxCmdSingleBegin();
-  
-  VkBufferImageCopy region = {
-    .bufferOffset = 0,
-    .bufferRowLength = 0,
-    .bufferImageHeight = 0,
-
-    .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-    .imageSubresource.mipLevel = 0,
-    .imageSubresource.baseArrayLayer = 0,
-    .imageSubresource.layerCount = 1,
-
-    .imageOffset = {0, 0, 0},
-    .imageExtent  = {width, height, 1},
-  };
-
-  vkCmdCopyBufferToImage(command, buffer, image,
-			 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			 1, &region);
-  
-  return gfxCmdSingleEnd(command);
-}
-
-int
-transitionImageLayout(VkImage image,
-			VkImageLayout old_layout, VkImageLayout new_layout){
-  VkCommandBuffer commands = gfxCmdSingleBegin();
-
-  VkImageMemoryBarrier barrier = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-    .oldLayout = old_layout,
-    .newLayout = new_layout,
-    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    .image = image,
-    .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-    .subresourceRange.baseMipLevel = 0,
-    .subresourceRange.levelCount = 1,
-    .subresourceRange.baseArrayLayer = 0,
-    .subresourceRange.layerCount = 1,
-    .srcAccessMask = 0,
-    .dstAccessMask = 0,
-  };
-
-  VkPipelineStageFlags source_stage, destination_stage;
-  
-  if(old_layout == VK_IMAGE_LAYOUT_UNDEFINED
-     && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL){
-    barrier.srcAccessMask = 0;
-    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-    source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    destination_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-
-  }else if(old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-	    && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL){
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    
-    source_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    destination_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    
-  } else {
-    printf("unsupported layout transition\n");
-    return 1;
-  }
-  
-  vkCmdPipelineBarrier(commands,
-		       source_stage, destination_stage,
-		       0,
-		       0, NULL,
-		       0, NULL,
-		       1, &barrier);
-  
-  return gfxCmdSingleEnd(commands);
 }
 
 int

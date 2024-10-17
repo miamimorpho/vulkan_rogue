@@ -18,6 +18,5 @@ void main() {
      vec2 textureUV = fract(textureIndexAndUV);
 
      vec4 brightness = texture(texSampler[texture_index], textureUV);
-     outColor = vec4(mix(bg, fg, brightness.r));
- 
+     outColor = vec4(mix(bg, fg, brightness.r)); 
 }

@@ -1,4 +1,5 @@
-#include "vulkan_helper.h"
+#include "macros.h"
+#include "drawing.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -115,7 +116,6 @@ int _gfxDrawChar(GfxContext gfx, GfxGlobal* global, uint32_t ch, uint32_t x, uin
   uv_index.x = (float)(ch % width_in_tiles) * uv_stride.x;
   uv_index.x += (float)texture_i;
   uv_index.y = (float)(ch / width_in_tiles) * uv_stride.y;
-
 
   vec2 cursor;
   cursor.x = -1 + (stride.x * (float)x);
