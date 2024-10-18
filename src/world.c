@@ -2,6 +2,34 @@
 #include "vulkan_public.h"
 #include <stdlib.h>
 
+int worldDraw(GameWorld world, Entity camera){
+ 
+  int x_offset = (ASCII_SCREEN_WIDTH / 2);
+  int y_offset = (ASCII_SCREEN_HEIGHT / 2);
+  
+  for(int y = 0; y < ASCII_SCREEN_HEIGHT; y++){
+    for(int x = 0; x < ASCII_SCREEN_WIDTH; x++){
+      Entity tile = mapGetTile(world,
+			       camera.pos.x - x_offset +x,
+			       camera.pos.y - y_offset +y);
+      gfxAddCh(x, y, tile.uv,
+	       tile.fg, tile.bg, DRAW_TEXTURE_INDEX);
+    }
+  }
+  
+  // render list of entities (actors)
+  for(unsigned int i = 0; i < world.actors_count; i++){
+    Entity actor = world.actors[i];
+    if(actor.is_init == 1){
+      gfxAddCh(x_offset,
+	       y_offset,
+	       actor.uv,
+	       actor.fg, actor.bg, DRAW_TEXTURE_INDEX);
+    }
+  }
+  return 0;
+}
+
 int worldInit(GameWorld* w, int width, int height){
   w->width = width;
   w->size = width * height;
@@ -29,7 +57,7 @@ int worldInit(GameWorld* w, int width, int height){
   return 0;
 }
 
-Entity mapGetTile(GameWorld* map, int x, int y){
+Entity mapGetTile(GameWorld arr, int x, int y){
   Entity null_ent = {
     .uv = 370,
     .fg = 1,
@@ -37,13 +65,13 @@ Entity mapGetTile(GameWorld* map, int x, int y){
     .collide = 0,
     .pos = (Pos){ x, y},
   };
-  if(x >= map->width) return null_ent;
+  if(x >= arr.width) return null_ent;
   if(x < 0) return null_ent;
   if(y < 0) return null_ent;
 
-  int offset = (y * map->width) + x;
-  if(offset >= map->size) return null_ent;
-  return map->tiles[offset];
+  int offset = (y * arr.width) + x;
+  if(offset >= arr.size) return null_ent;
+  return arr.tiles[offset];
 }
 
 int mapPutTile(GameWorld* map, Entity entity, int x, int y){

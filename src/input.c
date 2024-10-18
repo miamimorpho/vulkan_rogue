@@ -84,17 +84,18 @@ GameAction guiPickColor(void){
   uint32_t fgIndex = -1;
   uint32_t bgIndex = -1;
   while(to_exit == 0){
-    gfxDrawStart();
     gfxDrawString("color", 0, 1, hex_color, 0xFF000000);
 
     for(int i = 0; i < PALETTE_SIZE * PALETTE_SIZE; i++){
-      gfxDrawChar(939,
-		  i % PALETTE_SIZE,
-		  i / PALETTE_SIZE,
-		  i % PALETTE_SIZE,
-		  i / PALETTE_SIZE,
-		  DRAW_TEXTURE_INDEX);
+      gfxAddCh(i % PALETTE_SIZE,
+	       i / PALETTE_SIZE,
+	       939,
+	       i % PALETTE_SIZE,
+	       i / PALETTE_SIZE,
+	       DRAW_TEXTURE_INDEX);
     }
+
+    gfxRefresh();
     
     glfwPollEvents();
 
@@ -107,8 +108,6 @@ GameAction guiPickColor(void){
     if(s_state.pressed == 1){
       to_exit = 1;
     }
-
-    gfxDrawEnd();
   }
   return paintEntityAction(-1, fgIndex, bgIndex);
 }
@@ -123,24 +122,7 @@ GameAction guiPickTile(void){
   uint32_t target_uv = 0;
   int to_exit = 0;
   while(to_exit == 0){
-
-    gfxDrawStart();
-
-    for(uint32_t i = 0; i < tileset.glyph_c; i++){
-      int x = i % width_in_tiles;
-      int y = i / width_in_tiles;
-
-      uint32_t bg = 0;
-      if((x % 2) - (y % 2) == 0) bg = 1;
-      
-      gfxDrawChar(i, x, y,
-		  15,
-		  bg,
-		  DRAW_TEXTURE_INDEX );
-      //printf("i %d %d\n", i, getUnicodeUV(tileset,i));
- 
-    }
-
+    
     glfwPollEvents();
     
     double xpos, ypos;
@@ -154,12 +136,28 @@ GameAction guiPickTile(void){
       printf("uv %d\n", target_uv);
       to_exit = 1;
     }
+    
+    for(uint32_t i = 0; i < tileset.glyph_c; i++){
+      int x = i % width_in_tiles;
+      int y = i / width_in_tiles;
 
-    gfxDrawChar(target_uv, target_x, target_y,
+      uint32_t bg = 0;
+      if((x % 2) - (y % 2) == 0) bg = 1;
+      
+      gfxAddCh(x, y, i,
+	       15,
+	       bg,
+	       DRAW_TEXTURE_INDEX );
+      //printf("i %d %d\n", i, getUnicodeUV(tileset,i));
+
+      
+    }
+
+    gfxAddCh(target_x, target_y, target_uv,
 		11, 0,
 		DRAW_TEXTURE_INDEX);
     
-    gfxDrawEnd();
+    gfxRefresh();
     
   }
 
@@ -175,6 +173,15 @@ GameAction userInput(int entity_index){
     return noAction();
   }
 
+  /*
+  static double old_time = 0;
+  double delta_time = glfwGetTime() - old_time;
+  char fps_str[1024];
+  snprintf ( fps_str, 1024, "%f", 1.0f / delta_time );
+  gfxDrawString(fps_str, 0, 0, 15, 0);
+  old_time = glfwGetTime();
+  */
+  
   // Start of keyboard input
   if(s_state.pressed == 1){
     GameAction action = noAction();

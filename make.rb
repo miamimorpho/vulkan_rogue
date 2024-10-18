@@ -4,7 +4,7 @@ require 'fileutils'
 
 # Configuration
 prog = 'rogue'
-cflags = '-O0 -g -Wall -Wextra -Wpedantic -fdiagnostics-color=always -Wno-nullability-extension'
+cflags = '-Wall -Wextra -Wpedantic -fdiagnostics-color=always -Wno-nullability-extension'
 cflags += ' -I/usr/local/include -I/usr/X11R6/include'
 ldflags = '-L/usr/local/lib'
 ldadd = '-lglfw -lstdc++ -lpthread -lvulkan -lm'
@@ -40,8 +40,8 @@ def compile_source(src, obj, cflags)
 end
 
 # Compile the program
-def link_program(prog, objs, ldflags, ldadd)
-  cmd = "cc #{objs.join(' ')} -o #{prog} #{ldflags} #{ldadd}"
+def link_program(cflags, prog, objs, ldflags, ldadd)
+  cmd = "cc #{cflags} #{objs.join(' ')} -o #{prog} #{ldflags} #{ldadd}"
   puts cmd
   system cmd
 end
@@ -59,4 +59,4 @@ srcs.each_with_index do |src, index|
 end
 
 # Link the program
-link_program(prog, Dir.glob(File.join(objdir, '*.o')), ldflags, ldadd)
+link_program(cflags, prog, Dir.glob(File.join(objdir, '*.o')), ldflags, ldadd)

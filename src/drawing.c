@@ -3,73 +3,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <time.h>
 
 #define TOP_LEFT_INDEX 0
 #define TOP_RIGHT_INDEX 1
 #define BOTTOM_LEFT_INDEX 2
 #define BOTTOM_RIGHT_INDEX 3
-
-int _gfxDrawStart(GfxContext gfx, GfxGlobal* global){
-  
-  vkWaitForFences(gfx.ldev, 1,
-		  &gfx.fence[global->frame_x],
-		  VK_TRUE, UINT32_MAX);
-
-  VkSemaphore* present_bit = &gfx.present_bit[global->frame_x];
-  VkResult result =
-    vkAcquireNextImageKHR(gfx.ldev, gfx.swapchain, UINT64_MAX,
-			  *present_bit,
-			  VK_NULL_HANDLE,
-			  &global->swapchain_x);
- 
-  if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-    gfxRecreateSwapchain();
-    vkDestroySemaphore(gfx.ldev, *present_bit, NULL);
-    VkSemaphoreCreateInfo semaphore_info = {
-      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-    };
-    VK_CHECK(vkCreateSemaphore(gfx.ldev, &semaphore_info, NULL, present_bit));
-    return _gfxDrawStart(gfxGetContext(), global);
-  }
-
-  vkResetFences(gfx.ldev, 1, &gfx.fence[global->frame_x]);
-  
-  VkCommandBuffer cmd_b = gfx.cmd_buffer[global->frame_x];
-  vkResetCommandBuffer(cmd_b, 0);
-
-  VkCommandBufferBeginInfo begin_info = {
-    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-    .flags = 0,
-    .pInheritanceInfo = NULL,
-  };
-
-  if(vkBeginCommandBuffer(cmd_b, &begin_info) != VK_SUCCESS){
-    printf("!failed to begin recording command buffer!\n");
-  }
-
-  VkClearValue clears[2];
-  clears[0].color = (VkClearColorValue){ { 0.0f, 0.0f, 0.0f, 1.0f } };
-  clears[1].depthStencil = (VkClearDepthStencilValue){ 1.0f, 0 };
- 
-  VkRenderPassBeginInfo render_pass_info = {
-    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    .renderPass = gfx.renderpass,
-    .framebuffer = gfx.framebuffer[global->swapchain_x],
-    .renderArea.offset = {0, 0},
-    .renderArea.extent = gfx.extent,
-    .clearValueCount = 2,
-    .pClearValues = clears,
-  };
-    
-  vkCmdBeginRenderPass(cmd_b, &render_pass_info,
-		       VK_SUBPASS_CONTENTS_INLINE);
-
-  vkCmdBindDescriptorSets(cmd_b, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			  gfx.pipeline_layout, 0, 1,
-			  &gfx.texture_descriptors, 0, NULL);
-  
-  return 0;
-}
 
 int _gfxAddQuad(GfxContext gfx, GfxGlobal* global, vertex2 vertices[4]){
  
@@ -92,9 +31,9 @@ int _gfxAddQuad(GfxContext gfx, GfxGlobal* global, vertex2 vertices[4]){
   return 0;
 }
 
-int _gfxDrawChar(GfxContext gfx, GfxGlobal* global, uint32_t ch, uint32_t x, uint32_t y,
+int _gfxDrawCharRaw(GfxContext gfx, GfxGlobal* global, uint32_t ch, uint32_t x, uint32_t y,
 		 uint32_t fg, uint32_t bg, uint32_t texture_i){
-  
+
   GfxTileset texture = global->textures[texture_i];
   if(texture.image.handle == NULL){
     return 1;
@@ -144,6 +83,28 @@ int _gfxDrawChar(GfxContext gfx, GfxGlobal* global, uint32_t ch, uint32_t x, uin
   return 0;
 }
 
+int compareTiles(GfxTile one, GfxTile two){
+  return(one.glyph_code == two.glyph_code &&
+	 one.fg_index == two.fg_index &&
+	 one.bg_index == two.bg_index &&
+	 one.texture_index == two.texture_index);
+}
+
+int _gfxAddCh(GfxGlobal* global, uint16_t x, uint16_t y, uint16_t glyph_code, uint16_t fg_index, uint16_t bg_index, uint16_t texture_index){
+  if(x >= global->tile_buffer_w || x < 0) return 1;
+  if(y >= global->tile_buffer_h || y < 0) return 1;
+
+  int tile_index = (y * global->tile_buffer_w) + x;
+  GfxTile dst = global->tile_buffer[tile_index];
+  GfxTile src = {0, glyph_code, fg_index, bg_index, texture_index};
+  if(compareTiles(src, dst) == 1){
+      src.dirty_flag = 1;
+  }
+  global->tile_buffer[tile_index] = src;
+  return 0;
+}
+
+
 int _gfxDrawString(GfxContext gfx, GfxGlobal* global, const char* str, uint32_t x, uint32_t y, uint32_t fg, uint32_t bg){
 
   //convert to unicode
@@ -156,8 +117,8 @@ int _gfxDrawString(GfxContext gfx, GfxGlobal* global, const char* str, uint32_t 
       x = start_x;
     }else{
       int uv = getUnicodeUV(global->textures[ASCII_TEXTURE_INDEX], str[i]);
-      int err = _gfxDrawChar(gfx, global, uv,
-			     x++, y, fg, bg, ASCII_TEXTURE_INDEX);
+      int err = _gfxAddCh(global, x++,
+			  y, uv, fg, bg, ASCII_TEXTURE_INDEX);
       if(err != 0){
 	return 1;
       }
@@ -167,9 +128,85 @@ int _gfxDrawString(GfxContext gfx, GfxGlobal* global, const char* str, uint32_t 
   return 0;
 }
 
-int _gfxDrawEnd(GfxContext gfx, GfxGlobal* global){
+int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
 
+ 
+  vkWaitForFences(gfx.ldev, 1,
+		  &gfx.fence[global->frame_x],
+		  VK_TRUE, UINT32_MAX);
+  
+  VkSemaphore* present_bit = &gfx.present_bit[global->frame_x];
+  VkResult result = VK_TIMEOUT;
+  while(result == VK_TIMEOUT){
+    result = vkAcquireNextImageKHR(gfx.ldev, gfx.swapchain, 100,
+			  *present_bit,
+			  VK_NULL_HANDLE,
+			  &global->swapchain_x);
+    struct timespec tim;
+    tim.tv_sec = 0;
+    tim.tv_nsec = 100000;
+    struct timespec tim2;
+    nanosleep(&tim, &tim2);
+  }
+  
+  if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+    gfxRecreateSwapchain();
+    vkDestroySemaphore(gfx.ldev, *present_bit, NULL);
+    VkSemaphoreCreateInfo semaphore_info = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+    };
+    VK_CHECK(vkCreateSemaphore(gfx.ldev, &semaphore_info, NULL, present_bit));
+    return _gfxRefresh(gfxGetContext(), global);
+  }
+
+  vkResetFences(gfx.ldev, 1, &gfx.fence[global->frame_x]);
+  
   VkCommandBuffer cmd_b = gfx.cmd_buffer[global->frame_x];
+  vkResetCommandBuffer(cmd_b, 0);
+
+  VkCommandBufferBeginInfo begin_info = {
+    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+    .flags = 0,
+    .pInheritanceInfo = NULL,
+  };
+
+  if(vkBeginCommandBuffer(cmd_b, &begin_info) != VK_SUCCESS){
+    printf("!failed to begin recording command buffer!\n");
+  }
+
+  VkClearValue clears[1];
+  clears[0].color = (VkClearColorValue){ { 0.0f, 0.0f, 0.0f, 1.0f } };
+
+  VkRenderPassBeginInfo render_pass_info = {
+    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+    .renderPass = gfx.renderpass,
+    .framebuffer = gfx.framebuffer[global->swapchain_x],
+    .renderArea.offset = {0, 0},
+    .renderArea.extent = gfx.extent,
+    .clearValueCount = 1,
+    .pClearValues = clears,
+  };
+    
+  vkCmdBeginRenderPass(cmd_b, &render_pass_info,
+		       VK_SUBPASS_CONTENTS_INLINE);
+
+  vkCmdBindDescriptorSets(cmd_b, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			  gfx.pipeline_layout, 0, 1,
+			  &gfx.texture_descriptors, 0, NULL);
+
+  for(uint y = 0; y < global->tile_buffer_h; y++){
+    for(uint x = 0; x < global->tile_buffer_w; x++){
+      GfxTile src =
+	global->tile_buffer[(y * global->tile_buffer_w) +x ];
+      _gfxDrawCharRaw(gfx, global,
+		      src.glyph_code,
+		      x, y,
+		      src.fg_index, src.bg_index,
+		      src.texture_index);
+    }
+  }
+  
+  cmd_b = gfx.cmd_buffer[global->frame_x];
   
   VkViewport viewport = {
     .x = 0.0f,
@@ -190,7 +227,6 @@ int _gfxDrawEnd(GfxContext gfx, GfxGlobal* global){
   vkCmdBindPipeline(cmd_b, VK_PIPELINE_BIND_POINT_GRAPHICS,
 	            gfx.pipeline);
 
-  
   VmaAllocationInfo g_vertices_info;
   vmaGetAllocationInfo(gfx.allocator, global->vertices.allocation, &g_vertices_info);
   GfxBuffer* g_indices = (GfxBuffer*)g_vertices_info.pUserData;
@@ -230,11 +266,7 @@ int _gfxDrawEnd(GfxContext gfx, GfxGlobal* global){
     .pSignalSemaphores = signal_semaphores,
   };
 
-  if(vkQueueSubmit(gfx.queue, 1, &submit_info, gfx.fence[global->frame_x])
-     != VK_SUCCESS) {
-    printf("!failed to submit draw command buffer!\n");
-    return 1;
-  }
+  VK_CHECK(vkQueueSubmit(gfx.queue, 1, &submit_info, gfx.fence[global->frame_x]));
     
   VkPresentInfoKHR present_info = {
     .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -245,9 +277,15 @@ int _gfxDrawEnd(GfxContext gfx, GfxGlobal* global){
     .pImageIndices = &global->swapchain_x,
     .pResults = NULL
   };
-   
-  VkResult results = vkQueuePresentKHR(gfx.queue, &present_info);
-  if(results != VK_SUCCESS) {
+  result = vkQueuePresentKHR(gfx.queue, &present_info);
+  switch(result){
+  case VK_SUCCESS:
+    break;
+  case VK_ERROR_OUT_OF_DATE_KHR:
+    break;
+  case VK_SUBOPTIMAL_KHR:
+    break;
+  default:
     return 1;
   }
   

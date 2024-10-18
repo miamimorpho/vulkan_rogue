@@ -98,7 +98,7 @@ int _moveEntityAction(GameWorld* w, int args_c, Argument* args){
   int vy = args[2].val.i;
   
   Entity* e = &w->actors[entity_index];
-  Entity dst = mapGetTile(w, e->pos.x + vx, e->pos.y + vy);
+  Entity dst = mapGetTile(*w, e->pos.x + vx, e->pos.y + vy);
   if(dst.collide == 0){
     e->pos.x += vx;
     e->pos.y += vy;

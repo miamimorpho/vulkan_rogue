@@ -6,10 +6,8 @@
 #include <stdlib.h>
 
 int main(void){
-  if(gfxConstInit() != 0){
-    printf("error");
-  }
-  gfxGlobalInit();
+
+  gfxScreenInit();
   inputInit();
 
   gfxTextureLoad("textures/color.png");
@@ -29,43 +27,16 @@ int main(void){
   player->inventory[0].collide = 0;
      
   while(getExitState() == 0){
+
+    worldDraw(world, *player);
     
-    gfxDrawStart();
-
-    // render world map
-    Pos camera = player->pos;
-    camera.x -= ASCII_SCREEN_WIDTH / 2;
-    camera.y -= ASCII_SCREEN_HEIGHT / 2;
-    for(int y = 0; y < ASCII_SCREEN_HEIGHT; y++){
-      for(int x = 0; x < ASCII_SCREEN_WIDTH; x++){
-	Entity tile = mapGetTile(&world, camera.x +x, camera.y +y);
-	gfxDrawChar(tile.uv, x, y,
-		    tile.fg, tile.bg, DRAW_TEXTURE_INDEX);
-      }
-    }
-
-    // render list of entities (actors)
-    for(unsigned int i = 0; i < world.actors_count; i++){
-      Entity actor = world.actors[i];
-      if(actor.is_init == 1){
-	gfxDrawChar(actor.uv,
-		    ASCII_SCREEN_WIDTH / 2,
-		    ASCII_SCREEN_HEIGHT / 2,
-		    actor.fg, actor.bg, DRAW_TEXTURE_INDEX);
-      }
-    }
-
-    // user interface
-    //gfxDrawString("hello world", 0, 0, 0xFFFFFFFF, 0xFF000000);
-
-    gfxDrawEnd();
-
     GameAction user_action = userInput(0);
     doAction(&world, user_action);
-
+        
+    gfxRefresh();
   }
   
-  gfxClose();
+  gfxScreenClose();
   printf("success\n");
   return 0;
 }

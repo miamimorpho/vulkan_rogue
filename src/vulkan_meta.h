@@ -42,7 +42,7 @@ typedef struct{
   /* const */ VkQueue queue;
   /* const */ VmaAllocator allocator;
   /* const */ VkCommandPool cmd_pool;
-  /* const */ VkSurfaceKHR surface;
+  /* const */ VkSurfaceKHR  surface;
   /* const */ VkExtent2D extent;
   /* const */ VkSwapchainKHR swapchain;
   /* const */ uint32_t swapchain_c;
@@ -63,10 +63,22 @@ typedef struct{
 }GfxContext;
 
 typedef struct{
+  uint16_t dirty_flag;
+  uint16_t glyph_code;
+  uint16_t fg_index;
+  uint16_t bg_index;
+  uint16_t texture_index;
+}GfxTile;
+
+typedef struct{
     uint32_t swapchain_x;
     uint32_t frame_x;
     GfxTileset* textures;
     GfxBuffer vertices;
+
+    GfxTile* tile_buffer;
+    uint32_t tile_buffer_w;
+    uint32_t tile_buffer_h;
 }GfxGlobal;
 
 typedef struct{

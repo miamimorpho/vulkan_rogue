@@ -10,7 +10,7 @@ typedef struct{
 typedef struct Entity Entity;
 struct Entity{
   int is_init;
-  Pos pos;
+  Pos pos; // make xy
   int uv;
   uint32_t fg;
   uint32_t bg;
@@ -30,8 +30,9 @@ typedef struct{
 
 
 int mapPutTile(GameWorld*, Entity, int, int);
-Entity mapGetTile(GameWorld* map, int x, int y);
+Entity mapGetTile(GameWorld, int x, int y);
 int worldInit(GameWorld*, int, int);
 Entity* entityInit(GameWorld*, unsigned int);
+int worldDraw(GameWorld, Entity);
 
 #endif // WORLD_H
