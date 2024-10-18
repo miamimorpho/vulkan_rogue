@@ -10,6 +10,10 @@ layout(location = 0) out vec2 outUV;
 layout(location = 1) flat out vec2 fgUV;
 layout(location = 2) flat out vec2 bgUV;
 
+layout( push_constant ) uniform constants {
+  vec2 screen_size;
+} PushConstants;
+
 void main() {
 
   // cut the uint32 into uint16
