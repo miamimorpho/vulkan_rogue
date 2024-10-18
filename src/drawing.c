@@ -41,8 +41,8 @@ int _gfxDrawCharRaw(GfxContext gfx, GfxGlobal* global, uint32_t ch, uint32_t x, 
   
   // ncurses space to screen space
   vec2 stride;
-  stride.x = (2 * ASCII_SCALE * ASCII_TILE_SIZE) / (float)gfx.extent.width;
-  stride.y = (2 * ASCII_SCALE * ASCII_TILE_SIZE) / (float)gfx.extent.height;
+  stride.x = (2 * ASCII_TILE_SIZE) / (float)gfx.extent.width;
+  stride.y = (2 * ASCII_TILE_SIZE) / (float)gfx.extent.height;
 
   vec2 uv_stride;
   uv_stride.x = (float)texture.glyph_width /
@@ -96,9 +96,9 @@ int _gfxAddCh(GfxGlobal* global, uint16_t x, uint16_t y, uint16_t glyph_code, ui
 
   int tile_index = (y * global->tile_buffer_w) + x;
   GfxTile dst = global->tile_buffer[tile_index];
-  GfxTile src = {0, glyph_code, fg_index, bg_index, texture_index};
+  GfxTile src = {glyph_code, fg_index, bg_index, texture_index};
   if(compareTiles(src, dst) == 1){
-      src.dirty_flag = 1;
+    //src.dirty_flag = 1;
   }
   global->tile_buffer[tile_index] = src;
   return 0;
@@ -129,7 +129,6 @@ int _gfxDrawString(GfxContext gfx, GfxGlobal* global, const char* str, uint32_t 
 }
 
 int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
-
  
   vkWaitForFences(gfx.ldev, 1,
 		  &gfx.fence[global->frame_x],
@@ -138,17 +137,16 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
   VkSemaphore* present_bit = &gfx.present_bit[global->frame_x];
   VkResult result = VK_TIMEOUT;
   while(result == VK_TIMEOUT){
-    result = vkAcquireNextImageKHR(gfx.ldev, gfx.swapchain, 100,
+    /* Coarse recordings say this section creates a CPU busy cycle
+     * of 10ms which is rubbish, this is waiting for a new swapchain image
+     * to be available */
+    result = vkAcquireNextImageKHR(gfx.ldev, gfx.swapchain, UINT16_MAX,
 			  *present_bit,
 			  VK_NULL_HANDLE,
 			  &global->swapchain_x);
-    struct timespec tim;
-    tim.tv_sec = 0;
-    tim.tv_nsec = 100000;
-    struct timespec tim2;
-    nanosleep(&tim, &tim2);
   }
-  
+
+  /* swapchain recreation */
   if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
     gfxRecreateSwapchain();
     vkDestroySemaphore(gfx.ldev, *present_bit, NULL);
@@ -170,10 +168,12 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
     .pInheritanceInfo = NULL,
   };
 
+  /* Start rendering */
   if(vkBeginCommandBuffer(cmd_b, &begin_info) != VK_SUCCESS){
     printf("!failed to begin recording command buffer!\n");
   }
 
+  /* move clearing to seperate function */
   VkClearValue clears[1];
   clears[0].color = (VkClearColorValue){ { 0.0f, 0.0f, 0.0f, 1.0f } };
 
@@ -194,6 +194,8 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
 			  gfx.pipeline_layout, 0, 1,
 			  &gfx.texture_descriptors, 0, NULL);
 
+  /* Currently redraws the entire scene every frame, change to update
+     a back buffer if changes are made */
   for(uint y = 0; y < global->tile_buffer_h; y++){
     for(uint x = 0; x < global->tile_buffer_w; x++){
       GfxTile src =
@@ -211,8 +213,9 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
   VkViewport viewport = {
     .x = 0.0f,
     .y = 0.0f,
-    .width = gfx.extent.width,
-    .height = gfx.extent.height,
+    /* May need to hunt down rogue ASCII_SCALEs in code now*/
+    .width = gfx.extent.width * ASCII_SCALE,
+    .height = gfx.extent.height * ASCII_SCALE,
     .minDepth = 0.0f,
     .maxDepth = 1.0f,
   };
@@ -238,6 +241,11 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
 		       g_indices->handle,
 		       0, VK_INDEX_TYPE_UINT32);
 
+  GfxPushConstant constants = {
+    .screen_size_px = (vec2){ 0.0f, 0.0f },
+  };
+  vkCmdPushConstants(cmd_b, gfx.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GfxPushConstant), &constants);
+  
   vkCmdDrawIndexed(cmd_b, g_indices->used_size / sizeof(uint32_t),
 		   1, 0, 0, 0);
   global->vertices.used_size = 0;

@@ -63,7 +63,10 @@ typedef struct{
 }GfxContext;
 
 typedef struct{
-  uint16_t dirty_flag;
+  vec2 screen_size_px;
+}GfxPushConstant;
+
+typedef struct{
   uint16_t glyph_code;
   uint16_t fg_index;
   uint16_t bg_index;

@@ -6,12 +6,51 @@ pre built quad in shader
 
 https://registry.khronos.org/OpenGL-Refpages/gl4/html/textureSize.xhtml textureSize();
 
-push constant 128 bytes
-32bit = 4 bytes
-screen dimensions, scaling factor, tile size
+* NEW SHADER
+
+
+** 0
+ vec2 uv_stride;
+  uv_stride.x = (float)texture.glyph_width / (float)texture.width;
+  uv_stride.y = (float)texture.glyph_height / (float)texture.height;
+
+  int width_in_tiles = texture.width / texture.glyph_width;
+
+  vec2 uv_index;
+  uv_index.x = (float)(ch % width_in_tiles) * uv_stride.x;
+  uv_index.x += (float)texture_i;
+  uv_index.y = (float)(ch / width_in_tiles) * uv_stride.y;
+
+  vec2 cursor;
+  cursor.x = -1 + (stride.x * (float)x);
+  cursor.y = -1 + (stride.y * (float)y); 
+  
+  vertex2 vertices[4];
+  vertices[TOP_LEFT_INDEX] = (vertex2){
+    .pos = cursor,
+    .uv = uv_index,
+    .fgIndex_bgIndex = (uint32_t)fg << 16 | (uint32_t)bg
+  };
+
+  vertices[BOTTOM_LEFT_INDEX] = vertices[TOP_LEFT_INDEX];
+  vertices[BOTTOM_LEFT_INDEX].pos.y += stride.y;
+  vertices[BOTTOM_LEFT_INDEX].uv.y += uv_stride.y;
+  
+** 1
+float charWidth = 1.0f / numCharsHorizontal;
+float charHeight = 1.0f / numCharsVertical;
+
+layout(push_constant) uniform PushConstants {
+    vec2 charSize; // x = charWidth, y = charHeight
+} pc;
+
+void main() {
+    // Convert to [-1, 1] range
+    vec2 normalizedPos = (inPosition * pc.charSize) * 2.0 - 1.0;
 
 in ivec2 asciiPos, could be 2*uint16
-stride_x = (2 * SCALE * TILE_SIZE) / SCREEN_WIDTH;
+stride_x = (2 * TILE_SIZE) / SCREEN_WIDTH;
+stride_y = (2 * TILE_SIZE) / SCREEN_HEIGHT;
 gl_Position.x = stride_x * asciiPos.x;
 gl_Position.y = stride_y * asciiPos.y;
 
@@ -19,6 +58,8 @@ in ivec2 atlasPos could be 2*uint16
 uv_stride.x = glyph_size / texture.width
 uv_stride.y = glyph_size / texture.width
 outUv.x = atlasPos.x * uv_stride.x;
+
+* TODO EXTRA
 
 texture atlas index uint 8
 fg color uint8

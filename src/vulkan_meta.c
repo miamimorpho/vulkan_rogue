@@ -962,11 +962,19 @@ gfxSpvLoad(VkDevice l_dev, const char* filename, VkShaderModule* shader)
 }
 
 int gfxPipelineInit(GfxContext* gfx){
-    
+
+  VkPushConstantRange push_constant = {
+    .offset = 0,
+    .size = sizeof(GfxPushConstant),
+    .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+  };
+  
   VkPipelineLayoutCreateInfo pipeline_layout_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
     .setLayoutCount = 1,
     .pSetLayouts = &gfx->texture_descriptors_layout,
+    .pPushConstantRanges = &push_constant,
+    .pushConstantRangeCount = 1,
   };
 
   if(vkCreatePipelineLayout(gfx->ldev, &pipeline_layout_info, NULL, &gfx->pipeline_layout) != VK_SUCCESS)
