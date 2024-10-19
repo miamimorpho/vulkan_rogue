@@ -7,6 +7,8 @@
 
 typedef struct{
   int key;
+  double mouse_x;
+  double mouse_y;
   int mouse_btn;
   int pressed;
   int to_exit;
@@ -30,6 +32,8 @@ void closeCallback(GLFWwindow* window) {
 
 void mouseCallback(GLFWwindow* window, int button, int action, int mods)
 {
+  GfxContext gfx = gfxGetContext();
+  glfwGetCursorPos(gfx.window, &s_state.mouse_x, &s_state.mouse_y);
   if (action == GLFW_PRESS){
     s_state.pressed = 1;
     s_state.mouse_btn = button;
@@ -73,12 +77,15 @@ void _inputInit(GfxContext gfx){
   s_state.time = 0;
 }
 
+inputState_t getInputState(void){
+  glfwPollEvents();
+  return s_state;
+}
+
 GameAction guiPickColor(void){
   resetInputState();
   int to_exit = 0;
 
-  GfxContext gfx = gfxGetContext();
-  
   uint32_t hex_color = 0xFFFFFFFF;
 
   uint32_t fgIndex = -1;
@@ -97,15 +104,12 @@ GameAction guiPickColor(void){
 
     gfxRefresh();
     
-    glfwPollEvents();
-
-    double xpos, ypos;
-    glfwGetCursorPos(gfx.window, &xpos, &ypos);
-
-    fgIndex = xpos / (ASCII_TILE_SIZE * ASCII_SCALE);
-    bgIndex = ypos / (ASCII_TILE_SIZE * ASCII_SCALE);
+    inputState_t inputState = getInputState();
     
-    if(s_state.pressed == 1){
+    fgIndex = inputState.mouse_x / (ASCII_TILE_SIZE * ASCII_SCALE);
+    bgIndex = inputState.mouse_y / (ASCII_TILE_SIZE * ASCII_SCALE);
+    
+    if(inputState.pressed == 1){
       to_exit = 1;
     }
   }
@@ -123,42 +127,36 @@ GameAction guiPickTile(void){
   int to_exit = 0;
   while(to_exit == 0){
     
-    glfwPollEvents();
+   inputState_t input = getInputState();
     
-    double xpos, ypos;
-    glfwGetCursorPos(gfx.window, &xpos, &ypos);
+   uint32_t target_x = (int)(input.mouse_x / (ASCII_SCALE * tileset.glyph_width));
+   uint32_t target_y = (int)(input.mouse_y / (ASCII_SCALE * tileset.glyph_height));
+   target_uv = (target_y * width_in_tiles) + target_x;
 
-    uint32_t target_x = (int)(xpos / (ASCII_SCALE * tileset.glyph_width));
-    uint32_t target_y = (int)(ypos / (ASCII_SCALE * tileset.glyph_height));
-    target_uv = (target_y * width_in_tiles) + target_x;
-
-    if(s_state.pressed == 1){
-      printf("uv %d\n", target_uv);
-      to_exit = 1;
-    }
-    
-    for(uint32_t i = 0; i < tileset.glyph_c; i++){
-      int x = i % width_in_tiles;
-      int y = i / width_in_tiles;
-
-      uint32_t bg = 0;
-      if((x % 2) - (y % 2) == 0) bg = 1;
-      
-      gfxAddCh(x, y, i,
-	       15,
-	       bg,
-	       DRAW_TEXTURE_INDEX );
-      //printf("i %d %d\n", i, getUnicodeUV(tileset,i));
-
-      
+   if(input.pressed == 1){
+     printf("uv %d\n", target_uv);
+     to_exit = 1;
+   }
+   
+   for(uint32_t i = 0; i < tileset.glyph_c; i++){
+     int x = i % width_in_tiles;
+     int y = i / width_in_tiles;
+     
+     uint32_t bg = 0;
+     if((x % 2) - (y % 2) == 0) bg = 1;
+     
+     gfxAddCh(x, y, i,
+	      15,
+	      bg,
+	      DRAW_TEXTURE_INDEX );
     }
 
-    gfxAddCh(target_x, target_y, target_uv,
-		11, 0,
-		DRAW_TEXTURE_INDEX);
-    
-    gfxRefresh();
-    
+   gfxAddCh(target_x, target_y, target_uv,
+	    11, 0,
+	    DRAW_TEXTURE_INDEX);
+   
+   gfxRefresh();
+   
   }
 
   return paintEntityAction(target_uv, -1, -1);

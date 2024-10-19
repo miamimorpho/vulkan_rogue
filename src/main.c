@@ -28,8 +28,9 @@ int main(void){
      
   while(getExitState() == 0){
 
+    /* October 19 2024 - 0.25ms profile */
     worldDraw(world, *player);
-    
+      
     GameAction user_action = userInput(0);
     doAction(&world, user_action);
         

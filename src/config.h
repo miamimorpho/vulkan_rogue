@@ -17,4 +17,4 @@
 
 /* Build Options */
 #define DEBUG_BUFFER 0
-#define DEBUG_VALIDATION 1
+#define DEBUG_VALIDATION 0

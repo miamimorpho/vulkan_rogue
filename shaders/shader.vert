@@ -40,19 +40,20 @@ vec2 unpackUINT16(uint packed ){
 
 void main() {
 
-  // Position [ DONE, works]
+  // Position
   vec2 asciiPos =
+  //unpackHalf2x16(inPosition) + quadVertices[gl_VertexIndex];
   unpackUINT16(inPosition) + quadVertices[gl_VertexIndex]; 
   vec2 asciiToScreen = vec2(TILE_SIZE) / constants.screen_size;
   vec2 ndcPos = 2 * asciiPos * asciiToScreen -1;
   gl_Position = vec4(ndcPos, 0, 1.0);
 
-  // Texturing [ DONE, works ]
+  // Texturing
   textureIndexOut = textureIndexIn; 
   textureUV =
   (unpackUINT16(textureEncoding) + quadVertices[gl_VertexIndex]);
 
-  // Colour [DONE , broken]
+  // Colour
   vec2 colorIndices = unpackUINT16(fgIndex_bgIndex);
   fgUV = vec2(float(colorIndices.x) / PALETTE_SIZE, 0.5);
   bgUV = vec2(float(colorIndices.y) / PALETTE_SIZE, 0.5);

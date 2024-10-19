@@ -57,33 +57,21 @@ int _gfxDrawString(GfxContext gfx, GfxGlobal* global, const char* str, uint32_t 
 }
 
 int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
- 
+  
   vkWaitForFences(gfx.ldev, 1,
 		  &gfx.fence[global->frame_x],
 		  VK_TRUE, UINT32_MAX);
+  vkResetFences(gfx.ldev, 1, &gfx.fence[global->frame_x]);
   
-  VkSemaphore* present_bit = &gfx.present_bit[global->frame_x];
-
-  static double delta_time = 0;
-  char fps_str[1024];
-  snprintf ( fps_str, 1024, "CPU wait time: %.1fms", delta_time * 1000);
-  _gfxDrawString(gfx, global, fps_str, 0, 0, 15, 0);
-
-  delta_time = glfwGetTime();
-
+  VkSemaphore* present_bit = &gfx.present_bit[global->frame_x];  
   VkResult result = VK_TIMEOUT;
   while(result == VK_TIMEOUT){
-    /* Coarse recordings say this section creates a CPU busy cycle
-     * of 10ms which is rubbish, this is waiting for a new swapchain image
-     * to be available */
     result = vkAcquireNextImageKHR(gfx.ldev, gfx.swapchain, UINT16_MAX,
 			  *present_bit,
 			  VK_NULL_HANDLE,
 			  &global->swapchain_x);
   }
 
-  delta_time = glfwGetTime() - delta_time;
-  
   /* swapchain recreation */
   if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
     gfxRecreateSwapchain();
@@ -94,8 +82,6 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
     VK_CHECK(vkCreateSemaphore(gfx.ldev, &semaphore_info, NULL, present_bit));
     return _gfxRefresh(gfxGetContext(), global);
   }
-
-  vkResetFences(gfx.ldev, 1, &gfx.fence[global->frame_x]);
   
   VkCommandBuffer cmd_b = gfx.cmd_buffer[global->frame_x];
   vkResetCommandBuffer(cmd_b, 0);
@@ -111,7 +97,7 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
     printf("!failed to begin recording command buffer!\n");
   }
 
-  /* move clearing to seperate function */
+  /* TODO move clearing to seperate function */
   VkClearValue clears[1];
   clears[0].color = (VkClearColorValue){ { 0.0f, 0.0f, 0.0f, 1.0f } };
 
@@ -134,6 +120,7 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
 
   const int src_size = global->tile_buffer_w * global->tile_buffer_h * sizeof(TileDrawInstance);
 
+  /* Profiles at 0.02ms */
   gfxBufferAppend(gfx.allocator, &global->tile_draw_instances, global->tile_buffer, src_size);
 
   cmd_b = gfx.cmd_buffer[global->frame_x];
@@ -193,9 +180,9 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
     .signalSemaphoreCount = 1,
     .pSignalSemaphores = signal_semaphores,
   };
-
+  
   VK_CHECK(vkQueueSubmit(gfx.queue, 1, &submit_info, gfx.fence[global->frame_x]));
-    
+   
   VkPresentInfoKHR present_info = {
     .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
     .waitSemaphoreCount = 1,
@@ -205,6 +192,7 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
     .pImageIndices = &global->swapchain_x,
     .pResults = NULL
   };
+ 
   result = vkQueuePresentKHR(gfx.queue, &present_info);
   switch(result){
   case VK_SUCCESS:
@@ -216,7 +204,7 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
   default:
     return 1;
   }
-  
+
   return 0;
 }
 int gfxPipelineInit(GfxContext* gfx){

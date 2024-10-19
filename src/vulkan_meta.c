@@ -422,7 +422,7 @@ int gfxPhysicalDeviceInit(GfxContext* gfx){
      printf("FATAL: driving missing indirect drawing\n");
      return 1;
   }
-
+  
   return 0;
 }
 
@@ -449,7 +449,7 @@ int gfxQueueIndex(GfxContext* gfx){
 int gfxLogicalDeviceInit(GfxContext* gfx){
 
   /* Requested Extensions */
-  const char *dev_ext_names[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, };
+  const char *dev_ext_names[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_shader_float16_int8", "VK_KHR_16bit_storage", "VK_EXT_descriptor_indexing"};
   const unsigned int request_ext_c = 1;
 
   /* Available Extensions */
@@ -486,17 +486,40 @@ int gfxLogicalDeviceInit(GfxContext* gfx){
   VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features = {
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT,
   };
+
+  VkPhysicalDevice16BitStorageFeatures float16_storage_features = {
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES,
+    .pNext = &descriptor_indexing_features
+};
+
+  VkPhysicalDeviceShaderFloat16Int8Features float16_int8_features = {
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES,
+    .pNext = &float16_storage_features,
+  };
   
   VkPhysicalDeviceFeatures2 dev_features2 = {
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-    .pNext = &descriptor_indexing_features,
+    .pNext = &float16_int8_features,
   };
+
   vkGetPhysicalDeviceFeatures2(gfx->pdev, &dev_features2 );
  
   if(!descriptor_indexing_features.descriptorBindingPartiallyBound)
     printf("FATAL: driver missing 'descriptor Binding Partially Bound'\n");
   if(!descriptor_indexing_features.runtimeDescriptorArray)
     printf("FATAL: driver missing 'runtime descriptor array'\n");
+  if(!float16_storage_features.storagePushConstant16)
+    printf("WARNING: driver missing 'storagePushConstant16'\n");
+  if(!float16_storage_features.storageInputOutput16)
+    printf("WARNING: driver missing 'storageInputOutput16'\n");
+  if(!float16_storage_features.uniformAndStorageBuffer16BitAccess)
+    printf("WARNING: driver missing 'uniformAndStorageBuffer16BitAccess'\n");
+  if(!float16_storage_features.storageBuffer16BitAccess)
+    printf("WARNING: driver missing 'storageBuffer16BitAccess'\n");
+  if(!float16_int8_features.shaderFloat16)
+    printf("WARNING: driver missing 'shaderFloat16'\n");
+  if(!float16_int8_features.shaderInt8)
+    printf("WARNING: driver missing 'shaderInt8'\n");
   
   VkDeviceCreateInfo dev_create_info = {
     .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -902,8 +925,8 @@ gfxSpvLoad(VkDevice l_dev, const char* filename, VkShaderModule* shader)
   
   FILE* file = fopen(filename, "rb");
   if(file == NULL) {
-      printf("%s not found!", filename);
-      return 1;
+    printf("%s not found!", filename);
+    return 1;
   }
   if(fseek(file, 0l, SEEK_END) != 0) {
     printf("failed to seek to end of file!");
