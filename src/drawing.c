@@ -3,107 +3,36 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include <time.h>
 
-#define TOP_LEFT_INDEX 0
-#define TOP_RIGHT_INDEX 1
-#define BOTTOM_LEFT_INDEX 2
-#define BOTTOM_RIGHT_INDEX 3
-
-int _gfxAddQuad(GfxContext gfx, GfxGlobal* global, vertex2 vertices[4]){
- 
-  int buffer_offset = global->vertices.used_size / sizeof(vertex2);
-  gfxBufferAppend(gfx.allocator, &global->vertices, vertices, 4 * sizeof(vertex2));
-  
-  uint32_t indices[6];
-  indices[0] = TOP_LEFT_INDEX + buffer_offset;
-  indices[1] = BOTTOM_LEFT_INDEX + buffer_offset;
-  indices[2] = TOP_RIGHT_INDEX + buffer_offset;
-  
-  indices[3] = TOP_RIGHT_INDEX + buffer_offset;
-  indices[4] = BOTTOM_LEFT_INDEX + buffer_offset;
-  indices[5] = BOTTOM_RIGHT_INDEX + buffer_offset;
-
-  GfxBuffer* dest_indices = gfxBufferNext
-    (gfx.allocator, &global->vertices);
-  gfxBufferAppend(gfx.allocator, dest_indices, indices, 6 * sizeof(uint32_t));
-
-  return 0;
+uint32_t pack16into32(uint16_t a, uint16_t b){
+  return(uint32_t)a << 16 | (uint32_t)b;
 }
 
-int _gfxDrawCharRaw(GfxContext gfx, GfxGlobal* global, uint32_t ch, uint32_t x, uint32_t y,
-		 uint32_t fg, uint32_t bg, uint32_t texture_i){
+int _gfxAddCh(GfxGlobal* global,
+	      uint16_t ch, uint16_t x, uint16_t y,
+	      uint16_t fg, uint16_t bg, uint16_t texture_index){
 
-  GfxTileset texture = global->textures[texture_i];
+  GfxTileset texture = global->textures[texture_index];
   if(texture.image.handle == NULL){
     return 1;
   }
-  
-  // ncurses space to screen space
-  vec2 stride;
-  stride.x = (2 * ASCII_TILE_SIZE) / (float)gfx.extent.width;
-  stride.y = (2 * ASCII_TILE_SIZE) / (float)gfx.extent.height;
 
-  vec2 uv_stride;
-  uv_stride.x = (float)texture.glyph_width /
-    (float)texture.width;
-  uv_stride.y = (float)texture.glyph_height /
-    (float)texture.height;
-
-  int width_in_tiles = texture.width / texture.glyph_width;
-  vec2 uv_index;
-  uv_index.x = (float)(ch % width_in_tiles) * uv_stride.x;
-  uv_index.x += (float)texture_i;
-  uv_index.y = (float)(ch / width_in_tiles) * uv_stride.y;
-
-  vec2 cursor;
-  cursor.x = -1 + (stride.x * (float)x);
-  cursor.y = -1 + (stride.y * (float)y); 
-  
-  vertex2 vertices[4];
-  vertices[TOP_LEFT_INDEX] = (vertex2){
-    .pos = cursor,
-    .uv = uv_index,
-    .fgIndex_bgIndex = (uint32_t)fg << 16 | (uint32_t)bg
-  };
-
-  vertices[BOTTOM_LEFT_INDEX] = vertices[TOP_LEFT_INDEX];
-  vertices[BOTTOM_LEFT_INDEX].pos.y += stride.y;
-  vertices[BOTTOM_LEFT_INDEX].uv.y += uv_stride.y;
-    
-  vertices[TOP_RIGHT_INDEX] = vertices[TOP_LEFT_INDEX];
-  vertices[TOP_RIGHT_INDEX].pos.x += stride.x;
-  vertices[TOP_RIGHT_INDEX].uv.x += uv_stride.x;
-  
-  vertices[BOTTOM_RIGHT_INDEX] = vertices[TOP_RIGHT_INDEX];
-  vertices[BOTTOM_RIGHT_INDEX].pos.y += stride.y;
-  vertices[BOTTOM_RIGHT_INDEX].uv.y += uv_stride.y;
-
-  _gfxAddQuad(gfx, global, vertices);
-  return 0;
-}
-
-int compareTiles(GfxTile one, GfxTile two){
-  return(one.glyph_code == two.glyph_code &&
-	 one.fg_index == two.fg_index &&
-	 one.bg_index == two.bg_index &&
-	 one.texture_index == two.texture_index);
-}
-
-int _gfxAddCh(GfxGlobal* global, uint16_t x, uint16_t y, uint16_t glyph_code, uint16_t fg_index, uint16_t bg_index, uint16_t texture_index){
   if(x >= global->tile_buffer_w || x < 0) return 1;
   if(y >= global->tile_buffer_h || y < 0) return 1;
-
-  int tile_index = (y * global->tile_buffer_w) + x;
-  GfxTile dst = global->tile_buffer[tile_index];
-  GfxTile src = {glyph_code, fg_index, bg_index, texture_index};
-  if(compareTiles(src, dst) == 1){
-    //src.dirty_flag = 1;
-  }
-  global->tile_buffer[tile_index] = src;
+  
+  uint32_t width_in_tiles = texture.width / ASCII_TILE_SIZE;
+  
+  TileDrawInstance src = {
+    .pos = pack16into32(x, y),
+    .textureEncoding = pack16into32(ch % width_in_tiles,
+				    ch / width_in_tiles),
+    .textureIndex = texture_index,
+    .fgColor_bgColor = pack16into32(fg, bg)
+  };
+  global->tile_buffer[(y * global->tile_buffer_w) + x] = src;
+  
   return 0;
 }
-
 
 int _gfxDrawString(GfxContext gfx, GfxGlobal* global, const char* str, uint32_t x, uint32_t y, uint32_t fg, uint32_t bg){
 
@@ -117,8 +46,7 @@ int _gfxDrawString(GfxContext gfx, GfxGlobal* global, const char* str, uint32_t 
       x = start_x;
     }else{
       int uv = getUnicodeUV(global->textures[ASCII_TEXTURE_INDEX], str[i]);
-      int err = _gfxAddCh(global, x++,
-			  y, uv, fg, bg, ASCII_TEXTURE_INDEX);
+      int err = _gfxAddCh(global, uv, x++, y, fg, bg, ASCII_TEXTURE_INDEX);
       if(err != 0){
 	return 1;
       }
@@ -135,6 +63,14 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
 		  VK_TRUE, UINT32_MAX);
   
   VkSemaphore* present_bit = &gfx.present_bit[global->frame_x];
+
+  static double delta_time = 0;
+  char fps_str[1024];
+  snprintf ( fps_str, 1024, "CPU wait time: %.1fms", delta_time * 1000);
+  _gfxDrawString(gfx, global, fps_str, 0, 0, 15, 0);
+
+  delta_time = glfwGetTime();
+
   VkResult result = VK_TIMEOUT;
   while(result == VK_TIMEOUT){
     /* Coarse recordings say this section creates a CPU busy cycle
@@ -146,6 +82,8 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
 			  &global->swapchain_x);
   }
 
+  delta_time = glfwGetTime() - delta_time;
+  
   /* swapchain recreation */
   if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
     gfxRecreateSwapchain();
@@ -194,20 +132,10 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
 			  gfx.pipeline_layout, 0, 1,
 			  &gfx.texture_descriptors, 0, NULL);
 
-  /* Currently redraws the entire scene every frame, change to update
-     a back buffer if changes are made */
-  for(uint y = 0; y < global->tile_buffer_h; y++){
-    for(uint x = 0; x < global->tile_buffer_w; x++){
-      GfxTile src =
-	global->tile_buffer[(y * global->tile_buffer_w) +x ];
-      _gfxDrawCharRaw(gfx, global,
-		      src.glyph_code,
-		      x, y,
-		      src.fg_index, src.bg_index,
-		      src.texture_index);
-    }
-  }
-  
+  const int src_size = global->tile_buffer_w * global->tile_buffer_h * sizeof(TileDrawInstance);
+
+  gfxBufferAppend(gfx.allocator, &global->tile_draw_instances, global->tile_buffer, src_size);
+
   cmd_b = gfx.cmd_buffer[global->frame_x];
   
   VkViewport viewport = {
@@ -230,26 +158,18 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
   vkCmdBindPipeline(cmd_b, VK_PIPELINE_BIND_POINT_GRAPHICS,
 	            gfx.pipeline);
 
-  VmaAllocationInfo g_vertices_info;
-  vmaGetAllocationInfo(gfx.allocator, global->vertices.allocation, &g_vertices_info);
-  GfxBuffer* g_indices = (GfxBuffer*)g_vertices_info.pUserData;
-
   VkDeviceSize offsets[] = {0};
-  vkCmdBindVertexBuffers(cmd_b,
-			 0, 1, &global->vertices.handle, offsets);
-  vkCmdBindIndexBuffer(cmd_b,
-		       g_indices->handle,
-		       0, VK_INDEX_TYPE_UINT32);
+  vkCmdBindVertexBuffers(cmd_b, 0, 1,
+			 &global->tile_draw_instances.handle, offsets);
 
   GfxPushConstant constants = {
-    .screen_size_px = (vec2){ 0.0f, 0.0f },
+    .screen_size_px = (vec2){ gfx.extent.width, gfx.extent.height },
   };
   vkCmdPushConstants(cmd_b, gfx.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GfxPushConstant), &constants);
   
-  vkCmdDrawIndexed(cmd_b, g_indices->used_size / sizeof(uint32_t),
-		   1, 0, 0, 0);
-  global->vertices.used_size = 0;
-  g_indices->used_size = 0;
+  vkCmdDraw(cmd_b, 6,
+	    global->tile_draw_instances.used_size / sizeof(TileDrawInstance), 0, 0);
+  global->tile_draw_instances.used_size = 0;
 
   // draw end
   vkCmdEndRenderPass(cmd_b);
@@ -296,6 +216,228 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
   default:
     return 1;
   }
+  
+  return 0;
+}
+int gfxPipelineInit(GfxContext* gfx){
+
+  VkPushConstantRange push_constant = {
+    .offset = 0,
+    .size = sizeof(GfxPushConstant),
+    .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+  };
+  
+  VkPipelineLayoutCreateInfo pipeline_layout_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    .setLayoutCount = 1,
+    .pSetLayouts = &gfx->texture_descriptors_layout,
+    .pPushConstantRanges = &push_constant,
+    .pushConstantRangeCount = 1,
+  };
+
+  if(vkCreatePipelineLayout(gfx->ldev, &pipeline_layout_info, NULL, &gfx->pipeline_layout) != VK_SUCCESS)
+    {
+      printf("!failed to create pipeline layout!\n");
+      return 1;
+    }
+
+  VkShaderModule vert_shader;
+  gfxSpvLoad(gfx->ldev, "shaders/vert.spv", &vert_shader);
+  VkShaderModule frag_shader;
+  gfxSpvLoad(gfx->ldev, "shaders/frag.spv", &frag_shader);
+  
+  VkPipelineShaderStageCreateInfo vert_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .stage = VK_SHADER_STAGE_VERTEX_BIT,
+    .module = vert_shader,
+    .pName = "main",
+    .pSpecializationInfo = NULL,
+  };
+
+  VkPipelineShaderStageCreateInfo frag_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+    .module = frag_shader,
+    .pName = "main",
+    .pSpecializationInfo = NULL,
+  };
+
+  VkPipelineShaderStageCreateInfo shader_stages[2] =
+    {vert_info, frag_info};
+
+  VkPipelineDepthStencilStateCreateInfo depth_stencil = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+    .depthTestEnable = VK_TRUE,
+    .depthWriteEnable = VK_TRUE,
+    .depthCompareOp = VK_COMPARE_OP_LESS,
+    .depthBoundsTestEnable = VK_FALSE,
+    .minDepthBounds = 0.0f,
+    .maxDepthBounds = 1.0f,
+    .stencilTestEnable = VK_FALSE,
+    .front = { 0 },
+    .back = { 0 },
+  }; // Model Specific
+  
+  VkDynamicState dynamic_states[2] =
+    { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+  
+  VkPipelineDynamicStateCreateInfo dynamic_state_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+    .dynamicStateCount = sizeof(dynamic_states) / sizeof(dynamic_states[0]),
+    .pDynamicStates = dynamic_states
+  };
+
+  // Vertex Buffer Creation
+  int attribute_count = 4;
+  VkVertexInputAttributeDescription attribute_descriptions[attribute_count];
+
+  /* some instance attributes are two UINT16 packed
+   * into a 32bit number */
+  // Position PACKED
+  attribute_descriptions[0].binding = 0;
+  attribute_descriptions[0].location = 0;
+  attribute_descriptions[0].format = VK_FORMAT_R32_UINT;
+  attribute_descriptions[0].offset =
+    offsetof(TileDrawInstance, pos);
+
+  // Glyph Encoding ( x, y ) PACKED
+  attribute_descriptions[1].binding = 0;
+  attribute_descriptions[1].location = 1;
+  attribute_descriptions[1].format = VK_FORMAT_R32_UINT;
+  attribute_descriptions[1].offset =
+    offsetof(TileDrawInstance, textureEncoding);
+
+  // Texture Index
+  attribute_descriptions[2].binding = 0;
+  attribute_descriptions[2].location = 2;
+  attribute_descriptions[2].format = VK_FORMAT_R32_UINT;
+  attribute_descriptions[2].offset =
+    offsetof(TileDrawInstance, textureIndex);
+
+  // Colors, two 16 bit numbers packed into a 32bit
+  attribute_descriptions[3].binding = 0;
+  attribute_descriptions[3].location = 3;
+  attribute_descriptions[3].format = VK_FORMAT_R32_UINT;
+  attribute_descriptions[3].offset =
+    offsetof(TileDrawInstance, fgColor_bgColor);
+
+  VkVertexInputBindingDescription binding_description = {
+    .binding = 0,
+    .stride = sizeof(TileDrawInstance),
+    .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
+  };
+  
+  VkPipelineVertexInputStateCreateInfo vertex_input_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+    .vertexBindingDescriptionCount = 1,
+    .vertexAttributeDescriptionCount = attribute_count,
+    .pVertexBindingDescriptions = &binding_description,
+    .pVertexAttributeDescriptions = attribute_descriptions,
+  };
+
+  VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+    .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+    .primitiveRestartEnable = VK_FALSE,
+  };
+
+  VkViewport viewport = {
+    .x = 0.0f,
+    .y = 0.0f,
+    .width = gfx->extent.width,
+    .height = gfx->extent.height,
+    .minDepth = 0.0f,
+    .maxDepth = 1.0f,
+  };
+
+  VkRect2D scissor  = {
+    .offset = { 0, 0},
+    .extent = gfx->extent,
+  };
+
+  VkPipelineViewportStateCreateInfo viewport_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+    .viewportCount = 1,
+    .pViewports = &viewport,
+    .scissorCount = 1,
+    .pScissors = &scissor,
+  };
+
+  VkPipelineRasterizationStateCreateInfo rasterization_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+    .depthClampEnable = VK_FALSE,
+    .rasterizerDiscardEnable = VK_FALSE,
+    .polygonMode = VK_POLYGON_MODE_FILL,
+    .lineWidth = 1.0f,
+    .cullMode = VK_CULL_MODE_BACK_BIT,
+    .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+    .depthBiasEnable = VK_FALSE,
+    .depthBiasConstantFactor = 0.0f,
+    .depthBiasClamp = 0.0f,
+    .depthBiasSlopeFactor = 0.0f,
+  };
+
+  VkPipelineMultisampleStateCreateInfo multisample_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+    .sampleShadingEnable = VK_FALSE,
+    .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+    .minSampleShading = 1.0f,
+    .pSampleMask = NULL,
+    .alphaToCoverageEnable = VK_FALSE,
+    .alphaToOneEnable = VK_FALSE,
+  };
+
+  VkPipelineColorBlendAttachmentState color_blend_attachment = {
+    .colorWriteMask =
+    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+    | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+    .blendEnable = VK_TRUE,
+    .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+    .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    .colorBlendOp = VK_BLEND_OP_ADD, // Optional
+    .srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA, // Optional
+    .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, // Optional
+    .alphaBlendOp = VK_BLEND_OP_ADD, // Optional
+  };
+
+  VkPipelineColorBlendStateCreateInfo color_blend_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+    .logicOpEnable = VK_FALSE,
+    .logicOp = VK_LOGIC_OP_COPY,
+    .attachmentCount = 1,
+    .pAttachments = &color_blend_attachment,
+    .blendConstants[0] = 0.0f,
+    .blendConstants[1] = 0.0f,
+    .blendConstants[2] = 0.0f,
+    .blendConstants[3] = 0.0f,
+  };
+
+  VkGraphicsPipelineCreateInfo pipeline_info = {
+    .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+    .stageCount = 2,
+    .pStages = shader_stages,
+    .pVertexInputState = &vertex_input_info,
+    .pInputAssemblyState = &input_assembly_info,
+    .pViewportState = &viewport_info,
+    .pRasterizationState = &rasterization_info,
+    .pMultisampleState = &multisample_info,
+    .pDepthStencilState = &depth_stencil,
+    .pColorBlendState = &color_blend_info,
+    .pDynamicState = &dynamic_state_info,
+    .layout = gfx->pipeline_layout,
+    .renderPass = gfx->renderpass,
+    .subpass = 0,
+    .basePipelineHandle = VK_NULL_HANDLE,
+    .basePipelineIndex = -1,
+  };
+
+  if(vkCreateGraphicsPipelines
+     (gfx->ldev, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &gfx->pipeline) != VK_SUCCESS) {
+    printf("!failed to create graphics pipeline!\n");
+  }
+    
+  vkDestroyShaderModule(gfx->ldev, frag_shader, NULL);
+  vkDestroyShaderModule(gfx->ldev, vert_shader, NULL);
   
   return 0;
 }

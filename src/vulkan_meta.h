@@ -67,28 +67,22 @@ typedef struct{
 }GfxPushConstant;
 
 typedef struct{
-  uint16_t glyph_code;
-  uint16_t fg_index;
-  uint16_t bg_index;
-  uint16_t texture_index;
-}GfxTile;
+  uint32_t pos;
+  uint32_t textureEncoding;
+  uint32_t textureIndex;
+  uint32_t fgColor_bgColor;
+} TileDrawInstance;
 
 typedef struct{
     uint32_t swapchain_x;
     uint32_t frame_x;
     GfxTileset* textures;
-    GfxBuffer vertices;
 
-    GfxTile* tile_buffer;
+    TileDrawInstance* tile_buffer;
     uint32_t tile_buffer_w;
     uint32_t tile_buffer_h;
+    GfxBuffer tile_draw_instances;
 }GfxGlobal;
-
-typedef struct{
-  vec2 pos;
-  vec2 uv;
-  uint32_t fgIndex_bgIndex;
-} vertex2;
 
 GfxContext* gfxSetContext(void);
 GfxContext  gfxGetContext(void);
@@ -130,7 +124,7 @@ int gfxDescriptorsPool(GfxContext*);
 int gfxSyncInit(GfxContext*);
 int gfxCmdBuffersInit(GfxContext*);
 int gfxTextureDescriptorsInit(GfxContext*);
-int gfxPipelineInit(GfxContext*);
+int gfxSpvLoad(VkDevice, const char*, VkShaderModule*);
 
 int _gfxSwapchainDestroy(GfxContext);
 int _gfxConstFree(GfxContext);

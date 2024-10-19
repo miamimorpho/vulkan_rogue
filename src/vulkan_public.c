@@ -23,7 +23,7 @@ int gfxRefresh(void){
 int gfxAddCh(uint16_t x, uint16_t y, uint16_t glyph_code, uint16_t fg_index, uint16_t bg_index, uint16_t texture_index){
 
   return _gfxAddCh(&s_global,
-		   x, y, glyph_code, fg_index, bg_index,
+		   glyph_code, x, y, fg_index, bg_index,
 		   texture_index);
 }
 
@@ -67,24 +67,17 @@ int gfxScreenInit(void){
   
   _inputInit(gfx);
   _gfxTexturesInit(&s_global.textures);
-  gfxVertBufferCreate(gfx, 10000,
-		      &s_global.vertices);
   
   s_global.tile_buffer_w = ASCII_SCREEN_WIDTH;
   s_global.tile_buffer_h = ASCII_SCREEN_HEIGHT;
   int tile_buffer_size = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
   s_global.tile_buffer =
-    malloc(tile_buffer_size * sizeof(GfxTile));
-
-  GfxTile null_tile = {
-    .glyph_code = 0,
-    .fg_index = 0,
-    .bg_index = 0,
-    .texture_index = 0,
-  };
-  for(int i = 0; i < tile_buffer_size; i++){
-    s_global.tile_buffer[i] = null_tile;
-  }
+    malloc(tile_buffer_size * sizeof(TileDrawInstance));
+  
+  gfxBufferCreate(gfx.allocator,
+		  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		  tile_buffer_size * sizeof(TileDrawInstance), &s_global.tile_draw_instances);
+  
   return 0;
 }
 
@@ -98,7 +91,7 @@ int gfxScreenClose(void){
   }
 
   // free asset data
-  gfxBufferDestroy(gfx.allocator, &s_global.vertices);
+  gfxBufferDestroy(gfx.allocator, &s_global.tile_draw_instances);
   for(int i = 0; i < MAX_SAMPLERS; i++){
     if(s_global.textures[i].image.handle != VK_NULL_HANDLE){
       gfxImageDestroy(gfx.allocator, s_global.textures[i].image);
