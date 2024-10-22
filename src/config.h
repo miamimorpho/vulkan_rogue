@@ -8,7 +8,7 @@
 #define ASCII_SCREEN_WIDTH 32
 #define ASCII_SCREEN_HEIGHT 24
 #define ASCII_TILE_SIZE 8
-#define ASCII_SCALE 3.0f
+#define ASCII_SCALE 2.0f
 
 /* Renderer Options */
 /* Tested on ThinkpadX230 */
@@ -17,4 +17,6 @@
 
 /* Build Options */
 #define DEBUG_BUFFER 0
-#define DEBUG_VALIDATION 0
+#define DEBUG_VALIDATION 1
+
+char* configReadFile(const char*);

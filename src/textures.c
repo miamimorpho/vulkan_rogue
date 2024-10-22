@@ -151,7 +151,7 @@ gfxImageToGpu(VmaAllocator allocator, unsigned char* pixels,
   return 0;
 }
 
-int pngFileLoad(const char* filename, GfxTileset* img, uint8_t** pixels, size_t* size){
+int pngFileLoad(const char* filename, GfxTileset* tileset, uint8_t** pixels, size_t* size){
 
   int x, y, n;
   stbi_info(filename, &x, &y, &n);
@@ -161,16 +161,16 @@ int pngFileLoad(const char* filename, GfxTileset* img, uint8_t** pixels, size_t*
     return 1;
   }
   *size = x * y * n;
-  img->width = (uint32_t)x;
-  img->height = (uint32_t)y;
-  img->glyph_width = ASCII_TILE_SIZE;
-  img->glyph_height = ASCII_TILE_SIZE;
-  img->glyph_c = ( x * y ) / ( ASCII_TILE_SIZE * ASCII_TILE_SIZE) ;
-  img->channels = n;
+  tileset->image_w = (uint32_t)x;
+  tileset->image_h = (uint32_t)y;
+  tileset->glyph_w = ASCII_TILE_SIZE;
+  tileset->glyph_h = ASCII_TILE_SIZE;
+  tileset->glyph_c = ( x * y ) / ( ASCII_TILE_SIZE * ASCII_TILE_SIZE) ;
+  tileset->channels = n;
   
-  img->encoding = malloc(img->glyph_c * sizeof(uint32_t));
-  for(uint32_t i = 0; i < img->glyph_c; i++){
-    img->encoding[i] = i;
+  tileset->encoding = malloc(tileset->glyph_c * sizeof(uint32_t));
+  for(uint32_t i = 0; i < tileset->glyph_c; i++){
+    tileset->encoding[i] = i;
   }
   
   return 0;
@@ -195,6 +195,8 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
   char y_s[W_LEN];
   char x_offset_s[W_LEN];
   char y_offset_s[W_LEN];
+
+  int y_offset;
   
   FILE *fp = fopen(filename, "r");
   if(fp == NULL) {
@@ -219,8 +221,9 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
       sscanf(line, "%*s %s %s %s %s",
 	     x_s, y_s, x_offset_s, y_offset_s);
 
-      font->glyph_width = atoi(x_s);
-      font->glyph_height = atoi(y_s);
+      font->glyph_w = atoi(x_s);
+      font->glyph_h = atoi(y_s);
+      y_offset = atoi(y_offset_s);
    
       supported_c += 1;
       continue;
@@ -244,9 +247,9 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
   
   // allocate pixel data to Z order array
   font->channels = 1;
-  font->width = font->glyph_width;
-  font->height = font->glyph_height * font->glyph_c;
-  *size = font->width * font->height;
+  font->image_w = font->glyph_w;
+  font->image_h = font->glyph_h * font->glyph_c;
+  *size = font->image_w * font->image_h;
   *ptr_pixels = malloc(*size);
   memset(*ptr_pixels, 0, *size);
 
@@ -255,9 +258,10 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
   int glyph_i = 0; // assuming C99 uses ASCII 437 
   int glyph_y = 0;
 
-  int bbx = 0;
-  int bby = 0;
+  int bbx_size = 0;
+  int bby_size = 0;
   int bbx_offset = 0;
+  int bby_offset = 0;
  
   /* BYTE LOADING START */
   while(fgets(line, sizeof(line), fp) != NULL) {
@@ -276,7 +280,7 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
     if(in_hex > 0){
       int glyph_hex_width = strlen(line) -1;
 
-      for(unsigned int i = 0; i < font->glyph_width; i++) {
+      for(unsigned int i = 0; i < font->glyph_w; i++) {
 	int hex_index = i / 4;
 	if(hex_index >= glyph_hex_width) break;
 	uint8_t hex_value = hexToInt(line[hex_index]);
@@ -286,8 +290,11 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
 	if((hex_value >> bit_index) & 0x1){
 	  pixel = 255;
 	}
-	int dst_y = (glyph_i * font->glyph_height) + glyph_y + (8 - bby);
-	int dst_xy = (dst_y * font->glyph_width) + i + (8 - bbx) - bbx_offset;
+	int dst_y = (glyph_i * font->glyph_h) + y_offset; // file
+	dst_y += glyph_y + (8 - bby_size - bby_offset); // local
+	
+	int dst_xy = (dst_y * font->glyph_w) + i
+	  + (8 - bbx_size) - bbx_offset;
 
 	(*ptr_pixels)[dst_xy] = pixel;
       }
@@ -311,10 +318,11 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
     }
 
     if(strcmp(prefix, "BBX") == 0){
-      sscanf(line, "%*s %s %s %s", x_s, y_s, x_offset_s);
-      bbx = atoi(x_s);
-      bby = atoi(y_s);
+      sscanf(line, "%*s %s %s %s %s", x_s, y_s, x_offset_s, y_offset_s);
+      bbx_size = atoi(x_s);
+      bby_size = atoi(y_s);
       bbx_offset = atoi(x_offset_s);
+      bby_offset = atoi(y_offset_s);
     }
     
     if(strcmp(prefix, "BITMAP") == 0){
@@ -369,7 +377,7 @@ int _gfxTextureLoad(GfxContext gfx, const char* filename, GfxTileset* textures){
   /* send image to GPU */
   if(gfxImageToGpu(gfx.allocator,
 		   pixels,
-		   texture->width, texture->height,
+		   texture->image_w, texture->image_h,
 		   texture->channels, &texture->image) < 0) return 1;
   gfxTexturesDescriptorsUpdate(gfx, textures, texture_index +1);
   /* stbi_free() is just a wrapper for free() */
@@ -381,10 +389,10 @@ int _gfxTextureLoad(GfxContext gfx, const char* filename, GfxTileset* textures){
 int _gfxTexturesInit(GfxTileset** textures){
   *textures = (GfxTileset*)malloc(MAX_SAMPLERS * sizeof(GfxTileset));
   for(unsigned int i = 0; i < MAX_SAMPLERS; i++){
-    (*textures)[i].glyph_height = 0;
-    (*textures)[i].glyph_width = 0;
-    (*textures)[i].width = 0;
-    (*textures)[i].height = 0;
+    (*textures)[i].glyph_h = 0;
+    (*textures)[i].glyph_w = 0;
+    (*textures)[i].image_w = 0;
+    (*textures)[i].image_h = 0;
     (*textures)[i].image.handle = VK_NULL_HANDLE;
     (*textures)[i].image.view = VK_NULL_HANDLE;
   }

@@ -20,7 +20,7 @@ int _gfxAddCh(GfxGlobal* global,
   if(x >= global->tile_buffer_w || x < 0) return 1;
   if(y >= global->tile_buffer_h || y < 0) return 1;
   
-  uint32_t width_in_tiles = texture.width / ASCII_TILE_SIZE;
+  uint32_t width_in_tiles = texture.image_w / texture.glyph_w;
   
   TileDrawInstance src = {
     .pos = pack16into32(x, y),
@@ -205,6 +205,8 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
     return 1;
   }
 
+  global->frame_x = (global->frame_x + 1) % gfx.frame_c;
+  
   return 0;
 }
 int gfxPipelineInit(GfxContext* gfx){

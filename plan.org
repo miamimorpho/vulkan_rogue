@@ -1,25 +1,31 @@
 * TODO
 
-event listeners;
-select -> dump ascii;
-multi tile entity;
-scroll up/down;
-conglomerate paint UI;
-quick ui design spec
-clever ui - print letter to screen + clicking buttons
+message buffer -> ring buffer
+changing view of tileset < - >
+changing tileset < - >
+
+handling non8*8 tiles, nudging bdf fonts
+fix font rendering -> font mode rendering
+
+FOV/Line of Sight
 NPCs / enemies basic basic
 png->bdf to redistribute some assets
 
-* IDEAS
+* vulkan style
+| Functions | gfxFunctionName |
+| Types     | GfxType         |
+| Variables | variable_name   |
+make textures_index, glyph_code, posx, posy, fgColor, bgColor
+a coherent order
 
-** CPU budget
+* CPU budget
 60fps input/resize polling target fps - 16ms frame time
 a 14ms wait on VkAcquireImageKHR gives 12.5% cpu usage:
     (1 - (14 / 16)) = 0.125
 
 -02 no validation layers 1.5% 
 
-** API
+* API
 model API after ANSI escape codes + Ncurses
 ANSI     ESC[2J      erase entire screen
 curses   refresh()   Tell the curses system to dump the contents on the screen. It checks the window and updates only the portion which has been changed.
@@ -27,16 +33,33 @@ mvwaddch()	Move the cursor to a given position and then print as by addch() but 
 Current implementation is addch(x, y, fg, bg, texture_index, ch);
 probably better this way;
 
-** Art
+* Procederal
+Static worldmap, procederal local tiles
+
+writing driven story
+william burroughs cut up tecnique
+
+* Art
+
+| Machine        | Display in Tiles   | Tile Size |
+| Gameboy Screen | 20*18              | 8*8       |
+| MSX            | 32*24              | 8*8       |
+
+Roguelike overworld map, use ascii chars to draw architecture
+Ex
+
+** ideas
 timur novikov style landscapes for long distances, some towns
 background of horizon can change for weather/time/biome
 foreground is game area, could be follow cam or static cam.k
 mayan glyphs in textmode appear as characters.
 
-** Turn based
+
+
+* Turn based
 https://journal.stuffwithstuff.com/2014/07/15/a-turn-based-game-loop/
 
-** world
+* world
 entities as rooms, multi tile entities
 fixed interesting world size
 player can walk into the wilderness/void like fallout 4, random chance of enemies spawning near the player
@@ -44,11 +67,11 @@ Multiple Z Levels
    stairs ^
 can see enemies on multiple Z levels, X@COM
 
-** woodcutting, firestarting
+* woodcutting, firestarting
 trees
 lighters
 usable objects
 
-** combat
+* combat
 not annoying, tedious
 pokemon mysery dungeon

@@ -25,19 +25,21 @@ int main(void){
   player->inventory[0].bg = 0;
   player->inventory[0].uv = 1;
   player->inventory[0].collide = 0;
-     
-  while(getExitState() == 0){
 
+  while(getExitState() == 0){
+    
     /* October 19 2024 - 0.25ms profile */
+    /* CPU Usage of ~2% */
+    /* 2% of 16ms is 0.32ms */
     worldDraw(world, *player);
-      
+
     GameAction user_action = userInput(0);
     doAction(&world, user_action);
-        
+    
+    gfxDrawString("Press '?' for help", 0, ASCII_SCREEN_HEIGHT-2, 15, 0);
     gfxRefresh();
   }
   
   gfxScreenClose();
-  printf("success\n");
   return 0;
 }
