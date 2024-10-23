@@ -115,7 +115,8 @@ GameAction guiPickColor(void)
 	       i / PALETTE_SIZE,
 	       DRAW_TEXTURE_INDEX);
     }
-    gfxRefresh();
+    gfxRenderFrame();
+    gfxPresentFrame();
   } // End of UI Loop
   return paintEntityAction(-1,fgIndex, bgIndex);
 }
@@ -130,33 +131,36 @@ GameAction guiPickTile(void)
   if(width_in_tiles == 1){
     width_in_tiles = ASCII_SCREEN_WIDTH;
   }
+
+  int viewport_size = 16;
+  for(int y = 0; y < viewport_size; y++){
+    for(int x = 0; x < viewport_size; x++){
+      int i = y * width_in_tiles + x;
+      uint32_t bg = 0;
+      if((x % 2) - (y % 2) == 0) bg = 1;
+      gfxAddCh(x, y, i, DRAW_TEXTURE_INDEX,
+	       15, bg);
+    }// end of x loop
+  }// end of y loop
   
   uint32_t target_uv = 0;
   inputState_t input;
+
+  // GUI Render Loop
   while(getInputState(&input) == 0){
 
     target_uv = (input.mouse_y * width_in_tiles) + input.mouse_x;
- 
-    for(uint32_t i = 0; i < tileset.glyph_c; i++){
-      int x = i % width_in_tiles;
-      int y = i / width_in_tiles;
-      
-      uint32_t bg = 0;
-      if((x % 2) - (y % 2) == 0) bg = 1;
-      
-      gfxAddCh(x, y, i,
-	       15,
-	       bg,
-	       DRAW_TEXTURE_INDEX );
-    }
+
+    if(input.mouse_x > 0 && input.mouse_x < viewport_size &&
+       input.mouse_y > 0 && input.mouse_y < viewport_size){
+      gfxAddCh(input.mouse_x, input.mouse_y,
+	       target_uv, DRAW_TEXTURE_INDEX,
+	       11, 0);
+    } 
+    gfxRenderFrame();
+    gfxPresentFrame();
     
-    gfxAddCh(input.mouse_x, input.mouse_y, target_uv,
-	     11, 0,
-	     DRAW_TEXTURE_INDEX);
-    
-    gfxRefresh();
-    
-  } // end of UI loop
+  } // end of GUI loop
   return paintEntityAction(target_uv, -1, -1);
 }
 
@@ -166,8 +170,9 @@ int userInputHelpScreen(void)
 
   inputState_t input;
   while(getInputState(&input) == 0){
-    gfxDrawString(help_screen_ascii, 0, 0, 15, 0);
-    gfxRefresh();
+    gfxAddString(0, 0, help_screen_ascii, 15, 0);
+    gfxRenderFrame();
+    gfxPresentFrame();
   }
   free(help_screen_ascii);
   return 0;

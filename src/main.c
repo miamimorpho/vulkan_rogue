@@ -36,8 +36,11 @@ int main(void){
     GameAction user_action = userInput(0);
     doAction(&world, user_action);
     
-    gfxDrawString("Press '?' for help", 0, ASCII_SCREEN_HEIGHT-2, 15, 0);
-    gfxRefresh();
+    gfxAddString(0, ASCII_SCREEN_HEIGHT-2,
+    		  "Press ? for help",
+    		  15, 0);
+    gfxRenderFrame();
+    gfxPresentFrame();
   }
   
   gfxScreenClose();

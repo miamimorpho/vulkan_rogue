@@ -3,14 +3,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 uint32_t pack16into32(uint16_t a, uint16_t b){
   return(uint32_t)a << 16 | (uint32_t)b;
 }
 
-int _gfxAddCh(GfxGlobal* global,
-	      uint16_t ch, uint16_t x, uint16_t y,
-	      uint16_t fg, uint16_t bg, uint16_t texture_index){
+int _gfxAddCh(GfxGlobal* global, uint16_t x, uint16_t y,
+	      uint16_t encoding, uint16_t texture_index,
+	      uint16_t fg, uint16_t bg){
 
   GfxTileset texture = global->textures[texture_index];
   if(texture.image.handle == NULL){
@@ -19,22 +20,22 @@ int _gfxAddCh(GfxGlobal* global,
 
   if(x >= global->tile_buffer_w || x < 0) return 1;
   if(y >= global->tile_buffer_h || y < 0) return 1;
-  
-  uint32_t width_in_tiles = texture.image_w / texture.glyph_w;
-  
+    
   TileDrawInstance src = {
     .pos = pack16into32(x, y),
-    .textureEncoding = pack16into32(ch % width_in_tiles,
-				    ch / width_in_tiles),
-    .textureIndex = texture_index,
-    .fgColor_bgColor = pack16into32(fg, bg)
+    .tex_encoding = encoding,
+    .tex_index_and_width = pack16into32(texture_index, texture.image_w / 8),
+    .color_indices = pack16into32(fg, bg)
   };
   global->tile_buffer[(y * global->tile_buffer_w) + x] = src;
   
   return 0;
 }
 
-int _gfxDrawString(GfxContext gfx, GfxGlobal* global, const char* str, uint32_t x, uint32_t y, uint32_t fg, uint32_t bg){
+int _gfxAddString(GfxContext gfx, GfxGlobal* global,
+		   uint16_t x, uint16_t y,
+		   const char* str,
+		   uint16_t fg, uint16_t bg){
 
   //convert to unicode
   
@@ -46,7 +47,9 @@ int _gfxDrawString(GfxContext gfx, GfxGlobal* global, const char* str, uint32_t 
       x = start_x;
     }else{
       int uv = getUnicodeUV(global->textures[ASCII_TEXTURE_INDEX], str[i]);
-      int err = _gfxAddCh(global, uv, x++, y, fg, bg, ASCII_TEXTURE_INDEX);
+      int err = _gfxAddCh(global, x++, y,
+			  uv, ASCII_TEXTURE_INDEX,
+			  fg, bg);
       if(err != 0){
 	return 1;
       }
@@ -56,31 +59,34 @@ int _gfxDrawString(GfxContext gfx, GfxGlobal* global, const char* str, uint32_t 
   return 0;
 }
 
-int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
-  
-  vkWaitForFences(gfx.ldev, 1,
-		  &gfx.fence[global->frame_x],
-		  VK_TRUE, UINT32_MAX);
+int _gfxRenderFrame(GfxContext gfx, GfxGlobal* global){
+
+  // waits on VkQueueSubmit to be done
+  VkResult fence_result;
+  fence_result = vkWaitForFences(gfx.ldev, 1,
+		    &gfx.fence[global->frame_x],
+		    VK_TRUE, UINT32_MAX);
+  if(fence_result == VK_TIMEOUT){
+    printf("FATAL: VkWaitForFences timed out\n");
+    abort();
+  }
   vkResetFences(gfx.ldev, 1, &gfx.fence[global->frame_x]);
   
-  VkSemaphore* present_bit = &gfx.present_bit[global->frame_x];  
+  VkSemaphore* image_available = &gfx.image_available[global->frame_x];  
   VkResult result = VK_TIMEOUT;
-  while(result == VK_TIMEOUT){
-    result = vkAcquireNextImageKHR(gfx.ldev, gfx.swapchain, UINT16_MAX,
-			  *present_bit,
-			  VK_NULL_HANDLE,
-			  &global->swapchain_x);
-  }
-
-  /* swapchain recreation */
+  result = vkAcquireNextImageKHR(gfx.ldev, gfx.swapchain, UINT32_MAX,
+				   *image_available,
+				   VK_NULL_HANDLE,
+				   &global->swapchain_x);
   if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
     gfxRecreateSwapchain();
-    vkDestroySemaphore(gfx.ldev, *present_bit, NULL);
+    vkDestroySemaphore(gfx.ldev, *image_available, NULL);
     VkSemaphoreCreateInfo semaphore_info = {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
-    VK_CHECK(vkCreateSemaphore(gfx.ldev, &semaphore_info, NULL, present_bit));
-    return _gfxRefresh(gfxGetContext(), global);
+    VK_CHECK(vkCreateSemaphore(gfx.ldev, &semaphore_info, NULL, image_available));
+    return 1;
+    //return _gfxRefresh(gfxGetContext(), global);
   }
   
   VkCommandBuffer cmd_b = gfx.cmd_buffer[global->frame_x];
@@ -128,7 +134,6 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
   VkViewport viewport = {
     .x = 0.0f,
     .y = 0.0f,
-    /* May need to hunt down rogue ASCII_SCALEs in code now*/
     .width = gfx.extent.width * ASCII_SCALE,
     .height = gfx.extent.height * ASCII_SCALE,
     .minDepth = 0.0f,
@@ -164,36 +169,41 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
     printf("!failed to record command buffer!");
     return 1;
   }
-  
-  VkSemaphore wait_semaphores[] = { gfx.present_bit[global->frame_x] };
+
   VkPipelineStageFlags wait_stages[] =
     {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-  VkSemaphore signal_semaphores[] = { gfx.render_bit[global->frame_x] };
-
+ 
   VkSubmitInfo submit_info = {
     .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
     .waitSemaphoreCount = 1,
-    .pWaitSemaphores = wait_semaphores,
+    .pWaitSemaphores = image_available,
     .pWaitDstStageMask = wait_stages,
     .commandBufferCount = 1,
     .pCommandBuffers = &gfx.cmd_buffer[global->frame_x],
     .signalSemaphoreCount = 1,
-    .pSignalSemaphores = signal_semaphores,
+    .pSignalSemaphores = &gfx.render_finished[global->frame_x],
   };
-  
+
+  // waits on VkAcquireImageKHR to signal an image is available
   VK_CHECK(vkQueueSubmit(gfx.queue, 1, &submit_info, gfx.fence[global->frame_x]));
-   
+  
+  return 0;
+}
+
+int _gfxPresentFrame(GfxContext gfx, GfxGlobal* global)
+{
   VkPresentInfoKHR present_info = {
     .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
     .waitSemaphoreCount = 1,
-    .pWaitSemaphores = signal_semaphores,
+    .pWaitSemaphores = &gfx.render_finished[global->frame_x],
     .swapchainCount = 1,
     .pSwapchains = &gfx.swapchain,
     .pImageIndices = &global->swapchain_x,
     .pResults = NULL
   };
- 
-  result = vkQueuePresentKHR(gfx.queue, &present_info);
+
+  // waits on vkQueueSubmit to signal its finished rendering
+  VkResult result = vkQueuePresentKHR(gfx.queue, &present_info);
   switch(result){
   case VK_SUCCESS:
     break;
@@ -206,9 +216,11 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
   }
 
   global->frame_x = (global->frame_x + 1) % gfx.frame_c;
-  
+
   return 0;
 }
+
+
 int gfxPipelineInit(GfxContext* gfx){
 
   VkPushConstantRange push_constant = {
@@ -295,21 +307,21 @@ int gfxPipelineInit(GfxContext* gfx){
   attribute_descriptions[1].location = 1;
   attribute_descriptions[1].format = VK_FORMAT_R32_UINT;
   attribute_descriptions[1].offset =
-    offsetof(TileDrawInstance, textureEncoding);
+    offsetof(TileDrawInstance, tex_encoding);
 
-  // Texture Index
+  // Texture Index + size PACKED
   attribute_descriptions[2].binding = 0;
   attribute_descriptions[2].location = 2;
   attribute_descriptions[2].format = VK_FORMAT_R32_UINT;
   attribute_descriptions[2].offset =
-    offsetof(TileDrawInstance, textureIndex);
+    offsetof(TileDrawInstance, tex_index_and_width);
 
   // Colors, two 16 bit numbers packed into a 32bit
   attribute_descriptions[3].binding = 0;
   attribute_descriptions[3].location = 3;
   attribute_descriptions[3].format = VK_FORMAT_R32_UINT;
   attribute_descriptions[3].offset =
-    offsetof(TileDrawInstance, fgColor_bgColor);
+    offsetof(TileDrawInstance, color_indices);
 
   VkVertexInputBindingDescription binding_description = {
     .binding = 0,

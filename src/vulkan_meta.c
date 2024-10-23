@@ -827,16 +827,16 @@ int gfxSyncInit(GfxContext* gfx){
     .flags = VK_FENCE_CREATE_SIGNALED_BIT,
   };
   
-  gfx->render_bit = (VkSemaphore*)malloc( gfx->frame_c * sizeof(VkSemaphore));
-  gfx->present_bit = (VkSemaphore*)malloc( gfx->frame_c * sizeof(VkSemaphore));
+  gfx->image_available = (VkSemaphore*)malloc( gfx->frame_c * sizeof(VkSemaphore));
+  gfx->render_finished = (VkSemaphore*)malloc( gfx->frame_c * sizeof(VkSemaphore));
   gfx->fence = (VkFence*)malloc( gfx->frame_c * sizeof(VkFence));
   
   for(unsigned int i = 0; i < gfx->frame_c; i++){
   
     if(vkCreateSemaphore(gfx->ldev, &semaphore_info,
-			 NULL, &gfx->render_bit[i]) != VK_SUCCESS ||
+			 NULL, &gfx->image_available[i]) != VK_SUCCESS ||
        vkCreateSemaphore(gfx->ldev, &semaphore_info,
-			 NULL, &gfx->present_bit[i]) != VK_SUCCESS ||
+			 NULL, &gfx->render_finished[i]) != VK_SUCCESS ||
        vkCreateFence(gfx->ldev, &fence_info,
 		     NULL, &gfx->fence[i]) != VK_SUCCESS ){
       printf("!failed to create sync objects!\n");
@@ -979,13 +979,13 @@ int _gfxConstFree(GfxContext gfx){
 
   // destroy sync objects
   for(unsigned int i = 0; i < gfx.frame_c; i++){
-    vkDestroySemaphore(gfx.ldev, gfx.present_bit[i], NULL);
-    vkDestroySemaphore(gfx.ldev, gfx.render_bit[i], NULL);
+    vkDestroySemaphore(gfx.ldev, gfx.image_available[i], NULL);
+    vkDestroySemaphore(gfx.ldev, gfx.render_finished[i], NULL);
     vkDestroyFence(gfx.ldev, gfx.fence[i], NULL);
   }
 
-  free(gfx.present_bit);
-  free(gfx.render_bit);
+  free(gfx.image_available);
+  free(gfx.render_finished);
   free(gfx.fence);
   free(gfx.cmd_buffer);
 

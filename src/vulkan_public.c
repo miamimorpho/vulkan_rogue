@@ -15,21 +15,24 @@ int inputInit(void){
 }
 
 // drawing.c
-int gfxRefresh(void){
-  _gfxRefresh(gfxGetContext(), &s_global);
-  return 0;
+int gfxRenderFrame(void){
+  return _gfxRenderFrame(gfxGetContext(), &s_global);
 }
 
-int gfxAddCh(uint16_t x, uint16_t y, uint16_t glyph_code, uint16_t fg_index, uint16_t bg_index, uint16_t texture_index){
-
-  return _gfxAddCh(&s_global,
-		   glyph_code, x, y, fg_index, bg_index,
-		   texture_index);
+int gfxPresentFrame(void){
+  return _gfxPresentFrame(gfxGetContext(), &s_global);
 }
 
-int gfxDrawString(const char* ch, uint32_t x, uint32_t y, uint32_t fg, uint32_t bg){
-  _gfxDrawString(gfxGetContext(), &s_global,
-		 ch, x, y, fg, bg);
+int gfxAddCh(uint16_t x, uint16_t y, uint16_t encoding, uint16_t texture_index, uint16_t fg, uint16_t bg){
+
+  return _gfxAddCh(&s_global, x, y,
+		   encoding, texture_index,
+		   fg, bg);
+}
+
+int gfxAddString(uint32_t x, uint32_t y, const char* str, uint32_t fg, uint32_t bg){
+  _gfxAddString(gfxGetContext(), &s_global,
+		 x, y, str, fg, bg);
   return 0;
 }
 
@@ -72,11 +75,13 @@ int gfxScreenInit(void){
   s_global.tile_buffer_h = ASCII_SCREEN_HEIGHT;
   int tile_buffer_size = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
   s_global.tile_buffer =
-    malloc(tile_buffer_size * sizeof(TileDrawInstance));
+    malloc(2 * tile_buffer_size * sizeof(TileDrawInstance));
   
   gfxBufferCreate(gfx.allocator,
 		  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		  tile_buffer_size * sizeof(TileDrawInstance), &s_global.tile_draw_instances);
+
+  
   
   return 0;
 }
@@ -85,8 +90,14 @@ int gfxScreenClose(void){
   GfxContext gfx = gfxGetContext();
 
   // End last frame
+  VkResult result;
   for(unsigned int i = 0; i < gfx.frame_c; i ++){
-    vkWaitForFences(gfx.ldev, 1, &gfx.fence[i], VK_TRUE, UINT64_MAX);
+    result = vkWaitForFences(gfx.ldev, 1, &gfx.fence[i], VK_TRUE, UINT32_MAX);
+    if(result == VK_TIMEOUT){
+      printf("FATAL: VkWaitForFences timed out\n");
+      // protection from deadlocks
+      abort();
+    }
     vkResetCommandBuffer(gfx.cmd_buffer[i], 0);
   }
 

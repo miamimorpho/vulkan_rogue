@@ -4,18 +4,22 @@ message buffer -> ring buffer
 changing view of tileset < - >
 changing tileset < - >
 
-handling non8*8 tiles, nudging bdf fonts
-fix font rendering -> font mode rendering
-
+handling non8*8 tiles
 FOV/Line of Sight
 NPCs / enemies basic basic
 png->bdf to redistribute some assets
+
+* back buffer / cache
+two rendering functions
+gfxRenderCache() -> take GfxTileInstances*, render to backbuffer
+gfxRenderFrame() -> take GfxTileInstances*, render ontop of backbuffer. Reset size to 0 every frame.
+gfxPresentFrame()
 
 * vulkan style
 | Functions | gfxFunctionName |
 | Types     | GfxType         |
 | Variables | variable_name   |
-make textures_index, glyph_code, posx, posy, fgColor, bgColor
+make pos x, pos y, textures_index, glyph_code, fgColor, bgColor
 a coherent order
 
 * CPU budget

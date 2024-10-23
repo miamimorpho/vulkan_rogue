@@ -4,12 +4,12 @@
 #define TILE_SIZE 8
 
 layout(location = 0) in uint inPosition;
-layout(location = 1) in uint textureEncoding;
-layout(location = 2) in uint textureIndexIn;
+layout(location = 1) in uint texEncoding;
+layout(location = 2) in uint texIndexAndSize;
 layout(location = 3) in uint fgIndex_bgIndex;
 
-layout(location = 0) flat out uint textureIndexOut;
-layout(location = 1) out vec2 textureUV;
+layout(location = 0) flat out uint texIndex;
+layout(location = 1) out vec2 texUV;
 layout(location = 2) flat out vec2 fgUV;
 layout(location = 3) flat out vec2 bgUV;
 
@@ -31,7 +31,16 @@ vec2 quadVertices[6] = {
   vec2(1, 0)
 };
 
-vec2 unpackUINT16(uint packed ){
+vec2 encodingToUV(vec2 quadUV, uint encoding, uint width_in_tiles){
+  uint tex_col = uint(mod(float(encoding), width_in_tiles));
+  uint tex_row = encoding / width_in_tiles;
+  vec2 uv_offset = vec2(tex_col, tex_row);
+
+  return (quadUV + uv_offset);
+}
+
+
+ivec2 unpackUINT16(uint packed ){
       return ivec2(
       	     float((packed >> 16) & 0xFFFFu),
     	     float( packed        & 0xFFFFu)
@@ -49,9 +58,12 @@ void main() {
   gl_Position = vec4(ndcPos, 0, 1.0);
 
   // Texturing
-  textureIndexOut = textureIndexIn; 
-  textureUV =
-  (unpackUINT16(textureEncoding) + quadVertices[gl_VertexIndex]);
+  ivec2 texIndexAndSize_v = unpackUINT16(texIndexAndSize);
+  texIndex = texIndexAndSize_v.x;
+  int texSize = texIndexAndSize_v.y;
+  
+  texUV =
+  encodingToUV(quadVertices[gl_VertexIndex], texEncoding, texSize);
 
   // Colour
   vec2 colorIndices = unpackUINT16(fgIndex_bgIndex);

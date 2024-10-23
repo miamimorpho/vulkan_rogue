@@ -12,8 +12,9 @@ int worldDraw(GameWorld world, Entity camera){
       Entity tile = mapGetTile(world,
 			       camera.pos.x - x_offset +x,
 			       camera.pos.y - y_offset +y);
-      gfxAddCh(x, y, tile.uv,
-	       tile.fg, tile.bg, DRAW_TEXTURE_INDEX);
+      gfxAddCh(x, y,
+	       tile.uv, DRAW_TEXTURE_INDEX,
+	       tile.fg, tile.bg);
     }
   }
   
@@ -21,10 +22,9 @@ int worldDraw(GameWorld world, Entity camera){
   for(unsigned int i = 0; i < world.actors_count; i++){
     Entity actor = world.actors[i];
     if(actor.is_init == 1){
-      gfxAddCh(x_offset,
-	       y_offset,
-	       actor.uv,
-	       actor.fg, actor.bg, DRAW_TEXTURE_INDEX);
+      gfxAddCh(x_offset, y_offset,
+	       actor.uv, DRAW_TEXTURE_INDEX,
+	       actor.fg, actor.bg);
     }
   }
   return 0;

@@ -54,8 +54,8 @@ typedef struct{
   /* const */ VkFramebuffer *framebuffer;
   /* const */ VkDescriptorPool descriptor_pool;
   /* const */ VkCommandBuffer *cmd_buffer;
-  /* const */ VkSemaphore* present_bit;
-  /* const */ VkSemaphore* render_bit;
+  /* const */ VkSemaphore* image_available;
+  /* const */ VkSemaphore* render_finished;
   /* const */ VkFence* fence;
   /* const */ VkDescriptorSetLayout texture_descriptors_layout;
   /* const */ VkDescriptorSet texture_descriptors;
@@ -69,9 +69,9 @@ typedef struct{
 
 typedef struct{
   uint32_t pos;
-  uint32_t textureEncoding;
-  uint32_t textureIndex;
-  uint32_t fgColor_bgColor;
+  uint32_t tex_encoding;
+  uint32_t tex_index_and_width;
+  uint32_t color_indices;
 } TileDrawInstance;
 
 typedef struct{
@@ -83,6 +83,8 @@ typedef struct{
     uint32_t tile_buffer_w;
     uint32_t tile_buffer_h;
     GfxBuffer tile_draw_instances;
+
+    GfxImage back_buffer;
 }GfxGlobal;
 
 GfxContext* gfxSetContext(void);
