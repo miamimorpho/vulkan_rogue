@@ -37,10 +37,9 @@ int main(void){
     doAction(&world, user_action);
     
     gfxAddString(0, ASCII_SCREEN_HEIGHT-2,
-    		  "Press ? for help",
-    		  15, 0);
+		 "Press ? for help",
+		 15, 0);
     gfxRenderFrame();
-    gfxPresentFrame();
   }
   
   gfxScreenClose();

@@ -19,9 +19,6 @@ int gfxRenderFrame(void){
   return _gfxRenderFrame(gfxGetContext(), &s_global);
 }
 
-int gfxPresentFrame(void){
-  return _gfxPresentFrame(gfxGetContext(), &s_global);
-}
 
 int gfxAddCh(uint16_t x, uint16_t y, uint16_t encoding, uint16_t texture_index, uint16_t fg, uint16_t bg){
 
@@ -70,7 +67,8 @@ int gfxScreenInit(void){
   
   _inputInit(gfx);
   _gfxTexturesInit(&s_global.textures);
-  
+
+  // Create Instance Buffer
   s_global.tile_buffer_w = ASCII_SCREEN_WIDTH;
   s_global.tile_buffer_h = ASCII_SCREEN_HEIGHT;
   int tile_buffer_size = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
@@ -80,8 +78,7 @@ int gfxScreenInit(void){
   gfxBufferCreate(gfx.allocator,
 		  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		  tile_buffer_size * sizeof(TileDrawInstance), &s_global.tile_draw_instances);
-
-  
+  _gfxBakeCommandBuffers(gfx, s_global);
   
   return 0;
 }
@@ -101,8 +98,10 @@ int gfxScreenClose(void){
     vkResetCommandBuffer(gfx.cmd_buffer[i], 0);
   }
 
-  // free asset data
+  // free global back bugger
   gfxBufferDestroy(gfx.allocator, &s_global.tile_draw_instances);
+  
+  // free asset data
   for(int i = 0; i < MAX_SAMPLERS; i++){
     if(s_global.textures[i].image.handle != VK_NULL_HANDLE){
       gfxImageDestroy(gfx.allocator, s_global.textures[i].image);

@@ -846,11 +846,14 @@ int gfxSyncInit(GfxContext* gfx){
   return 0;
 }
 
-int gfxCmdBuffersInit(GfxContext* gfx){
-    gfx->cmd_buffer =
-    (VkCommandBuffer*)malloc( gfx->frame_c * sizeof(VkCommandBuffer));
-  
-  for(unsigned int i = 0; i < gfx->frame_c; i++){
+/* each command buffer is 'baked' with the drawing commands so
+ * we need to specify a swapchain image index per buffer
+ */
+int gfxCmdBuffersInit(GfxContext* gfx)
+{
+  gfx->cmd_buffer = (VkCommandBuffer*)malloc
+    (gfx->swapchain_c * sizeof(VkCommandBuffer) );
+  for(unsigned int i = 0; i < gfx->swapchain_c; i++){
     gfx->cmd_buffer[i] = VK_NULL_HANDLE;
   }
   
@@ -858,7 +861,7 @@ int gfxCmdBuffersInit(GfxContext* gfx){
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
     .commandPool = gfx->cmd_pool,
     .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-    .commandBufferCount = gfx->frame_c,
+    .commandBufferCount = gfx->swapchain_c,
   };
   
   if(vkAllocateCommandBuffers

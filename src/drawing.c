@@ -59,9 +59,89 @@ int _gfxAddString(GfxContext gfx, GfxGlobal* global,
   return 0;
 }
 
+/* pre-bake command buffers for each swapchain image,
+ * need to re re-record on window re-size
+ */
+int _gfxBakeCommandBuffers(GfxContext gfx, GfxGlobal global)
+{
+  for(unsigned int i = 0; i < gfx.swapchain_c; i++){
+    
+    VkCommandBuffer cmd_b = gfx.cmd_buffer[i];
+    vkResetCommandBuffer(cmd_b, 0);
+
+    VkCommandBufferBeginInfo begin_info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags = 0,
+      .pInheritanceInfo = NULL,
+    };
+    
+    if(vkBeginCommandBuffer(cmd_b, &begin_info) != VK_SUCCESS){
+      printf("!failed to begin recording command buffer!\n");
+    }
+
+    VkClearValue clears[1];
+    clears[0].color = (VkClearColorValue){ { 0.0f, 0.0f, 0.0f, 1.0f } };
+
+    VkRenderPassBeginInfo render_pass_info = {
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+      .renderPass = gfx.renderpass,
+      .framebuffer = gfx.framebuffer[i],
+      .renderArea.offset = {0, 0},
+      .renderArea.extent = gfx.extent,
+      .clearValueCount = 1,
+      .pClearValues = clears,
+    };
+    
+    vkCmdBeginRenderPass(cmd_b, &render_pass_info,
+			 VK_SUBPASS_CONTENTS_INLINE);
+
+    GfxPushConstant constants = {
+      .screen_size_px = (vec2){ gfx.extent.width, gfx.extent.height },
+    };
+    vkCmdPushConstants(cmd_b, gfx.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GfxPushConstant), &constants);
+    
+    vkCmdBindDescriptorSets(cmd_b, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			    gfx.pipeline_layout, 0, 1,
+			    &gfx.texture_descriptors, 0, NULL);
+    
+    VkViewport viewport = {
+      .x = 0.0f,
+      .y = 0.0f,
+      .width = gfx.extent.width * ASCII_SCALE,
+      .height = gfx.extent.height * ASCII_SCALE,
+      .minDepth = 0.0f,
+      .maxDepth = 1.0f,
+    };
+    vkCmdSetViewport(cmd_b, 0, 1, &viewport);
+    
+    VkRect2D scissor = {
+      .offset = {0, 0},
+      .extent = gfx.extent,
+    };
+    
+    vkCmdSetScissor(cmd_b, 0, 1, &scissor);
+    vkCmdBindPipeline(cmd_b, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		      gfx.pipeline);
+    
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(cmd_b, 0, 1,
+			   &global.tile_draw_instances.handle, offsets);    
+    vkCmdDraw(cmd_b, 6,
+	      global.tile_buffer_w * global.tile_buffer_h, 0, 0);
+    
+    // draw end
+    vkCmdEndRenderPass(cmd_b);
+    if(vkEndCommandBuffer(cmd_b) != VK_SUCCESS) {
+      printf("!failed to record command buffer!");
+      return 1;
+    }
+  }
+  return 0;
+}
+
 int _gfxRenderFrame(GfxContext gfx, GfxGlobal* global){
 
-  // waits on VkQueueSubmit to be done
+  // waits on last VkQueueSubmit to be done
   VkResult fence_result;
   fence_result = vkWaitForFences(gfx.ldev, 1,
 		    &gfx.fence[global->frame_x],
@@ -86,89 +166,14 @@ int _gfxRenderFrame(GfxContext gfx, GfxGlobal* global){
     };
     VK_CHECK(vkCreateSemaphore(gfx.ldev, &semaphore_info, NULL, image_available));
     return 1;
-    //return _gfxRefresh(gfxGetContext(), global);
-  }
-  
-  VkCommandBuffer cmd_b = gfx.cmd_buffer[global->frame_x];
-  vkResetCommandBuffer(cmd_b, 0);
-
-  VkCommandBufferBeginInfo begin_info = {
-    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-    .flags = 0,
-    .pInheritanceInfo = NULL,
-  };
-
-  /* Start rendering */
-  if(vkBeginCommandBuffer(cmd_b, &begin_info) != VK_SUCCESS){
-    printf("!failed to begin recording command buffer!\n");
   }
 
-  /* TODO move clearing to seperate function */
-  VkClearValue clears[1];
-  clears[0].color = (VkClearColorValue){ { 0.0f, 0.0f, 0.0f, 1.0f } };
-
-  VkRenderPassBeginInfo render_pass_info = {
-    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    .renderPass = gfx.renderpass,
-    .framebuffer = gfx.framebuffer[global->swapchain_x],
-    .renderArea.offset = {0, 0},
-    .renderArea.extent = gfx.extent,
-    .clearValueCount = 1,
-    .pClearValues = clears,
-  };
-    
-  vkCmdBeginRenderPass(cmd_b, &render_pass_info,
-		       VK_SUBPASS_CONTENTS_INLINE);
-
-  vkCmdBindDescriptorSets(cmd_b, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			  gfx.pipeline_layout, 0, 1,
-			  &gfx.texture_descriptors, 0, NULL);
-
+  // Copy draw commands to GPU
   const int src_size = global->tile_buffer_w * global->tile_buffer_h * sizeof(TileDrawInstance);
-
   /* Profiles at 0.02ms */
+  // pull this out of presentation.
   gfxBufferAppend(gfx.allocator, &global->tile_draw_instances, global->tile_buffer, src_size);
-
-  cmd_b = gfx.cmd_buffer[global->frame_x];
-  
-  VkViewport viewport = {
-    .x = 0.0f,
-    .y = 0.0f,
-    .width = gfx.extent.width * ASCII_SCALE,
-    .height = gfx.extent.height * ASCII_SCALE,
-    .minDepth = 0.0f,
-    .maxDepth = 1.0f,
-  };
-  vkCmdSetViewport(cmd_b, 0, 1, &viewport);
-
-  VkRect2D scissor = {
-    .offset = {0, 0},
-    .extent = gfx.extent,
-  };
-    
-  vkCmdSetScissor(cmd_b, 0, 1, &scissor);
-  vkCmdBindPipeline(cmd_b, VK_PIPELINE_BIND_POINT_GRAPHICS,
-	            gfx.pipeline);
-
-  VkDeviceSize offsets[] = {0};
-  vkCmdBindVertexBuffers(cmd_b, 0, 1,
-			 &global->tile_draw_instances.handle, offsets);
-
-  GfxPushConstant constants = {
-    .screen_size_px = (vec2){ gfx.extent.width, gfx.extent.height },
-  };
-  vkCmdPushConstants(cmd_b, gfx.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GfxPushConstant), &constants);
-  
-  vkCmdDraw(cmd_b, 6,
-	    global->tile_draw_instances.used_size / sizeof(TileDrawInstance), 0, 0);
   global->tile_draw_instances.used_size = 0;
-
-  // draw end
-  vkCmdEndRenderPass(cmd_b);
-  if(vkEndCommandBuffer(cmd_b) != VK_SUCCESS) {
-    printf("!failed to record command buffer!");
-    return 1;
-  }
 
   VkPipelineStageFlags wait_stages[] =
     {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
@@ -179,19 +184,14 @@ int _gfxRenderFrame(GfxContext gfx, GfxGlobal* global){
     .pWaitSemaphores = image_available,
     .pWaitDstStageMask = wait_stages,
     .commandBufferCount = 1,
-    .pCommandBuffers = &gfx.cmd_buffer[global->frame_x],
+    .pCommandBuffers = &gfx.cmd_buffer[global->swapchain_x],
     .signalSemaphoreCount = 1,
     .pSignalSemaphores = &gfx.render_finished[global->frame_x],
   };
 
   // waits on VkAcquireImageKHR to signal an image is available
   VK_CHECK(vkQueueSubmit(gfx.queue, 1, &submit_info, gfx.fence[global->frame_x]));
-  
-  return 0;
-}
 
-int _gfxPresentFrame(GfxContext gfx, GfxGlobal* global)
-{
   VkPresentInfoKHR present_info = {
     .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
     .waitSemaphoreCount = 1,
@@ -203,8 +203,8 @@ int _gfxPresentFrame(GfxContext gfx, GfxGlobal* global)
   };
 
   // waits on vkQueueSubmit to signal its finished rendering
-  VkResult result = vkQueuePresentKHR(gfx.queue, &present_info);
-  switch(result){
+  VkResult present_result = vkQueuePresentKHR(gfx.queue, &present_info);
+  switch(present_result){
   case VK_SUCCESS:
     break;
   case VK_ERROR_OUT_OF_DATE_KHR:
@@ -219,7 +219,6 @@ int _gfxPresentFrame(GfxContext gfx, GfxGlobal* global)
 
   return 0;
 }
-
 
 int gfxPipelineInit(GfxContext* gfx){
 

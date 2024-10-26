@@ -22,7 +22,8 @@ static inputState_t s_state;
 
 int getInputState(inputState_t* dst)
 {
-  glfwPollEvents();
+  // excessive input polling kills battery-life
+  glfwWaitEventsTimeout(0.7);
   GfxContext gfx = gfxGetContext();
 
   // convert screen pos to tile pos
@@ -116,7 +117,6 @@ GameAction guiPickColor(void)
 	       DRAW_TEXTURE_INDEX);
     }
     gfxRenderFrame();
-    gfxPresentFrame();
   } // End of UI Loop
   return paintEntityAction(-1,fgIndex, bgIndex);
 }
@@ -158,7 +158,6 @@ GameAction guiPickTile(void)
 	       11, 0);
     } 
     gfxRenderFrame();
-    gfxPresentFrame();
     
   } // end of GUI loop
   return paintEntityAction(target_uv, -1, -1);
@@ -172,7 +171,6 @@ int userInputHelpScreen(void)
   while(getInputState(&input) == 0){
     gfxAddString(0, 0, help_screen_ascii, 15, 0);
     gfxRenderFrame();
-    gfxPresentFrame();
   }
   free(help_screen_ascii);
   return 0;

@@ -84,7 +84,6 @@ typedef struct{
     uint32_t tile_buffer_h;
     GfxBuffer tile_draw_instances;
 
-    GfxImage back_buffer;
 }GfxGlobal;
 
 GfxContext* gfxSetContext(void);
