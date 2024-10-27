@@ -1,3 +1,5 @@
+#include <vulkan/vulkan.h>
+
 /* Asset Loading Options */
 #define COLOR_TEXTURE_INDEX 0
 #define PALETTE_SIZE 16
@@ -17,6 +19,8 @@
 
 /* Build Options */
 #define DEBUG_BUFFER 0
-#define DEBUG_VALIDATION 0
+#define DEBUG_VALIDATION 1
+
+#define cfg_format (VkFormat)VK_FORMAT_B8G8R8A8_SRGB
 
 char* configReadFile(const char*);

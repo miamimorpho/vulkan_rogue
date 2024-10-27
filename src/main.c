@@ -27,10 +27,6 @@ int main(void){
   player->inventory[0].collide = 0;
 
   while(getExitState() == 0){
-    
-    /* October 19 2024 - 0.25ms profile */
-    /* CPU Usage of ~2% */
-    /* 2% of 16ms is 0.32ms */
     worldDraw(world, *player);
 
     GameAction user_action = userInput(0);

@@ -64,6 +64,8 @@ int gfxScreenInit(void){
   gfxPipelineInit(p_gfx);
 
   GfxContext gfx = gfxGetContext();
+
+  init_vkCmdBeginRenderingKHR(gfx.ldev);
   
   _inputInit(gfx);
   _gfxTexturesInit(&s_global.textures);

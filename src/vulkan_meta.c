@@ -4,10 +4,27 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static GfxContext s_context;
+PFN_vkCmdBeginRenderingKHR pfn_vkCmdBeginRenderingKHR;
+PFN_vkCmdEndRenderingKHR pfn_vkCmdEndRenderingKHR;
 
-/* do not change */
-const VkFormat cfg_format = VK_FORMAT_B8G8R8A8_SRGB;
+VkResult init_vkCmdBeginRenderingKHR(VkDevice device) {
+    pfn_vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)
+      vkGetDeviceProcAddr(device, "vkCmdBeginRenderingKHR" );    
+    if (pfn_vkCmdBeginRenderingKHR == NULL) {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+    
+    pfn_vkCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)
+      vkGetDeviceProcAddr( device, "vkCmdEndRenderingKHR"
+    );    
+    if (pfn_vkCmdBeginRenderingKHR == NULL) {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+    
+    return VK_SUCCESS;
+}
+
+static GfxContext s_context;
 
 GfxContext* gfxSetContext(void){
   return &s_context;
@@ -15,16 +32,6 @@ GfxContext* gfxSetContext(void){
 
 GfxContext gfxGetContext(void){
   return s_context;
-}
-
-/* could be optimised, fast enough if results cached */
-uint32_t getUnicodeUV(GfxTileset tileset, uint32_t unicode){
-  for(uint32_t i = 0; i < tileset.glyph_c; i++){
-    if(tileset.encoding[i] == unicode){
-      return i;
-    }
-  }
-  return 0;
 }
 
 VkCommandBuffer gfxCmdSingleBegin(void)
@@ -231,9 +238,8 @@ copyBufferToImage(VkBuffer buffer, VkImage image,
 }
 
 int
-transitionImageLayout(VkImage image,
-			VkImageLayout old_layout, VkImageLayout new_layout){
-  VkCommandBuffer commands = gfxCmdSingleBegin();
+transitionImageLayout(VkCommandBuffer commands, VkImage image,
+		      VkImageLayout old_layout, VkImageLayout new_layout){
 
   VkImageMemoryBarrier barrier = {
     .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -252,7 +258,8 @@ transitionImageLayout(VkImage image,
   };
 
   VkPipelineStageFlags source_stage, destination_stage;
-  
+
+  int supported_transition = 0;
   if(old_layout == VK_IMAGE_LAYOUT_UNDEFINED
      && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL){
     barrier.srcAccessMask = 0;
@@ -260,28 +267,42 @@ transitionImageLayout(VkImage image,
 
     source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
     destination_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-
-  }else if(old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-	    && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL){
+    supported_transition = 1;
+  }
+  if(old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+     && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL){
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     
     source_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
     destination_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    supported_transition = 1;
+  }
+
+  if(new_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL){
+    barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    destination_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    supported_transition = 1;
+  }
+  if(old_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL){
+    barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    source_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    destination_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    supported_transition = 1;
+  }
     
-  } else {
+  if( supported_transition == 0){
     printf("unsupported layout transition\n");
     return 1;
   }
-  
   vkCmdPipelineBarrier(commands,
 		       source_stage, destination_stage,
 		       0,
 		       0, NULL,
 		       0, NULL,
 		       1, &barrier);
-  
-  return gfxCmdSingleEnd(commands);
+  return 0;
 }
 
 void
@@ -449,8 +470,12 @@ int gfxQueueIndex(GfxContext* gfx){
 int gfxLogicalDeviceInit(GfxContext* gfx){
 
   /* Requested Extensions */
-  const char *dev_ext_names[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_shader_float16_int8", "VK_KHR_16bit_storage", "VK_EXT_descriptor_indexing"};
-  const unsigned int request_ext_c = 1;
+  const char *dev_ext_names[] = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+    "VK_EXT_descriptor_indexing"
+  };
+  const unsigned int dev_ext_c = 3;
 
   /* Available Extensions */
   uint32_t avail_ext_c;
@@ -460,7 +485,7 @@ int gfxLogicalDeviceInit(GfxContext* gfx){
 
   /* Check Extension Availability */
   int layer_found;
-  for(uint32_t i = 0; i < request_ext_c; i++){
+  for(uint32_t i = 0; i < dev_ext_c; i++){
     layer_found = 0;
     for(uint32_t a = 0; a < avail_ext_c; a++){
       if(strcmp(dev_ext_names[i], avail_ext[a].extensionName) == 0){
@@ -487,46 +512,37 @@ int gfxLogicalDeviceInit(GfxContext* gfx){
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT,
   };
 
-  VkPhysicalDevice16BitStorageFeatures float16_storage_features = {
-    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES,
+  VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_feature = {
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+    .dynamicRendering = VK_TRUE,
     .pNext = &descriptor_indexing_features
-};
-
-  VkPhysicalDeviceShaderFloat16Int8Features float16_int8_features = {
-    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES,
-    .pNext = &float16_storage_features,
   };
-  
+    
   VkPhysicalDeviceFeatures2 dev_features2 = {
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-    .pNext = &float16_int8_features,
+    .pNext = &dynamic_rendering_feature,
   };
 
   vkGetPhysicalDeviceFeatures2(gfx->pdev, &dev_features2 );
  
-  if(!descriptor_indexing_features.descriptorBindingPartiallyBound)
+  if(!descriptor_indexing_features.descriptorBindingPartiallyBound){
     printf("FATAL: driver missing 'descriptor Binding Partially Bound'\n");
-  if(!descriptor_indexing_features.runtimeDescriptorArray)
+    exit(1);
+  }
+  if(!descriptor_indexing_features.runtimeDescriptorArray){
     printf("FATAL: driver missing 'runtime descriptor array'\n");
-  if(!float16_storage_features.storagePushConstant16)
-    printf("WARNING: driver missing 'storagePushConstant16'\n");
-  if(!float16_storage_features.storageInputOutput16)
-    printf("WARNING: driver missing 'storageInputOutput16'\n");
-  if(!float16_storage_features.uniformAndStorageBuffer16BitAccess)
-    printf("WARNING: driver missing 'uniformAndStorageBuffer16BitAccess'\n");
-  if(!float16_storage_features.storageBuffer16BitAccess)
-    printf("WARNING: driver missing 'storageBuffer16BitAccess'\n");
-  if(!float16_int8_features.shaderFloat16)
-    printf("WARNING: driver missing 'shaderFloat16'\n");
-  if(!float16_int8_features.shaderInt8)
-    printf("WARNING: driver missing 'shaderInt8'\n");
-  
+    exit(1);
+  }
+  if(!dynamic_rendering_feature.dynamicRendering){
+    printf("FATAL: driver missing 'dynamic rendering'\n");
+    exit(1);
+  }
   VkDeviceCreateInfo dev_create_info = {
     .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
     .pQueueCreateInfos = &q_create_info,
     .queueCreateInfoCount = 1,
     //.pEnabledFeatures = &dev_features,
-    .enabledExtensionCount = request_ext_c,
+    .enabledExtensionCount = dev_ext_c,
     .ppEnabledExtensionNames = dev_ext_names,
     .enabledLayerCount = 0,
     .pNext = &dev_features2,

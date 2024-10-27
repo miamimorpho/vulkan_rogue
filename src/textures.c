@@ -121,11 +121,12 @@ gfxImageToGpu(VmaAllocator allocator, unsigned char* pixels,
 		   format, width, height));
 
   /* Copy the image buffer to a VkImage proper */
+  VkCommandBuffer cmd = gfxCmdSingleBegin();
   CHECK_GT_ZERO
-    (transitionImageLayout(texture->handle,
+    (transitionImageLayout(cmd, texture->handle,
 			   VK_IMAGE_LAYOUT_UNDEFINED,
 			   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-
+  gfxCmdSingleEnd(cmd);
 
   CHECK_GT_ZERO
     (copyBufferToImage(image_b.handle, texture->handle,
@@ -133,10 +134,12 @@ gfxImageToGpu(VmaAllocator allocator, unsigned char* pixels,
   
   gfxBufferDestroy(allocator, &image_b);
 
+  cmd = gfxCmdSingleBegin();
   CHECK_GT_ZERO(transitionImageLayout
-    (texture->handle,
+		(cmd, texture->handle,
      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+  gfxCmdSingleEnd(cmd);
   
   /* Create image view */
   CHECK_GT_ZERO

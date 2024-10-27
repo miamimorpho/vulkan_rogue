@@ -10,6 +10,10 @@
 #include "config.h"
 #include <stdint.h>
 
+typedef void (VKAPI_PTR *PFN_vkCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*);
+extern PFN_vkCmdBeginRenderingKHR pfn_vkCmdBeginRenderingKHR;
+extern PFN_vkCmdEndRenderingKHR pfn_vkCmdEndRenderingKHR;
+
 typedef struct {
   VkBuffer handle;
   VmaAllocation allocation;
@@ -86,13 +90,13 @@ typedef struct{
 
 }GfxGlobal;
 
+VkResult init_vkCmdBeginRenderingKHR(VkDevice);
+
 GfxContext* gfxSetContext(void);
 GfxContext  gfxGetContext(void);
 
 VkCommandBuffer gfxCmdSingleBegin(void);
-int gfxCmdSingleEnd(VkCommandBuffer cmd_buffer);
-
-uint32_t getUnicodeUV(GfxTileset, uint32_t);
+int gfxCmdSingleEnd(VkCommandBuffer);
 
 /** Buffer and Image Functions */
 int gfxVertBufferCreate(GfxContext, size_t, GfxBuffer*);
@@ -105,7 +109,7 @@ int gfxBufferDestroy(VmaAllocator, GfxBuffer*);
 int gfxImageAlloc(VmaAllocator, GfxImage*, VkImageUsageFlags, VkFormat, uint32_t, uint32_t);
 int gfxImageViewCreate(VkDevice, VkImage, VkImageView *, VkFormat, VkImageAspectFlags);
 int copyBufferToImage(VkBuffer, VkImage, uint32_t, uint32_t);
-int transitionImageLayout(VkImage, VkImageLayout, VkImageLayout);
+int transitionImageLayout(VkCommandBuffer, VkImage, VkImageLayout, VkImageLayout);
 void gfxImageDestroy(VmaAllocator, GfxImage);
 
 /** Initialisation Functions */
@@ -128,6 +132,7 @@ int gfxCmdBuffersInit(GfxContext*);
 int gfxTextureDescriptorsInit(GfxContext*);
 int gfxSpvLoad(VkDevice, const char*, VkShaderModule*);
 
+/** Free Functions **/
 int _gfxSwapchainDestroy(GfxContext);
 int _gfxConstFree(GfxContext);
 

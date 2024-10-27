@@ -5,6 +5,16 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/* could be optimised, fast enough if results cached */
+uint32_t getUnicodeUV(GfxTileset tileset, uint32_t unicode){
+  for(uint32_t i = 0; i < tileset.glyph_c; i++){
+    if(tileset.encoding[i] == unicode){
+      return i;
+    }
+  }
+  return 0;
+}
+
 uint32_t pack16into32(uint16_t a, uint16_t b){
   return(uint32_t)a << 16 | (uint32_t)b;
 }
@@ -20,11 +30,13 @@ int _gfxAddCh(GfxGlobal* global, uint16_t x, uint16_t y,
 
   if(x >= global->tile_buffer_w || x < 0) return 1;
   if(y >= global->tile_buffer_h || y < 0) return 1;
-    
+
   TileDrawInstance src = {
     .pos = pack16into32(x, y),
-    .tex_encoding = encoding,
-    .tex_index_and_width = pack16into32(texture_index, texture.image_w / 8),
+    .tex_encoding = getUnicodeUV(global->textures[texture_index], encoding),
+    .tex_index_and_width =
+    pack16into32(texture_index, texture.image_w / ASCII_TILE_SIZE),
+
     .color_indices = pack16into32(fg, bg)
   };
   global->tile_buffer[(y * global->tile_buffer_w) + x] = src;
@@ -36,9 +48,6 @@ int _gfxAddString(GfxContext gfx, GfxGlobal* global,
 		   uint16_t x, uint16_t y,
 		   const char* str,
 		   uint16_t fg, uint16_t bg){
-
-  //convert to unicode
-  
   int i = 0;
   int start_x = 0;
   while(str[i] != '\0') {
@@ -46,9 +55,8 @@ int _gfxAddString(GfxContext gfx, GfxGlobal* global,
       y++;
       x = start_x;
     }else{
-      int uv = getUnicodeUV(global->textures[ASCII_TEXTURE_INDEX], str[i]);
       int err = _gfxAddCh(global, x++, y,
-			  uv, ASCII_TEXTURE_INDEX,
+			  str[i], ASCII_TEXTURE_INDEX,
 			  fg, bg);
       if(err != 0){
 	return 1;
@@ -66,22 +74,56 @@ int _gfxBakeCommandBuffers(GfxContext gfx, GfxGlobal global)
 {
   for(unsigned int i = 0; i < gfx.swapchain_c; i++){
     
-    VkCommandBuffer cmd_b = gfx.cmd_buffer[i];
-    vkResetCommandBuffer(cmd_b, 0);
+  VkCommandBuffer cmd_b = gfx.cmd_buffer[i];
+  vkResetCommandBuffer(cmd_b, 0);
 
-    VkCommandBufferBeginInfo begin_info = {
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .flags = 0,
-      .pInheritanceInfo = NULL,
-    };
+  
+  VkCommandBufferBeginInfo begin_info = {
+    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+    .flags = 0,
+    .pInheritanceInfo = NULL,
+  };
+  
+  if(vkBeginCommandBuffer(cmd_b, &begin_info) != VK_SUCCESS){
+    printf("!failed to begin recording command buffer!\n");
+  }
+
+  transitionImageLayout(cmd_b, gfx.swapchain_images[i],
+			VK_IMAGE_LAYOUT_UNDEFINED,
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+
+  transitionImageLayout(cmd_b, gfx.swapchain_images[i],
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+  
+  VkClearValue clear_value;
+  clear_value.color = 
+    (VkClearColorValue){ { 0.0f, 0.0f, 0.0f, 1.0f } };
+  
+  VkRenderingAttachmentInfoKHR color_attachment_info = {
+    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+    .imageView = gfx.swapchain_views[i],
+    .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
+    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+    .clearValue = clear_value,
+  };
     
-    if(vkBeginCommandBuffer(cmd_b, &begin_info) != VK_SUCCESS){
-      printf("!failed to begin recording command buffer!\n");
-    }
+  VkRenderingInfoKHR render_info = {
+    .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+    .renderArea.offset = {0, 0},
+    .renderArea.extent = gfx.extent,
+    .layerCount = 1,
+    .colorAttachmentCount = 1,
+    .pColorAttachments = &color_attachment_info,
+  };
+  pfn_vkCmdBeginRenderingKHR(cmd_b, &render_info);
 
-    VkClearValue clears[1];
-    clears[0].color = (VkClearColorValue){ { 0.0f, 0.0f, 0.0f, 1.0f } };
 
+
+    
+/*
     VkRenderPassBeginInfo render_pass_info = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass = gfx.renderpass,
@@ -94,7 +136,8 @@ int _gfxBakeCommandBuffers(GfxContext gfx, GfxGlobal global)
     
     vkCmdBeginRenderPass(cmd_b, &render_pass_info,
 			 VK_SUBPASS_CONTENTS_INLINE);
-
+*/
+			 
     GfxPushConstant constants = {
       .screen_size_px = (vec2){ gfx.extent.width, gfx.extent.height },
     };
@@ -130,7 +173,8 @@ int _gfxBakeCommandBuffers(GfxContext gfx, GfxGlobal global)
 	      global.tile_buffer_w * global.tile_buffer_h, 0, 0);
     
     // draw end
-    vkCmdEndRenderPass(cmd_b);
+    pfn_vkCmdEndRenderingKHR(cmd_b);
+
     if(vkEndCommandBuffer(cmd_b) != VK_SUCCESS) {
       printf("!failed to record command buffer!");
       return 1;
@@ -413,6 +457,13 @@ int gfxPipelineInit(GfxContext* gfx){
     .blendConstants[3] = 0.0f,
   };
 
+  VkFormat cfg_format_val = cfg_format;
+  VkPipelineRenderingCreateInfoKHR pipeline_rendering_create_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+    .colorAttachmentCount = 1,
+    .pColorAttachmentFormats = &cfg_format_val,
+  };
+
   VkGraphicsPipelineCreateInfo pipeline_info = {
     .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
     .stageCount = 2,
@@ -426,10 +477,10 @@ int gfxPipelineInit(GfxContext* gfx){
     .pColorBlendState = &color_blend_info,
     .pDynamicState = &dynamic_state_info,
     .layout = gfx->pipeline_layout,
-    .renderPass = gfx->renderpass,
     .subpass = 0,
     .basePipelineHandle = VK_NULL_HANDLE,
     .basePipelineIndex = -1,
+    .pNext = &pipeline_rendering_create_info,
   };
 
   if(vkCreateGraphicsPipelines

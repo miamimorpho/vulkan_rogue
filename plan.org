@@ -9,25 +9,16 @@ FOV/Line of Sight
 NPCs / enemies basic basic
 png->bdf to redistribute some assets
 
-* hybrid-mode rendering
-Its easier to write GUI's as if they are immediate mode. That is
-instead of seperating model/view/controllers and maintaining a state,
-the overhead and complexity of which can become slow, drawing and input commands are written together as-if we are describing the way to construct one frame in one code block. This is terrible for CPU/GPU speeds as it means recomputing the display everytime.
-howethe CPU overhead of constructing and maintaining a layout can
-be pre-cached. The GPU overhead of presenting a quad to the screen may not be different from presenting a few quads. Storing the grid of glyph cells and redisplaying it is very cheap. However the CPU overhead of clearing and blending those proto-images is terrible so it may be better to render to texture. Then allow the API to layer different elements against each other. This does add some CPU overhead as it may take 3 draw calls through different shaders to build a frame. It also means sending images to the GPU and suffering from the power usage that consumes.
-
-To get 0.0% usage we need to signal for a true idle to happen when there is not input, we need a paltform independant way to induce sleep.
-As it is mostly input polling that is killing CPU usage.
-
-IDEA: to render to an offscreen image may require more CPU operations
-than it saves and adds complexity to the codebase, in a gui context (hundreds of quads) its of course going to be quicker re-use vertex buffers for static content.
-
-BearLibTerminal uses 'layers' and can blend between them. My current shader uses painters order and it is easy not having a depth buffer.
-
-render to a backbuffer image
-render backbuffer image to swapchain
-render dynamic content ontop of that swapchain.
-
+* Instance Attributes
+| InPosition           | x, y   | uint8_t uint8_t |
+/limits terminal dimensions to 256/256 chars/
+| UV Encoding          | i      | uint16_t        |
+/caps each texture atlas at 65536 glyphs, unicode will be broken into several different atlasses/
+| texture Index        | i      | uint8_t         |
+/limits renderer to 256 texture atlasses. Need to standardise the width of texture atlasses to 256 ( 256^2 = UINT16_MAX)/
+| color indices        | fg, bg | uint4_t uint4_t  |
+/limits colour palette to 16 colours/
+/spare 16 bit number/
 * Enemies and Items
 spot - boston dynamics dog
 Gov't TV License Enforcement 
