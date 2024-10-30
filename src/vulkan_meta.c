@@ -80,8 +80,10 @@ int gfxBufferAppend(VmaAllocator allocator, GfxBuffer *dest,
   VmaAllocationInfo dest_info;
   vmaGetAllocationInfo(allocator, dest->allocation, &dest_info);
   
-  if(dest->used_size + src_size > dest_info.size)
+  if(dest->used_size + src_size > dest_info.size){
+    //printf("fail\n");
     return 1;
+  }
   
   vmaCopyMemoryToAllocation(allocator, src,
 			    dest->allocation, dest->used_size,
@@ -666,6 +668,7 @@ int gfxSwapchainInit(GfxContext* gfx){
   if(capable.maxImageCount > 0 && max_swapchain_c > capable.maxImageCount) {
     max_swapchain_c = capable.maxImageCount;
   }
+  gfx->frame_c = DRAW_BUFFER_COUNT;
   
   VkSwapchainCreateInfoKHR swapchain_create_info = {
     .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -713,84 +716,6 @@ int gfxSwapchainInit(GfxContext* gfx){
   return 0;
 }
 
-int gfxRenderpassInit(GfxContext* gfx){
- VkAttachmentDescription color_attachment = {
-    .format = cfg_format,
-    .samples = VK_SAMPLE_COUNT_1_BIT,
-    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-    .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-    .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-  };
-
-  VkAttachmentReference color_attachment_ref = {
-    .attachment = 0,
-    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-  };
- 
-  VkSubpassDescription subpass = {
-    .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-    .colorAttachmentCount = 1,
-    .pColorAttachments = &color_attachment_ref,
-  };
-  
-  VkSubpassDependency dependency = {
-    .srcSubpass = VK_SUBPASS_EXTERNAL,
-    .dstSubpass = 0,
-    .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-    | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-    
-    .srcAccessMask = 0,
-    .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-    | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-    .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-    | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-  };
-  
-  VkRenderPassCreateInfo render_pass_info = {
-    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-    .attachmentCount = 1,
-    .pAttachments = &color_attachment,
-    .subpassCount = 1,
-    .pSubpasses = &subpass,
-    .dependencyCount = 1,
-    .pDependencies = &dependency
-  };
-
-  if(vkCreateRenderPass(gfx->ldev, &render_pass_info, NULL, &gfx->renderpass) != VK_SUCCESS){
-    printf("failed to creat renderpass");
-    return 1;
-  }
-  return 0;
-}
-
-int gfxFramebufferInit(GfxContext* gfx){
-   gfx->framebuffer = malloc(gfx->swapchain_c * sizeof(VkFramebuffer));
-
-  for(size_t i = 0; i < gfx->swapchain_c; i++){
-
-    VkFramebufferCreateInfo framebuffer_info = {
-      .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-      .renderPass = gfx->renderpass,
-      .attachmentCount = 1,
-      .pAttachments = &gfx->swapchain_views[i],
-      .width = gfx->extent.width,
-      .height = gfx->extent.height,
-      .layers = 1,
-    };
-
-    VK_CHECK
-      (vkCreateFramebuffer(gfx->ldev, &framebuffer_info,
-			   NULL, &gfx->framebuffer[i] ));
-  }
-    
-  gfx->frame_c = DRAW_BUFFER_COUNT;
-  
-  return 0;
-}
-
 int gfxRecreateSwapchain(void){
 
   GfxContext* gfx = gfxSetContext();
@@ -800,7 +725,6 @@ int gfxRecreateSwapchain(void){
   _gfxSwapchainDestroy(*gfx);
   
   gfxSwapchainInit(gfx);
-  gfxFramebufferInit(gfx);
 
   vkDeviceWaitIdle(gfx->ldev);
   
@@ -979,15 +903,16 @@ gfxSpvLoad(VkDevice l_dev, const char* filename, VkShaderModule* shader)
 }
 
 int _gfxSwapchainDestroy(GfxContext gfx){
-  for(uint32_t i = 0; i < gfx.swapchain_c; i++){
+  /*  for(uint32_t i = 0; i < gfx.swapchain_c; i++){
     vkDestroyFramebuffer(gfx.ldev, gfx.framebuffer[i], NULL); 
   }
+  */
   for(uint32_t i = 0; i < gfx.swapchain_c; i++){
     vkDestroyImageView(gfx.ldev, gfx.swapchain_views[i], NULL);
   }
   vkDestroySwapchainKHR(gfx.ldev, gfx.swapchain, NULL);
 
-  free(gfx.framebuffer);
+  //free(gfx.framebuffer);
   free(gfx.swapchain_images);
   free(gfx.swapchain_views);
 
@@ -1016,7 +941,7 @@ int _gfxConstFree(GfxContext gfx){
 
   _gfxSwapchainDestroy(gfx);
     
-  vkDestroyRenderPass(gfx.ldev, gfx.renderpass, NULL);
+  //vkDestroyRenderPass(gfx.ldev, gfx.renderpass, NULL);
   
   vmaDestroyAllocator(gfx.allocator);
   

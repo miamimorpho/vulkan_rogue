@@ -14,7 +14,7 @@ file(GLOB_RECURSE sources src/*.c src/*.h extern/vma.cpp)
 
 add_executable(${PROJECT_NAME} ${sources})
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_C_FLAGS "-std=c99 -Wall -pedantic -Wfloat-conversion -Wno-misleading-indentation")
+set(CMAKE_C_FLAGS "-g -O0 -std=c99 -Wall -pedantic -Wfloat-conversion -Wno-misleading-indentation")
 target_include_directories(${PROJECT_NAME} PUBLIC src/ extern/)
 
 ###############################################################################
@@ -22,6 +22,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC src/ extern/)
 ###############################################################################
 
 find_package(Vulkan REQUIRED)
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
+  include_directories("/usr/X11R6/include")
+  link_directories("/usr/X11R6/lib")
+endif()
 
 # This is a workaround for msys/mingw not playing nice with glfw
 if (MINGW)
@@ -31,6 +36,7 @@ if (MINGW)
             ${Vulkan_LIBRARIES})
 else()
     find_package(glfw3 3.3 REQUIRED)
+
     target_link_libraries(${PROJECT_NAME} PUBLIC
             glfw
             ${Vulkan_LIBRARIES})

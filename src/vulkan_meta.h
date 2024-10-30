@@ -54,8 +54,6 @@ typedef struct{
   VkImage *swapchain_images;
   VkImageView *swapchain_views;
   /* const */ uint32_t frame_c;
-  /* const */ VkRenderPass renderpass;
-  /* const */ VkFramebuffer *framebuffer;
   /* const */ VkDescriptorPool descriptor_pool;
   /* const */ VkCommandBuffer *cmd_buffer;
   /* const */ VkSemaphore* image_available;
@@ -78,14 +76,27 @@ typedef struct{
   uint32_t color_indices;
 } TileDrawInstance;
 
+enum TileDrawCacheType {
+  NULL_CACHE,
+  SHORT,
+  LONG,
+};
+
+typedef struct{
+  char* name;
+  enum TileDrawCacheType type;
+  TileDrawInstance* data;
+  uint16_t size;
+} TileDrawCache;
+
 typedef struct{
     uint32_t swapchain_x;
     uint32_t frame_x;
     GfxTileset* textures;
 
-    TileDrawInstance* tile_buffer;
-    uint32_t tile_buffer_w;
-    uint32_t tile_buffer_h;
+    TileDrawCache* caches;
+    int cache_x;
+    int cache_c;
     GfxBuffer tile_draw_instances;
 
 }GfxGlobal;

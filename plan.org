@@ -9,6 +9,22 @@ FOV/Line of Sight
 NPCs / enemies basic basic
 png->bdf to redistribute some assets
 
+* Cache System
+zero out caches
+
+add func to cache draw commands to save CPU redrawing
+add func to render the caches in painter order
+have a primary scratch buffer to avoid un-needed realloc for dynamic content
+functional approach puts memory allocation/deallocation in composition code
+which is not ideal.
+
+change_buffer(string_id)
+if string_id does not exist, adds it to the list of buffers and alloc some memory for it
+internally changes state of scratch buffer to id;
+
+draw_buffer(string_id);
+draw_primary_buffer();
+
 * Instance Attributes
 | InPosition           | x, y   | uint8_t uint8_t |
 /limits terminal dimensions to 256/256 chars/

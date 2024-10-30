@@ -132,6 +132,7 @@ GameAction guiPickTile(void)
     width_in_tiles = ASCII_SCREEN_WIDTH;
   }
 
+  gfxCacheChange("background");
   int viewport_size = 16;
   for(int y = 0; y < viewport_size; y++){
     for(int x = 0; x < viewport_size; x++){
@@ -147,6 +148,7 @@ GameAction guiPickTile(void)
   inputState_t input;
 
   // GUI Render Loop
+  gfxCacheChange("main");
   while(getInputState(&input) == 0){
 
     target_uv = (input.mouse_y * width_in_tiles) + input.mouse_x;
@@ -156,7 +158,10 @@ GameAction guiPickTile(void)
       gfxAddCh(input.mouse_x, input.mouse_y,
 	       target_uv, DRAW_TEXTURE_INDEX,
 	       11, 0);
-    } 
+    }
+    gfxDrawCache("background");
+    gfxDrawCache("main");
+    printf("eof\n");
     gfxRenderFrame();
     
   } // end of GUI loop
