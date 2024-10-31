@@ -44,7 +44,7 @@ int cacheCreate(TileDrawCache* dst, const char* name, enum TileDrawCacheType typ
 
   size_t name_len = strlen(name) +1;
   dst->name = malloc(name_len);
-  if(dst->name != NULL){
+ls  if(dst->name != NULL){
     memcpy(dst->name, name, name_len);
   }
   
