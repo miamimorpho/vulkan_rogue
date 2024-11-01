@@ -1,5 +1,6 @@
 * TODO
 
+put GfxContext in GfxGlobal as a opaque pointer
 message buffer -> ring buffer
 changing view of tileset < - >
 changing tileset < - >
@@ -11,18 +12,21 @@ png->bdf to redistribute some assets
 
 * Cache System
 
-add func to render the caches in painter order
-have a primary scratch buffer to avoid un-needed realloc for dynamic content
-functional approach puts memory allocation/deallocation in composition code
-which is not ideal.
+be able to save CPU redrawing by cacheing GPU draw commands
+adds 'layers' though being able to write to a buffer then arrange
+their painting order before redrawing the whole screen each frame
+be able to save common GUI elements like buttons, scroll bars, ect
 
-add secondary command buffers!
-
-change_buffer(string_id)
+- cacheChange(string_id)
 if string_id does not exist, adds it to the list of buffers and alloc some memory for it
-internally changes state of scratch buffer to id;
-draw_buffer(string_id);
+internally changes state of current buffer to id;
+- cacheSendToGPU(string_id)
+copy whatever was written on CPU to GPU
+- cachePaint(string_id);
+create indirect draw command for that section of glyphs in cmdb
 
+when change cache, upload last cache to GPU
+always upload current cache to GPU before drawing
 
 * Instance Attributes
 | InPosition           | x, y   | uint8_t uint8_t |

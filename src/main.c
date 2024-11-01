@@ -35,8 +35,8 @@ int main(void){
     //gfxAddString(0, ASCII_SCREEN_HEIGHT-2,
     //		 "Press ? for help",
     //		 15, 0);
-    gfxDrawCache("main");
-    gfxRenderFrame();
+    gfxCachePresent("main");
+    gfxRefresh();
   }
   
   gfxScreenClose();

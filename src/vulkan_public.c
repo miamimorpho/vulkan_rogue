@@ -15,17 +15,18 @@ int inputInit(void){
 }
 
 // drawing.c
-int gfxRenderFrame(void){
-  return _gfxRenderFrame(gfxGetContext(), &s_global);
+int gfxRefresh(void){
+  return _gfxRefresh(gfxGetContext(), &s_global);
 }
 
 int gfxCacheChange(const char* name){
-  return _gfxCacheChange(&s_global, name);
+  return _gfxCacheChange(gfxGetContext(), &s_global, name);
 }
 
-int gfxDrawCache(const char* name){
-  return _gfxDrawCache(gfxGetContext(), &s_global, name);
+int gfxCachePresent(const char* name){
+  return _gfxCachePresent(gfxGetContext(), &s_global, name);
 }
+
 
 int gfxAddCh(uint16_t x, uint16_t y, uint16_t encoding, uint16_t texture_index, uint16_t fg, uint16_t bg){
 
@@ -76,17 +77,18 @@ int gfxScreenInit(void){
   _gfxTexturesInit(&s_global.textures);
 
   // Create Scratch Buffers
-  s_global.caches = malloc(sizeof(TileDrawCache));
-  cacheCreate(&s_global.caches[0], "main", LONG);
-  s_global.cache_x = 0;
-  s_global.cache_c = 1;
-
-  // Create Draw Buffers
   int tile_buffer_size = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
-  
   gfxBufferCreate(gfx.allocator,
 		  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		  tile_buffer_size * sizeof(TileDrawInstance), &s_global.tile_draw_instances);  
+		  5 * tile_buffer_size * sizeof(GfxGlyph), &s_global.gpu_glyph_cache);  
+  s_global.caches = malloc(sizeof(GfxCache));
+  s_global.cache_c = 0;
+  gfxCacheChange("main");
+  // Create Draw Buffers
+  gfxBufferCreate(gfx.allocator,
+		  VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+		  5 * sizeof(VkDrawIndirectCommand), &s_global.indirect);
+  
   return 0;
 }
 
@@ -106,7 +108,8 @@ int gfxScreenClose(void){
   }
 
   // free global back bugger
-  gfxBufferDestroy(gfx.allocator, &s_global.tile_draw_instances);
+  gfxBufferDestroy(gfx.allocator, &s_global.gpu_glyph_cache);
+  gfxBufferDestroy(gfx.allocator, &s_global.indirect);
   
   // free asset data
   for(int i = 0; i < MAX_SAMPLERS; i++){

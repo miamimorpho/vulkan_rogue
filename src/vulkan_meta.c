@@ -74,7 +74,7 @@ int gfxCmdSingleEnd(VkCommandBuffer cmd_buffer)
   return 0;
 }
 
-int gfxBufferAppend(VmaAllocator allocator, GfxBuffer *dest,
+int gfxBufferAppend(VmaAllocator allocator, GfxBuffer* dest,
 		    const void* src, VkDeviceSize src_size)
 {
   VmaAllocationInfo dest_info;

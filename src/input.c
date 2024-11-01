@@ -116,7 +116,7 @@ GameAction guiPickColor(void)
 	       i / PALETTE_SIZE,
 	       DRAW_TEXTURE_INDEX);
     }
-    gfxRenderFrame();
+    gfxRefresh();
   } // End of UI Loop
   return paintEntityAction(-1,fgIndex, bgIndex);
 }
@@ -159,10 +159,10 @@ GameAction guiPickTile(void)
 	       target_uv, DRAW_TEXTURE_INDEX,
 	       11, 0);
     }
-    gfxDrawCache("background");
-    gfxDrawCache("main");
-    printf("eof\n");
-    gfxRenderFrame();
+ 
+    gfxCachePresent("background");
+    gfxCachePresent("main");
+    gfxRefresh();
     
   } // end of GUI loop
   return paintEntityAction(target_uv, -1, -1);
@@ -175,7 +175,7 @@ int userInputHelpScreen(void)
   inputState_t input;
   while(getInputState(&input) == 0){
     gfxAddString(0, 0, help_screen_ascii, 15, 0);
-    gfxRenderFrame();
+    gfxRefresh();
   }
   free(help_screen_ascii);
   return 0;

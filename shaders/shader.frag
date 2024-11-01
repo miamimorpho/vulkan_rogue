@@ -22,7 +22,5 @@ void main() {
   // Tileset Atlas Index
   vec4 brightness = texture(texSampler[texIndex], normalUV);
 
-       //outColor = vec4(fgUV.x, bgUV.x, 0, 1);
-       //outColor = texture(texSampler[textureIndex], normalUV);
-  outColor = vec4(mix(bg, fg, brightness.r)); 
+  outColor = vec4(mix(bg, fg, brightness.r));
 }

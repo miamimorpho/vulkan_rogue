@@ -74,9 +74,9 @@ typedef struct{
   uint32_t tex_encoding;
   uint32_t tex_index_and_width;
   uint32_t color_indices;
-} TileDrawInstance;
+} GfxGlyph;
 
-enum TileDrawCacheType {
+enum GfxCacheType {
   NULL_CACHE,
   SHORT,
   LONG,
@@ -84,21 +84,22 @@ enum TileDrawCacheType {
 
 typedef struct{
   char* name;
-  enum TileDrawCacheType type;
-  TileDrawInstance* data;
-  uint16_t size;
-} TileDrawCache;
+  enum GfxCacheType type;
+  GfxGlyph* data;
+  uint16_t count;
+} GfxCache;
 
 typedef struct{
-    uint32_t swapchain_x;
-    uint32_t frame_x;
-    GfxTileset* textures;
-
-    TileDrawCache* caches;
-    int cache_x;
-    int cache_c;
-    GfxBuffer tile_draw_instances;
-
+  //  GfxContext vk;
+  uint32_t swapchain_x;
+  uint32_t frame_x;
+  GfxTileset* textures;
+  
+  GfxCache* caches;
+  int cache_x;
+  int cache_c;
+  GfxBuffer indirect;
+  GfxBuffer gpu_glyph_cache;
 }GfxGlobal;
 
 VkResult init_vkCmdBeginRenderingKHR(VkDevice);

@@ -9,7 +9,8 @@ uint32_t pack16into32(uint16_t a, uint16_t b){
   return(uint32_t)a << 16 | (uint32_t)b;
 }
 
-int cacheSearch(TileDrawCache* caches, int buffer_c, const char* name){
+int cacheSearch(GfxCache* caches, int buffer_c, const char* name){
+  if(buffer_c == 0) return -1;
   int found_buffer = -1;
   for(int i = 0; i < buffer_c; i++){
     if(caches[i].type == NULL_CACHE) break;
@@ -21,14 +22,18 @@ int cacheSearch(TileDrawCache* caches, int buffer_c, const char* name){
   return found_buffer;
 }
 
-int cacheCountGrow(TileDrawCache** caches_ptr, int* cache_c){
-  int new_cache_c = *cache_c * 2;
-  TileDrawCache* new_caches = realloc(*caches_ptr, new_cache_c * sizeof(TileDrawCache));
+int cacheCountGrow(GfxCache** caches_ptr, int* cache_c){
+  int new_cache_c = 0;
+  if(*cache_c == 0){
+    new_cache_c = 1;
+  }else{
+    new_cache_c = *cache_c * 2;
+  }
+  GfxCache* new_caches = realloc(*caches_ptr, new_cache_c * sizeof(GfxCache));
   if(new_caches == NULL) return -1;
   
   for(int i = *cache_c; i < new_cache_c; i++){
-    printf("%d\n", i);
-    TileDrawCache* caches_dst = &new_caches[i];
+    GfxCache* caches_dst = &new_caches[i];
     caches_dst->type = NULL_CACHE;
     caches_dst->name = NULL;
   }
@@ -38,62 +43,73 @@ int cacheCountGrow(TileDrawCache** caches_ptr, int* cache_c){
   return 0;
 }
 
-int cacheCreate(TileDrawCache* dst, const char* name, enum TileDrawCacheType type){
+void gfxClear( GfxCache* dst ){
+  memset(dst->data, 0, dst->count * sizeof(GfxGlyph));
+}
+
+int cacheCreate(GfxCache* dst, const char* name, enum GfxCacheType type){
 
   dst->type = type;
 
   size_t name_len = strlen(name) +1;
   dst->name = malloc(name_len);
-ls  if(dst->name != NULL){
+  if(dst->name != NULL){
     memcpy(dst->name, name, name_len);
   }
   
-  dst->size = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
-  dst->data = malloc(dst->size * sizeof(TileDrawInstance));
+  dst->count = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
+  dst->data = (GfxGlyph*)malloc(dst->count * sizeof(GfxGlyph));
 
-  memset(dst->data, 0, dst->size);
-  /*
-  for(int x = 0; x < ASCII_SCREEN_WIDTH; x++){
-    for(int y = 0; y < ASCII_SCREEN_HEIGHT; y++){
-      TileDrawInstance null_draw = {
-	.pos = pack16into32(x, y),
-	.tex_encoding = 1,
-	.tex_index_and_width =	pack16into32(DRAW_TEXTURE_INDEX, 32),
-	.color_indices = pack16into32(15, 0)
-      };
-      dst->data[y * ASCII_SCREEN_WIDTH + x] = null_draw;
-    }
-  }
-  */
-    
+  gfxClear(dst);
+
   return 0;
 }
 
-int _gfxCacheChange(GfxGlobal* global, const char* name){
+int gfxCacheSendToGPU(GfxContext gfx, GfxGlobal* global, int i){
+  if(i > global->cache_c) return 1;
+
+  const int glyph_c = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
+  const int src_size = glyph_c * sizeof(GfxGlyph);
+ 
+  vmaCopyMemoryToAllocation(gfx.allocator,
+    global->caches[i].data,
+    global->gpu_glyph_cache.allocation,
+    src_size * i,
+    src_size );		    
+			    
+  return 0;
+}
+
+int _gfxCacheChange(GfxContext gfx, GfxGlobal* global, const char* name){
+
   /* get cache index by searching string
    * if it does not exist, alloc and create index
-   */
+   */  
   int cache_index = cacheSearch(global->caches, global->cache_c, name);
   if(cache_index == -1){
     // cache not found, find empty slot
     int free_cache_index = -1;
-    for(int i = 0; i < global->cache_c; i++){
-      if(global->caches[i].type == NULL_CACHE){
-	free_cache_index = i;
+    if(global->cache_c > 0){
+      for(int i = 0; i < global->cache_c; i++){
+	if(global->caches[i].type == NULL_CACHE){
+	  free_cache_index = i;
+	}
       }
     }
 
-    // no empty slots, realloc, try again
     if(free_cache_index == -1){
+      // no empty slots, realloc, try again
       cacheCountGrow(&global->caches, &global->cache_c);
-      return _gfxCacheChange(global, name);
+      return _gfxCacheChange(gfx, global, name);
     }
     // init new cache
-    TileDrawCache* new_cache = &global->caches[free_cache_index];
+    GfxCache* new_cache = &global->caches[free_cache_index];
     cacheCreate(new_cache, name, SHORT);
-    return _gfxCacheChange(global, name);
+    return _gfxCacheChange(gfx, global, name);
   }else{
-    printf("%s %d\n", name, cache_index);
+    /* upload whatever has been drawn to this point
+     * onto the GPU */
+    gfxCacheSendToGPU(gfx, global, global->cache_x);
     global->cache_x = cache_index;
   }
   return 0;
@@ -120,7 +136,7 @@ int _gfxAddCh(GfxGlobal* global, uint16_t x, uint16_t y,
   if(x >= ASCII_SCREEN_WIDTH || x < 0) return 1;
   if(y >= ASCII_SCREEN_HEIGHT || y < 0) return 1;
 
-  TileDrawInstance dst = {
+  GfxGlyph dst = {
     .pos = pack16into32(x, y),
     .tex_encoding = getUnicodeUV(texture, encoding),
     .tex_index_and_width =
@@ -128,7 +144,7 @@ int _gfxAddCh(GfxGlobal* global, uint16_t x, uint16_t y,
 
     .color_indices = pack16into32(fg, bg)
   };
-  TileDrawCache* dst_cache = &global->caches[global->cache_x];
+  GfxCache* dst_cache = &global->caches[global->cache_x];
   dst_cache->data[y * ASCII_SCREEN_WIDTH + x] = dst;
   return 0;
 }
@@ -154,23 +170,24 @@ int _gfxAddString(GfxContext gfx, GfxGlobal* global,
   return 0;
 }
 
-
-int _gfxDrawCache(GfxContext gfx, GfxGlobal* global, const char* name){
-  // Copy draw commands to GPU
-  const int texel_len = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
-  const int src_size = texel_len * sizeof(TileDrawInstance);
-
+int _gfxCachePresent(GfxContext gfx, GfxGlobal* global, const char* name){
   int i = cacheSearch(global->caches, global->cache_c, name);
-  printf("%d\n", i);
-  gfxBufferAppend(gfx.allocator,
-		  &global->tile_draw_instances,
-		  global->caches[i].data, src_size);
+  GfxCache* cache = &global->caches[i];
+  VkDrawIndirectCommand src = {
+    .vertexCount = 6,
+    .instanceCount = cache->count,
+    .firstVertex = 0,
+    .firstInstance = cache->count * i, // assumes every cache is same size
+  };
+
+  gfxBufferAppend(gfx.allocator, &global->indirect, &src,
+		  sizeof(VkDrawIndirectCommand));
   return 0;
 }
 
-int _gfxBakeCommandBuffer(GfxContext gfx, int swapchain_x, VkBuffer instance_vertex_buffer, int draw_count)
+int _gfxBakeCommandBuffer(GfxContext gfx, GfxGlobal* global)
 {
-  VkCommandBuffer cmd_b = gfx.cmd_buffer[swapchain_x];
+  VkCommandBuffer cmd_b = gfx.cmd_buffer[global->swapchain_x];
   vkResetCommandBuffer(cmd_b, 0);
 
   
@@ -184,12 +201,12 @@ int _gfxBakeCommandBuffer(GfxContext gfx, int swapchain_x, VkBuffer instance_ver
     printf("!failed to begin recording command buffer!\n");
   }
 
-  transitionImageLayout(cmd_b, gfx.swapchain_images[swapchain_x],
+  transitionImageLayout(cmd_b, gfx.swapchain_images[global->swapchain_x],
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 
-  transitionImageLayout(cmd_b, gfx.swapchain_images[swapchain_x],
+  transitionImageLayout(cmd_b, gfx.swapchain_images[global->swapchain_x],
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
   
@@ -198,8 +215,8 @@ int _gfxBakeCommandBuffer(GfxContext gfx, int swapchain_x, VkBuffer instance_ver
     (VkClearColorValue){ { 0.0f, 0.0f, 0.0f, 1.0f } };
   
   VkRenderingAttachmentInfoKHR color_attachment_info = {
-    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-    .imageView = gfx.swapchain_views[swapchain_x],
+    VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+    .imageView = gfx.swapchain_views[global->swapchain_x],
     .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
     .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
     .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -207,7 +224,7 @@ int _gfxBakeCommandBuffer(GfxContext gfx, int swapchain_x, VkBuffer instance_ver
   };
     
   VkRenderingInfoKHR render_info = {
-    .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+    VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
     .renderArea.offset = {0, 0},
     .renderArea.extent = gfx.extent,
     .layerCount = 1,
@@ -246,10 +263,11 @@ int _gfxBakeCommandBuffer(GfxContext gfx, int swapchain_x, VkBuffer instance_ver
   
   VkDeviceSize offsets[] = {0};
   vkCmdBindVertexBuffers(cmd_b, 0, 1,
-			 &instance_vertex_buffer, offsets);    
-  vkCmdDraw(cmd_b, 6,
-	    draw_count, 0, 0);
-  
+			 &global->gpu_glyph_cache.handle, offsets);    
+  vkCmdDrawIndirect(cmd_b, global->indirect.handle, 0,
+		    global->indirect.used_size / sizeof(VkDrawIndirectCommand),
+		    sizeof(VkDrawIndirectCommand));
+    
   // draw end
   pfn_vkCmdEndRenderingKHR(cmd_b);
   
@@ -260,7 +278,7 @@ int _gfxBakeCommandBuffer(GfxContext gfx, int swapchain_x, VkBuffer instance_ver
   return 0;
 }
 
-int _gfxRenderFrame(GfxContext gfx, GfxGlobal* global){
+int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
 
   // waits on last VkQueueSubmit to be done
   VkResult fence_result;
@@ -288,11 +306,10 @@ int _gfxRenderFrame(GfxContext gfx, GfxGlobal* global){
     VK_CHECK(vkCreateSemaphore(gfx.ldev, &semaphore_info, NULL, image_available));
     return 1;
   }
-   
-  _gfxBakeCommandBuffer
-    (gfx, global->swapchain_x,
-     global->tile_draw_instances.handle,
-     global->tile_draw_instances.used_size / sizeof(TileDrawInstance));
+
+  // upload last drawn cache to GPU
+  gfxCacheSendToGPU(gfx, global, global->cache_x);
+  _gfxBakeCommandBuffer(gfx, global);
   
   VkPipelineStageFlags wait_stages[] =
     {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
@@ -335,7 +352,7 @@ int _gfxRenderFrame(GfxContext gfx, GfxGlobal* global){
   }
 
   global->frame_x = (global->frame_x + 1) % gfx.frame_c;
-  global->tile_draw_instances.used_size = 0;
+  global->indirect.used_size = 0;
   
   return 0;
 }
@@ -419,32 +436,32 @@ int gfxPipelineInit(GfxContext* gfx){
   attribute_descriptions[0].location = 0;
   attribute_descriptions[0].format = VK_FORMAT_R32_UINT;
   attribute_descriptions[0].offset =
-    offsetof(TileDrawInstance, pos);
+    offsetof(GfxGlyph, pos);
 
   // Glyph Encoding ( x, y ) PACKED
   attribute_descriptions[1].binding = 0;
   attribute_descriptions[1].location = 1;
   attribute_descriptions[1].format = VK_FORMAT_R32_UINT;
   attribute_descriptions[1].offset =
-    offsetof(TileDrawInstance, tex_encoding);
+    offsetof(GfxGlyph, tex_encoding);
 
   // Texture Index + size PACKED
   attribute_descriptions[2].binding = 0;
   attribute_descriptions[2].location = 2;
   attribute_descriptions[2].format = VK_FORMAT_R32_UINT;
   attribute_descriptions[2].offset =
-    offsetof(TileDrawInstance, tex_index_and_width);
+    offsetof(GfxGlyph, tex_index_and_width);
 
   // Colors, two 16 bit numbers packed into a 32bit
   attribute_descriptions[3].binding = 0;
   attribute_descriptions[3].location = 3;
   attribute_descriptions[3].format = VK_FORMAT_R32_UINT;
   attribute_descriptions[3].offset =
-    offsetof(TileDrawInstance, color_indices);
+    offsetof(GfxGlyph, color_indices);
 
   VkVertexInputBindingDescription binding_description = {
     .binding = 0,
-    .stride = sizeof(TileDrawInstance),
+    .stride = sizeof(GfxGlyph),
     .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
   };
   

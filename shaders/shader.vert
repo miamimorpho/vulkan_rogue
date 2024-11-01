@@ -51,7 +51,6 @@ void main() {
 
   // Position
   vec2 asciiPos =
-  //unpackHalf2x16(inPosition) + quadVertices[gl_VertexIndex];
   unpackUINT16(inPosition) + quadVertices[gl_VertexIndex]; 
   vec2 asciiToScreen = vec2(TILE_SIZE) / constants.screen_size;
   vec2 ndcPos = 2 * asciiPos * asciiToScreen -1;
