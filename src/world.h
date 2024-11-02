@@ -1,5 +1,6 @@
 #ifndef WORLD_H
 #define WORLD_H
+#include "vulkan_public.h"
 #include <stdint.h>
 
 typedef struct{
@@ -33,6 +34,6 @@ int mapPutTile(GameWorld*, Entity, int, int);
 Entity mapGetTile(GameWorld, int x, int y);
 int worldInit(GameWorld*, int, int);
 Entity* entityInit(GameWorld*, unsigned int);
-int worldDraw(GameWorld, Entity);
+int worldDraw(GfxGlobal*, GameWorld, Entity);
 
 #endif // WORLD_H

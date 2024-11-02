@@ -90,7 +90,7 @@ typedef struct{
 } GfxCache;
 
 typedef struct{
-  //  GfxContext vk;
+  GfxContext vk;
   uint32_t swapchain_x;
   uint32_t frame_x;
   GfxTileset* textures;
@@ -104,11 +104,8 @@ typedef struct{
 
 VkResult init_vkCmdBeginRenderingKHR(VkDevice);
 
-GfxContext* gfxSetContext(void);
-GfxContext  gfxGetContext(void);
-
-VkCommandBuffer gfxCmdSingleBegin(void);
-int gfxCmdSingleEnd(VkCommandBuffer);
+VkCommandBuffer gfxCmdSingleBegin(GfxContext);
+int gfxCmdSingleEnd(GfxContext, VkCommandBuffer);
 
 /** Buffer and Image Functions */
 int gfxVertBufferCreate(GfxContext, size_t, GfxBuffer*);
@@ -120,12 +117,12 @@ int gfxBufferDestroy(VmaAllocator, GfxBuffer*);
 
 int gfxImageAlloc(VmaAllocator, GfxImage*, VkImageUsageFlags, VkFormat, uint32_t, uint32_t);
 int gfxImageViewCreate(VkDevice, VkImage, VkImageView *, VkFormat, VkImageAspectFlags);
-int copyBufferToImage(VkBuffer, VkImage, uint32_t, uint32_t);
+int copyBufferToImage(GfxContext, VkBuffer, VkImage, uint32_t, uint32_t);
 int transitionImageLayout(VkCommandBuffer, VkImage, VkImageLayout, VkImageLayout);
 void gfxImageDestroy(VmaAllocator, GfxImage);
 
 /** Initialisation Functions */
-int gfxRecreateSwapchain(void);
+int gfxRecreateSwapchain(GfxContext*);
 int gfxAllocatorInit(GfxContext*);
 int gfxGlfwInit(GfxContext*);
 int gfxInstanceInit(GfxContext*);

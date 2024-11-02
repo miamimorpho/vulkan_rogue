@@ -24,27 +24,17 @@ VkResult init_vkCmdBeginRenderingKHR(VkDevice device) {
     return VK_SUCCESS;
 }
 
-static GfxContext s_context;
-
-GfxContext* gfxSetContext(void){
-  return &s_context;
-}
-
-GfxContext gfxGetContext(void){
-  return s_context;
-}
-
-VkCommandBuffer gfxCmdSingleBegin(void)
+VkCommandBuffer gfxCmdSingleBegin(GfxContext vk)
 {
   VkCommandBufferAllocateInfo alloc_info = {
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
     .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-    .commandPool = s_context.cmd_pool,
+    .commandPool = vk.cmd_pool,
     .commandBufferCount = 1,
   };
 
   VkCommandBuffer command_buffer;
-  vkAllocateCommandBuffers(s_context.ldev, &alloc_info, &command_buffer);
+  vkAllocateCommandBuffers(vk.ldev, &alloc_info, &command_buffer);
 
   VkCommandBufferBeginInfo begin_info = {
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -56,7 +46,7 @@ VkCommandBuffer gfxCmdSingleBegin(void)
   return command_buffer;
 }
 
-int gfxCmdSingleEnd(VkCommandBuffer cmd_buffer)
+int gfxCmdSingleEnd(GfxContext vk, VkCommandBuffer cmd_buffer)
 {
   vkEndCommandBuffer(cmd_buffer);
 
@@ -66,11 +56,11 @@ int gfxCmdSingleEnd(VkCommandBuffer cmd_buffer)
     .pCommandBuffers = &cmd_buffer,
   };
 
-  if(vkQueueSubmit(s_context.queue, 1, &submit_info, VK_NULL_HANDLE)
+  if(vkQueueSubmit(vk.queue, 1, &submit_info, VK_NULL_HANDLE)
      != VK_SUCCESS) return 1;
   
-  vkQueueWaitIdle(s_context.queue);
-  vkFreeCommandBuffers(s_context.ldev, s_context.cmd_pool, 1, &cmd_buffer);
+  vkQueueWaitIdle(vk.queue);
+  vkFreeCommandBuffers(vk.ldev, vk.cmd_pool, 1, &cmd_buffer);
   return 0;
 }
 
@@ -131,10 +121,6 @@ int gfxBufferCreate(VmaAllocator allocator, VkBufferUsageFlags usage, VkDeviceSi
 int
 gfxBufferDestroy(VmaAllocator allocator, GfxBuffer* b)
 {
-  if(DEBUG_BUFFER){
-    printf("-destroying buffer %p\n", (void*)b);
-  }
-  
   if (allocator == NULL || b == NULL) {
     // Log error or handle appropriately
     return 1;
@@ -213,10 +199,10 @@ gfxImageViewCreate(VkDevice l_dev, VkImage image,
 }
 
 int
-copyBufferToImage(VkBuffer buffer, VkImage image,
+copyBufferToImage(GfxContext vk, VkBuffer buffer, VkImage image,
 		  uint32_t width, uint32_t height)
 {
-  VkCommandBuffer command = gfxCmdSingleBegin();
+  VkCommandBuffer command = gfxCmdSingleBegin(vk);
   
   VkBufferImageCopy region = {
     .bufferOffset = 0,
@@ -236,7 +222,7 @@ copyBufferToImage(VkBuffer buffer, VkImage image,
 			 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			 1, &region);
   
-  return gfxCmdSingleEnd(command);
+  return gfxCmdSingleEnd(vk, command);
 }
 
 int
@@ -716,9 +702,7 @@ int gfxSwapchainInit(GfxContext* gfx){
   return 0;
 }
 
-int gfxRecreateSwapchain(void){
-
-  GfxContext* gfx = gfxSetContext();
+int gfxRecreateSwapchain(GfxContext* gfx){
   
   vkDeviceWaitIdle(gfx->ldev);
   

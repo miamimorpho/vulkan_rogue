@@ -1,6 +1,6 @@
 #include "vulkan_meta.h"
 #include "action.h"
 
-void _inputInit(GfxContext);
-GameAction userInput(int);
+void gfxInputInit(GLFWwindow*);
+GameAction gfxUserInput(GfxGlobal*,int);
 int getExitState(void);

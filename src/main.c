@@ -7,12 +7,13 @@
 
 int main(void){
 
-  gfxScreenInit();
-  inputInit();
-
-  gfxTextureLoad("textures/color.png");
-  gfxTextureLoad("textures/icl8x8u.bdf");
-  gfxTextureLoad("textures/mrmotext-ex11.png");
+  GfxGlobal global;
+  GfxGlobal* gfx = &global;
+  gfxScreenInit(gfx);
+ 
+  gfxTextureLoad(gfx, "textures/color.png");
+  gfxTextureLoad(gfx, "textures/icl8x8u.bdf");
+  gfxTextureLoad(gfx, "textures/mrmotext-ex11.png");
   
   GameWorld world;
   worldInit(&world, 16, 16);
@@ -27,18 +28,18 @@ int main(void){
   player->inventory[0].collide = 0;
 
   while(getExitState() == 0){
-    worldDraw(world, *player);
+    worldDraw(gfx, world, *player);
 
-    GameAction user_action = userInput(0);
+    GameAction user_action = gfxUserInput(gfx, 0);
     doAction(&world, user_action);
     
     //gfxAddString(0, ASCII_SCREEN_HEIGHT-2,
     //		 "Press ? for help",
     //		 15, 0);
-    gfxCachePresent("main");
-    gfxRefresh();
+    gfxCachePresent(gfx, "main");
+    gfxRefresh(gfx);
   }
   
-  gfxScreenClose();
+  gfxScreenClose(global);
   return 0;
 }

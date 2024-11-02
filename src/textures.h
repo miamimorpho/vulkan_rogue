@@ -4,7 +4,6 @@
 #include "vulkan_meta.h"
 //#include <stdlib.h>
 
-int _gfxTexturesInit(GfxTileset**);
-int _gfxTextureLoad(GfxContext, const char*, GfxTileset*);
+int gfxTexturesInit(GfxTileset**);
 
 #endif //TEXTURES_H

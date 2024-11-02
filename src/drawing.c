@@ -65,33 +65,33 @@ int cacheCreate(GfxCache* dst, const char* name, enum GfxCacheType type){
   return 0;
 }
 
-int gfxCacheSendToGPU(GfxContext gfx, GfxGlobal* global, int i){
-  if(i > global->cache_c) return 1;
+int gfxCacheSendToGPU(GfxGlobal gfx, int i){
+  if(i > gfx.cache_c) return 1;
 
   const int glyph_c = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
   const int src_size = glyph_c * sizeof(GfxGlyph);
  
-  vmaCopyMemoryToAllocation(gfx.allocator,
-    global->caches[i].data,
-    global->gpu_glyph_cache.allocation,
+  vmaCopyMemoryToAllocation(gfx.vk.allocator,
+    gfx.caches[i].data,
+    gfx.gpu_glyph_cache.allocation,
     src_size * i,
     src_size );		    
 			    
   return 0;
 }
 
-int _gfxCacheChange(GfxContext gfx, GfxGlobal* global, const char* name){
+int gfxCacheChange(GfxGlobal* gfx, const char* name){
 
   /* get cache index by searching string
    * if it does not exist, alloc and create index
    */  
-  int cache_index = cacheSearch(global->caches, global->cache_c, name);
+  int cache_index = cacheSearch(gfx->caches, gfx->cache_c, name);
   if(cache_index == -1){
     // cache not found, find empty slot
     int free_cache_index = -1;
-    if(global->cache_c > 0){
-      for(int i = 0; i < global->cache_c; i++){
-	if(global->caches[i].type == NULL_CACHE){
+    if(gfx->cache_c > 0){
+      for(int i = 0; i < gfx->cache_c; i++){
+	if(gfx->caches[i].type == NULL_CACHE){
 	  free_cache_index = i;
 	}
       }
@@ -99,18 +99,18 @@ int _gfxCacheChange(GfxContext gfx, GfxGlobal* global, const char* name){
 
     if(free_cache_index == -1){
       // no empty slots, realloc, try again
-      cacheCountGrow(&global->caches, &global->cache_c);
-      return _gfxCacheChange(gfx, global, name);
+      cacheCountGrow(&gfx->caches, &gfx->cache_c);
+      return gfxCacheChange(gfx, name);
     }
     // init new cache
-    GfxCache* new_cache = &global->caches[free_cache_index];
+    GfxCache* new_cache = &gfx->caches[free_cache_index];
     cacheCreate(new_cache, name, SHORT);
-    return _gfxCacheChange(gfx, global, name);
+    return gfxCacheChange(gfx, name);
   }else{
     /* upload whatever has been drawn to this point
      * onto the GPU */
-    gfxCacheSendToGPU(gfx, global, global->cache_x);
-    global->cache_x = cache_index;
+    gfxCacheSendToGPU(*gfx, gfx->cache_x);
+    gfx->cache_x = cache_index;
   }
   return 0;
 }
@@ -124,11 +124,11 @@ uint32_t getUnicodeUV(GfxTileset tileset, uint32_t unicode){
   return 0;
 }
 
-int _gfxAddCh(GfxGlobal* global, uint16_t x, uint16_t y,
+int gfxAddCh(GfxGlobal* gfx, uint16_t x, uint16_t y,
 	      uint16_t encoding, uint16_t texture_index,
 	      uint16_t fg, uint16_t bg){
 
-  GfxTileset texture = global->textures[texture_index];
+  GfxTileset texture = gfx->textures[texture_index];
   if(texture.image.handle == NULL){
     texture_index = ASCII_TEXTURE_INDEX;
   }
@@ -144,15 +144,15 @@ int _gfxAddCh(GfxGlobal* global, uint16_t x, uint16_t y,
 
     .color_indices = pack16into32(fg, bg)
   };
-  GfxCache* dst_cache = &global->caches[global->cache_x];
+  GfxCache* dst_cache = &gfx->caches[gfx->cache_x];
   dst_cache->data[y * ASCII_SCREEN_WIDTH + x] = dst;
   return 0;
 }
 
-int _gfxAddString(GfxContext gfx, GfxGlobal* global,
-		   uint16_t x, uint16_t y,
-		   const char* str,
-		   uint16_t fg, uint16_t bg){
+int gfxAddString(GfxGlobal* gfx,
+		 uint16_t x, uint16_t y,
+		 const char* str,
+		 uint16_t fg, uint16_t bg){
   int i = 0;
   int start_x = 0;
   
@@ -161,7 +161,7 @@ int _gfxAddString(GfxContext gfx, GfxGlobal* global,
       y++;
       x = start_x;
     }else{
-      _gfxAddCh(global, x++, y,
+      gfxAddCh(gfx, x++, y,
 		str[i], ASCII_TEXTURE_INDEX,
 		fg, bg);
     }
@@ -170,9 +170,9 @@ int _gfxAddString(GfxContext gfx, GfxGlobal* global,
   return 0;
 }
 
-int _gfxCachePresent(GfxContext gfx, GfxGlobal* global, const char* name){
-  int i = cacheSearch(global->caches, global->cache_c, name);
-  GfxCache* cache = &global->caches[i];
+int gfxCachePresent(GfxGlobal* gfx, const char* name){
+  int i = cacheSearch(gfx->caches, gfx->cache_c, name);
+  GfxCache* cache = &gfx->caches[i];
   VkDrawIndirectCommand src = {
     .vertexCount = 6,
     .instanceCount = cache->count,
@@ -180,17 +180,16 @@ int _gfxCachePresent(GfxContext gfx, GfxGlobal* global, const char* name){
     .firstInstance = cache->count * i, // assumes every cache is same size
   };
 
-  gfxBufferAppend(gfx.allocator, &global->indirect, &src,
+  gfxBufferAppend(gfx->vk.allocator, &gfx->indirect, &src,
 		  sizeof(VkDrawIndirectCommand));
   return 0;
 }
 
-int _gfxBakeCommandBuffer(GfxContext gfx, GfxGlobal* global)
+int gfxBakeCommandBuffer(GfxGlobal* gfx)
 {
-  VkCommandBuffer cmd_b = gfx.cmd_buffer[global->swapchain_x];
+  VkCommandBuffer cmd_b = gfx->vk.cmd_buffer[gfx->swapchain_x];
   vkResetCommandBuffer(cmd_b, 0);
 
-  
   VkCommandBufferBeginInfo begin_info = {
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
     .flags = 0,
@@ -201,12 +200,12 @@ int _gfxBakeCommandBuffer(GfxContext gfx, GfxGlobal* global)
     printf("!failed to begin recording command buffer!\n");
   }
 
-  transitionImageLayout(cmd_b, gfx.swapchain_images[global->swapchain_x],
+  transitionImageLayout(cmd_b, gfx->vk.swapchain_images[gfx->swapchain_x],
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 
-  transitionImageLayout(cmd_b, gfx.swapchain_images[global->swapchain_x],
+  transitionImageLayout(cmd_b, gfx->vk.swapchain_images[gfx->swapchain_x],
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
   
@@ -216,7 +215,7 @@ int _gfxBakeCommandBuffer(GfxContext gfx, GfxGlobal* global)
   
   VkRenderingAttachmentInfoKHR color_attachment_info = {
     VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-    .imageView = gfx.swapchain_views[global->swapchain_x],
+    .imageView = gfx->vk.swapchain_views[gfx->swapchain_x],
     .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
     .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
     .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -226,7 +225,7 @@ int _gfxBakeCommandBuffer(GfxContext gfx, GfxGlobal* global)
   VkRenderingInfoKHR render_info = {
     VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
     .renderArea.offset = {0, 0},
-    .renderArea.extent = gfx.extent,
+    .renderArea.extent = gfx->vk.extent,
     .layerCount = 1,
     .colorAttachmentCount = 1,
     .pColorAttachments = &color_attachment_info,
@@ -234,19 +233,19 @@ int _gfxBakeCommandBuffer(GfxContext gfx, GfxGlobal* global)
   pfn_vkCmdBeginRenderingKHR(cmd_b, &render_info);
 			 
   GfxPushConstant constants = {
-    .screen_size_px = (vec2){ gfx.extent.width, gfx.extent.height },
+    .screen_size_px = (vec2){ gfx->vk.extent.width, gfx->vk.extent.height },
   };
-  vkCmdPushConstants(cmd_b, gfx.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GfxPushConstant), &constants);
+  vkCmdPushConstants(cmd_b, gfx->vk.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GfxPushConstant), &constants);
   
   vkCmdBindDescriptorSets(cmd_b, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			  gfx.pipeline_layout, 0, 1,
-			  &gfx.texture_descriptors, 0, NULL);
+			  gfx->vk.pipeline_layout, 0, 1,
+			  &gfx->vk.texture_descriptors, 0, NULL);
   
   VkViewport viewport = {
     .x = 0.0f,
     .y = 0.0f,
-    .width = gfx.extent.width * ASCII_SCALE,
-    .height = gfx.extent.height * ASCII_SCALE,
+    .width = gfx->vk.extent.width * ASCII_SCALE,
+    .height = gfx->vk.extent.height * ASCII_SCALE,
     .minDepth = 0.0f,
     .maxDepth = 1.0f,
   };
@@ -254,18 +253,18 @@ int _gfxBakeCommandBuffer(GfxContext gfx, GfxGlobal* global)
   
   VkRect2D scissor = {
     .offset = {0, 0},
-    .extent = gfx.extent,
+    .extent = gfx->vk.extent,
   };
   
   vkCmdSetScissor(cmd_b, 0, 1, &scissor);
   vkCmdBindPipeline(cmd_b, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		    gfx.pipeline);
+		    gfx->vk.pipeline);
   
   VkDeviceSize offsets[] = {0};
   vkCmdBindVertexBuffers(cmd_b, 0, 1,
-			 &global->gpu_glyph_cache.handle, offsets);    
-  vkCmdDrawIndirect(cmd_b, global->indirect.handle, 0,
-		    global->indirect.used_size / sizeof(VkDrawIndirectCommand),
+			 &gfx->gpu_glyph_cache.handle, offsets);    
+  vkCmdDrawIndirect(cmd_b, gfx->indirect.handle, 0,
+		    gfx->indirect.used_size / sizeof(VkDrawIndirectCommand),
 		    sizeof(VkDrawIndirectCommand));
     
   // draw end
@@ -278,38 +277,39 @@ int _gfxBakeCommandBuffer(GfxContext gfx, GfxGlobal* global)
   return 0;
 }
 
-int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
-
+int gfxRefresh(GfxGlobal* gfx){
+  GfxContext vk = gfx->vk;
+  
   // waits on last VkQueueSubmit to be done
   VkResult fence_result;
-  fence_result = vkWaitForFences(gfx.ldev, 1,
-		    &gfx.fence[global->frame_x],
+  fence_result = vkWaitForFences(vk.ldev, 1,
+		    &vk.fence[gfx->frame_x],
 		    VK_TRUE, UINT32_MAX);
   if(fence_result == VK_TIMEOUT){
     printf("FATAL: VkWaitForFences timed out\n");
     abort();
   }
-  vkResetFences(gfx.ldev, 1, &gfx.fence[global->frame_x]);
+  vkResetFences(vk.ldev, 1, &vk.fence[gfx->frame_x]);
   
-  VkSemaphore* image_available = &gfx.image_available[global->frame_x];  
+  VkSemaphore* image_available = &vk.image_available[gfx->frame_x];  
   VkResult result = VK_TIMEOUT;
-  result = vkAcquireNextImageKHR(gfx.ldev, gfx.swapchain, UINT32_MAX,
-				   *image_available,
-				   VK_NULL_HANDLE,
-				   &global->swapchain_x);
+  result = vkAcquireNextImageKHR(vk.ldev, vk.swapchain, UINT32_MAX,
+				 *image_available,
+				 VK_NULL_HANDLE,
+				 &gfx->swapchain_x);
   if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-    gfxRecreateSwapchain();
-    vkDestroySemaphore(gfx.ldev, *image_available, NULL);
+    gfxRecreateSwapchain(&gfx->vk);
+    vkDestroySemaphore(vk.ldev, *image_available, NULL);
     VkSemaphoreCreateInfo semaphore_info = {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
-    VK_CHECK(vkCreateSemaphore(gfx.ldev, &semaphore_info, NULL, image_available));
+    VK_CHECK(vkCreateSemaphore(vk.ldev, &semaphore_info, NULL, image_available));
     return 1;
   }
 
   // upload last drawn cache to GPU
-  gfxCacheSendToGPU(gfx, global, global->cache_x);
-  _gfxBakeCommandBuffer(gfx, global);
+  gfxCacheSendToGPU(*gfx, gfx->cache_x);
+  gfxBakeCommandBuffer(gfx);
   
   VkPipelineStageFlags wait_stages[] =
     {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
@@ -320,26 +320,26 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
     .pWaitSemaphores = image_available,
     .pWaitDstStageMask = wait_stages,
     .commandBufferCount = 1,
-    .pCommandBuffers = &gfx.cmd_buffer[global->swapchain_x],
+    .pCommandBuffers = &vk.cmd_buffer[gfx->swapchain_x],
     .signalSemaphoreCount = 1,
-    .pSignalSemaphores = &gfx.render_finished[global->frame_x],
+    .pSignalSemaphores = &vk.render_finished[gfx->frame_x],
   };
 
   // waits on VkAcquireImageKHR to signal an image is available
-  VK_CHECK(vkQueueSubmit(gfx.queue, 1, &submit_info, gfx.fence[global->frame_x]));
+  VK_CHECK(vkQueueSubmit(vk.queue, 1, &submit_info, vk.fence[gfx->frame_x]));
 
   VkPresentInfoKHR present_info = {
     .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
     .waitSemaphoreCount = 1,
-    .pWaitSemaphores = &gfx.render_finished[global->frame_x],
+    .pWaitSemaphores = &vk.render_finished[gfx->frame_x],
     .swapchainCount = 1,
-    .pSwapchains = &gfx.swapchain,
-    .pImageIndices = &global->swapchain_x,
+    .pSwapchains = &vk.swapchain,
+    .pImageIndices = &gfx->swapchain_x,
     .pResults = NULL
   };
 
   // waits on vkQueueSubmit to signal its finished rendering
-  VkResult present_result = vkQueuePresentKHR(gfx.queue, &present_info);
+  VkResult present_result = vkQueuePresentKHR(vk.queue, &present_info);
   switch(present_result){
   case VK_SUCCESS:
     break;
@@ -351,13 +351,13 @@ int _gfxRefresh(GfxContext gfx, GfxGlobal* global){
     return 1;
   }
 
-  global->frame_x = (global->frame_x + 1) % gfx.frame_c;
-  global->indirect.used_size = 0;
+  gfx->frame_x = (gfx->frame_x + 1) % vk.frame_c;
+  gfx->indirect.used_size = 0;
   
   return 0;
 }
 
-int gfxPipelineInit(GfxContext* gfx){
+int gfxPipelineInit(GfxContext* vk){
 
   VkPushConstantRange push_constant = {
     .offset = 0,
@@ -368,21 +368,21 @@ int gfxPipelineInit(GfxContext* gfx){
   VkPipelineLayoutCreateInfo pipeline_layout_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
     .setLayoutCount = 1,
-    .pSetLayouts = &gfx->texture_descriptors_layout,
+    .pSetLayouts = &vk->texture_descriptors_layout,
     .pPushConstantRanges = &push_constant,
     .pushConstantRangeCount = 1,
   };
 
-  if(vkCreatePipelineLayout(gfx->ldev, &pipeline_layout_info, NULL, &gfx->pipeline_layout) != VK_SUCCESS)
+  if(vkCreatePipelineLayout(vk->ldev, &pipeline_layout_info, NULL, &vk->pipeline_layout) != VK_SUCCESS)
     {
       printf("!failed to create pipeline layout!\n");
       return 1;
     }
 
   VkShaderModule vert_shader;
-  gfxSpvLoad(gfx->ldev, "shaders/vert.spv", &vert_shader);
+  gfxSpvLoad(vk->ldev, "shaders/vert.spv", &vert_shader);
   VkShaderModule frag_shader;
-  gfxSpvLoad(gfx->ldev, "shaders/frag.spv", &frag_shader);
+  gfxSpvLoad(vk->ldev, "shaders/frag.spv", &frag_shader);
   
   VkPipelineShaderStageCreateInfo vert_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -482,15 +482,15 @@ int gfxPipelineInit(GfxContext* gfx){
   VkViewport viewport = {
     .x = 0.0f,
     .y = 0.0f,
-    .width = gfx->extent.width,
-    .height = gfx->extent.height,
+    .width = vk->extent.width,
+    .height = vk->extent.height,
     .minDepth = 0.0f,
     .maxDepth = 1.0f,
   };
 
   VkRect2D scissor  = {
     .offset = { 0, 0},
-    .extent = gfx->extent,
+    .extent = vk->extent,
   };
 
   VkPipelineViewportStateCreateInfo viewport_info = {
@@ -569,7 +569,7 @@ int gfxPipelineInit(GfxContext* gfx){
     .pDepthStencilState = &depth_stencil,
     .pColorBlendState = &color_blend_info,
     .pDynamicState = &dynamic_state_info,
-    .layout = gfx->pipeline_layout,
+    .layout = vk->pipeline_layout,
     .subpass = 0,
     .basePipelineHandle = VK_NULL_HANDLE,
     .basePipelineIndex = -1,
@@ -577,12 +577,12 @@ int gfxPipelineInit(GfxContext* gfx){
   };
 
   if(vkCreateGraphicsPipelines
-     (gfx->ldev, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &gfx->pipeline) != VK_SUCCESS) {
+     (vk->ldev, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &vk->pipeline) != VK_SUCCESS) {
     printf("!failed to create graphics pipeline!\n");
   }
     
-  vkDestroyShaderModule(gfx->ldev, frag_shader, NULL);
-  vkDestroyShaderModule(gfx->ldev, vert_shader, NULL);
+  vkDestroyShaderModule(vk->ldev, frag_shader, NULL);
+  vkDestroyShaderModule(vk->ldev, vert_shader, NULL);
   
   return 0;
 }

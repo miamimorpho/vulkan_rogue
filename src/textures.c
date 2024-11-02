@@ -78,12 +78,12 @@ gfxSamplerCreate(VkDevice ldev, VkPhysicalDevice pdev, VkSampler *sampler)
 }
 
 int
-gfxImageToGpu(VmaAllocator allocator, unsigned char* pixels,
+gfxImageToGpu(GfxContext vk, unsigned char* pixels,
 	     int width, int height, int channels,
 	     GfxImage *texture){
 
   VmaAllocatorInfo allocator_info;
-  vmaGetAllocatorInfo(allocator, &allocator_info);
+  vmaGetAllocatorInfo(vk.allocator, &allocator_info);
 
   VkFormat format;
   switch(channels){
@@ -102,44 +102,44 @@ gfxImageToGpu(VmaAllocator allocator, unsigned char* pixels,
   
   VkDeviceSize image_size = width * height * channels;
   GfxBuffer image_b;
-  gfxBufferCreate(allocator,
+  gfxBufferCreate(vk.allocator,
 		  VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		  image_size, &image_b);
   
   
   /* copy pixel data to buffer */
-  vmaCopyMemoryToAllocation(allocator,
+  vmaCopyMemoryToAllocation(vk.allocator,
 			    pixels,
 			    image_b.allocation, 0,
 			    image_size);
   //memcpy(image_b.first_ptr, pixels, image_size);
 
   CHECK_GT_ZERO
-    (gfxImageAlloc(allocator, texture,
+    (gfxImageAlloc(vk.allocator, texture,
 		   VK_IMAGE_USAGE_TRANSFER_DST_BIT
 		   | VK_IMAGE_USAGE_SAMPLED_BIT,
 		   format, width, height));
 
   /* Copy the image buffer to a VkImage proper */
-  VkCommandBuffer cmd = gfxCmdSingleBegin();
+  VkCommandBuffer cmd = gfxCmdSingleBegin(vk);
   CHECK_GT_ZERO
     (transitionImageLayout(cmd, texture->handle,
 			   VK_IMAGE_LAYOUT_UNDEFINED,
 			   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-  gfxCmdSingleEnd(cmd);
+  gfxCmdSingleEnd(vk, cmd);
 
   CHECK_GT_ZERO
-    (copyBufferToImage(image_b.handle, texture->handle,
+    (copyBufferToImage(vk, image_b.handle, texture->handle,
 		       (uint32_t)width, (uint32_t)height));
   
-  gfxBufferDestroy(allocator, &image_b);
+  gfxBufferDestroy(vk.allocator, &image_b);
 
-  cmd = gfxCmdSingleBegin();
+  cmd = gfxCmdSingleBegin(vk);
   CHECK_GT_ZERO(transitionImageLayout
 		(cmd, texture->handle,
      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-  gfxCmdSingleEnd(cmd);
+  gfxCmdSingleEnd(vk, cmd);
   
   /* Create image view */
   CHECK_GT_ZERO
@@ -357,8 +357,9 @@ Opener_f getFileOpener(const char *filename) {
     return &errFileLoad;
 }
 
-int _gfxTextureLoad(GfxContext gfx, const char* filename, GfxTileset* textures){
+int gfxTextureLoad(GfxGlobal* gfx, const char* filename){
 
+  GfxTileset* textures = gfx->textures;
   if(textures == NULL){
     return 1;
   }
@@ -378,18 +379,18 @@ int _gfxTextureLoad(GfxContext gfx, const char* filename, GfxTileset* textures){
   }
 
   /* send image to GPU */
-  if(gfxImageToGpu(gfx.allocator,
+  if(gfxImageToGpu(gfx->vk,
 		   pixels,
 		   texture->image_w, texture->image_h,
 		   texture->channels, &texture->image) < 0) return 1;
-  gfxTexturesDescriptorsUpdate(gfx, textures, texture_index +1);
+  gfxTexturesDescriptorsUpdate(gfx->vk, textures, texture_index +1);
   /* stbi_free() is just a wrapper for free() */
   free(pixels);
   
   return 0;
 }
 
-int _gfxTexturesInit(GfxTileset** textures){
+int gfxTexturesInit(GfxTileset** textures){
   *textures = (GfxTileset*)malloc(MAX_SAMPLERS * sizeof(GfxTileset));
   for(unsigned int i = 0; i < MAX_SAMPLERS; i++){
     (*textures)[i].glyph_h = 0;

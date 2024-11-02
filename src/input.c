@@ -20,17 +20,16 @@ typedef struct{
 
 static inputState_t s_state;
 
-int getInputState(inputState_t* dst)
+int getInputState(GLFWwindow* window, inputState_t* dst)
 {
   // excessive input polling kills battery-life
   glfwWaitEventsTimeout(0.7);
-  GfxContext gfx = gfxGetContext();
 
   // convert screen pos to tile pos
   double xpos, ypos;
-  glfwGetCursorPos(gfx.window, &xpos, &ypos);
-  s_state.mouse_x = (int)xpos / (ASCII_SCALE * ASCII_TILE_SIZE);
-  s_state.mouse_y = (int)ypos / (ASCII_SCALE * ASCII_TILE_SIZE);
+  glfwGetCursorPos(window, &xpos, &ypos);
+  s_state.mouse_x = (int)((int)xpos / (ASCII_SCALE * ASCII_TILE_SIZE));
+  s_state.mouse_y = (int)((int)ypos / (ASCII_SCALE * ASCII_TILE_SIZE));
 
   // send duplicate, reset values
   inputState_t src_cpy = s_state;  
@@ -83,47 +82,24 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 
 }
 
-void _inputInit(GfxContext gfx){
-  glfwMakeContextCurrent(gfx.window);
-  glfwSetInputMode(gfx.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-  glfwSetCursorPos(gfx.window, 0,0);
+void gfxInputInit(GLFWwindow* window){
+  glfwMakeContextCurrent(window);
+  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+  glfwSetCursorPos(window, 0,0);
 
-  glfwSetWindowCloseCallback(gfx.window, closeCallback);
-  glfwSetKeyCallback(gfx.window, keyCallback);
-  glfwSetMouseButtonCallback(gfx.window, mouseCallback);
+  glfwSetWindowCloseCallback(window, closeCallback);
+  glfwSetKeyCallback(window, keyCallback);
+  glfwSetMouseButtonCallback(window, mouseCallback);
   
-  getInputState(NULL);
+  getInputState(window, NULL);
   s_state.time = 0;
 }
 
 // Game specific input code
 
-GameAction guiPickColor(void)
+GameAction guiPickTile(GfxGlobal* gfx)
 {
-  uint32_t fgIndex = -1;
-  uint32_t bgIndex = -1;
-  inputState_t input;
-  while(getInputState(&input) == 0){
- 
-    fgIndex = input.mouse_x;
-    bgIndex = input.mouse_y;
-    
-    for(int i = 0; i < PALETTE_SIZE * PALETTE_SIZE; i++){
-      gfxAddCh(i % PALETTE_SIZE,
-	       i / PALETTE_SIZE,
-	       939,
-	       i % PALETTE_SIZE,
-	       i / PALETTE_SIZE,
-	       DRAW_TEXTURE_INDEX);
-    }
-    gfxRefresh();
-  } // End of UI Loop
-  return paintEntityAction(-1,fgIndex, bgIndex);
-}
-
-GameAction guiPickTile(void)
-{
-  GfxTileset tileset = gfxGetTexture(DRAW_TEXTURE_INDEX);
+  GfxTileset tileset = gfx->textures[DRAW_TEXTURE_INDEX];
 
   int width_in_tiles =
     (int)(tileset.image_w) / tileset.glyph_w;
@@ -132,14 +108,14 @@ GameAction guiPickTile(void)
     width_in_tiles = ASCII_SCREEN_WIDTH;
   }
 
-  gfxCacheChange("background");
+  gfxCacheChange(gfx, "background");
   int viewport_size = 16;
   for(int y = 0; y < viewport_size; y++){
     for(int x = 0; x < viewport_size; x++){
       int i = y * width_in_tiles + x;
       uint32_t bg = 0;
       if((x % 2) - (y % 2) == 0) bg = 1;
-      gfxAddCh(x, y, i, DRAW_TEXTURE_INDEX,
+      gfxAddCh(gfx, x, y, i, DRAW_TEXTURE_INDEX,
 	       15, bg);
     }// end of x loop
   }// end of y loop
@@ -148,43 +124,43 @@ GameAction guiPickTile(void)
   inputState_t input;
 
   // GUI Render Loop
-  gfxCacheChange("main");
-  while(getInputState(&input) == 0){
+  gfxCacheChange(gfx, "main");
+  while(getInputState(gfx->vk.window, &input) == 0){
 
     target_uv = (input.mouse_y * width_in_tiles) + input.mouse_x;
 
     if(input.mouse_x > 0 && input.mouse_x < viewport_size &&
        input.mouse_y > 0 && input.mouse_y < viewport_size){
-      gfxAddCh(input.mouse_x, input.mouse_y,
+      gfxAddCh(gfx, input.mouse_x, input.mouse_y,
 	       target_uv, DRAW_TEXTURE_INDEX,
 	       11, 0);
     }
  
-    gfxCachePresent("background");
-    gfxCachePresent("main");
-    gfxRefresh();
+    gfxCachePresent(gfx, "background");
+    gfxCachePresent(gfx, "main");
+    gfxRefresh(gfx);
     
   } // end of GUI loop
   return paintEntityAction(target_uv, -1, -1);
 }
 
-int userInputHelpScreen(void)
+int userInputHelpScreen(GfxGlobal* gfx)
 {
   char* help_screen_ascii = configReadFile("data/controls.txt");
 
   inputState_t input;
-  while(getInputState(&input) == 0){
-    gfxAddString(0, 0, help_screen_ascii, 15, 0);
-    gfxRefresh();
+  while(getInputState(gfx->vk.window, &input) == 0){
+    gfxAddString(gfx, 0, 0, help_screen_ascii, 15, 0);
+    gfxRefresh(gfx);
   }
   free(help_screen_ascii);
   return 0;
 }
 
-GameAction userInput(int entity_index)
+GameAction gfxUserInput(GfxGlobal* gfx, int entity_index)
 {
   inputState_t input;
-  getInputState(&input); 
+  getInputState(gfx->vk.window, &input);
   if (input.to_exit == 1) {
     return noAction();
   }
@@ -219,10 +195,7 @@ GameAction userInput(int entity_index)
     action = moveEntityAction(entity_index, 1, 0);
     break;
   case GLFW_KEY_B:
-    action = guiPickTile();
-    break;
-  case GLFW_KEY_C:
-    action = guiPickColor();
+    action = guiPickTile(gfx);
     break;
   case GLFW_KEY_PERIOD:
     action = dropAction(entity_index);
@@ -233,7 +206,7 @@ GameAction userInput(int entity_index)
   if (input.mods & GLFW_MOD_SHIFT){
     switch(input.key) {
     case GLFW_KEY_SLASH: // Question Mark ?
-      userInputHelpScreen();
+      userInputHelpScreen(gfx);
       break;
     }
   }  

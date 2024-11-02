@@ -44,5 +44,6 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 cmake-build-debug/
+cmake_install.cmake
 **/CMakeFiles/
 CMakeCache.txt
