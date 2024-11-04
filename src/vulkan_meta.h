@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include "key_codes.h"
 #include "maths.h"
 #include "config.h"
 #include <stdint.h>
@@ -122,6 +123,7 @@ int transitionImageLayout(VkCommandBuffer, VkImage, VkImageLayout, VkImageLayout
 void gfxImageDestroy(VmaAllocator, GfxImage);
 
 /** Initialisation Functions */
+void gfxInputInit(GLFWwindow* window);
 int gfxRecreateSwapchain(GfxContext*);
 int gfxAllocatorInit(GfxContext*);
 int gfxGlfwInit(GfxContext*);

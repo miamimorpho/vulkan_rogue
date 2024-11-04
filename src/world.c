@@ -1,7 +1,7 @@
 #include "world.h"
 #include <stdlib.h>
 
-int worldDraw(GfxGlobal* gfx, GameWorld world, Entity camera){
+int worldDraw(Gfx gfx, GameWorld world, Entity camera){
  
   int x_offset = (ASCII_SCREEN_WIDTH / 2);
   int y_offset = (ASCII_SCREEN_HEIGHT / 2);

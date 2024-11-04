@@ -1,6 +1,13 @@
 # textmode game engine
 
-## Included Dependencies
+## Controls
+| Movement | WASD / mouse |
+| Color Picker | c |
+| Glyph Picker | b |
+| Place Tile | . |
+| UI | mouse + click |
+
+## Thanks
 stb_image.h
 VMA
 
@@ -23,7 +30,4 @@ vulkan-tools
 glslang-tools
 ```
 ## Build
-```
-cmake CMakeLists.txt
-gmake
-```
+cmake (WIP) or custom ruby script

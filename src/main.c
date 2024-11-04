@@ -1,15 +1,13 @@
 #include "vulkan_public.h"
-#include "input.h"
 #include "world.h"
+#include "controls.h"
 #include "action.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 int main(void){
 
-  GfxGlobal global;
-  GfxGlobal* gfx = &global;
-  gfxScreenInit(gfx);
+  Gfx gfx = gfxScreenInit();
  
   gfxTextureLoad(gfx, "textures/color.png");
   gfxTextureLoad(gfx, "textures/icl8x8u.bdf");
@@ -27,19 +25,25 @@ int main(void){
   player->inventory[0].uv = 1;
   player->inventory[0].collide = 0;
 
+  gfxCacheChange(gfx, "ui");
+  gfxAddString(gfx, 0, ASCII_SCREEN_HEIGHT-2,
+	       "Press ? for help",
+	       15, 0);
+  gfxCacheChange(gfx, "main");
+  
   while(getExitState() == 0){
     worldDraw(gfx, world, *player);
+    // move to gfxUserInput
 
     GameAction user_action = gfxUserInput(gfx, 0);
+    // change gfxUserInput() to function pointer
     doAction(&world, user_action);
     
-    //gfxAddString(0, ASCII_SCREEN_HEIGHT-2,
-    //		 "Press ? for help",
-    //		 15, 0);
     gfxCachePresent(gfx, "main");
+    gfxCachePresent(gfx, "ui");
     gfxRefresh(gfx);
   }
   
-  gfxScreenClose(global);
+  gfxScreenClose(gfx);
   return 0;
 }

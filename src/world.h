@@ -34,6 +34,6 @@ int mapPutTile(GameWorld*, Entity, int, int);
 Entity mapGetTile(GameWorld, int x, int y);
 int worldInit(GameWorld*, int, int);
 Entity* entityInit(GameWorld*, unsigned int);
-int worldDraw(GfxGlobal*, GameWorld, Entity);
+int worldDraw(Gfx, GameWorld, Entity);
 
 #endif // WORLD_H

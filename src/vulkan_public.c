@@ -1,15 +1,18 @@
+//#include "vulkan_public.h"
 #include "vulkan_meta.h"
-#include "textures.h"
 #include "drawing.h"
-#include "input.h"
+#include "textures.h"
 #include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-// local
-int gfxScreenInit(GfxGlobal* global){
+static GfxGlobal s_global;
 
-  GfxContext* vulkan = &global->vk;
+// local
+GfxGlobal* gfxScreenInit(void){
+
+  GfxContext* vulkan = &s_global.vk;
+  
   gfxGlfwInit(vulkan);
   gfxInputInit(vulkan->window);
   gfxInstanceInit(vulkan);
@@ -28,30 +31,33 @@ int gfxScreenInit(GfxGlobal* global){
   gfxCmdBuffersInit(vulkan);
   gfxTextureDescriptorsInit(vulkan);
   gfxPipelineInit(vulkan);
-  gfxTexturesInit(&global->textures);
+  
+  gfxTexturesInit(&s_global.textures);
 
-  global->swapchain_x = 0;
-  global->frame_x = 0;
+  s_global.swapchain_x = 0;
+  s_global.frame_x = 0;
   
   // Create Scratch Buffers
   int tile_buffer_size = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
   gfxBufferCreate(vulkan->allocator,
 		  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		  5 * tile_buffer_size * sizeof(GfxGlyph), &global->gpu_glyph_cache);  
-  global->caches = malloc(sizeof(GfxCache));
-  global->cache_c = 0;
-  gfxCacheChange(global, "main");
+		  5 * tile_buffer_size * sizeof(GfxGlyph),
+		  &s_global.gpu_glyph_cache);  
+  s_global.caches = malloc(sizeof(GfxCache));
+  s_global.cache_x = 0;
+  s_global.cache_c = 0;
+  gfxCacheChange(&s_global, "main");
   // Create Draw Buffers
   gfxBufferCreate(vulkan->allocator,
 		  VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
-		  5 * sizeof(VkDrawIndirectCommand), &global->indirect);
+		  5 * sizeof(VkDrawIndirectCommand), &s_global.indirect);
   
-  return 0;
+  return &s_global;
 }
 
-int gfxScreenClose(GfxGlobal global){
+int gfxScreenClose(GfxGlobal* global){
 
-  GfxContext vk = global.vk;
+  GfxContext vk = global->vk;
   
   // End last frame
   VkResult result;
@@ -66,13 +72,13 @@ int gfxScreenClose(GfxGlobal global){
   }
 
   // free global back bugger
-  gfxBufferDestroy(vk.allocator, &global.gpu_glyph_cache);
-  gfxBufferDestroy(vk.allocator, &global.indirect);
+  gfxBufferDestroy(vk.allocator, &global->gpu_glyph_cache);
+  gfxBufferDestroy(vk.allocator, &global->indirect);
   
   // free asset data
   for(int i = 0; i < MAX_SAMPLERS; i++){
-    if(global.textures[i].image.handle != VK_NULL_HANDLE){
-      gfxImageDestroy(vk.allocator, global.textures[i].image);
+    if(global->textures[i].image.handle != VK_NULL_HANDLE){
+      gfxImageDestroy(vk.allocator, global->textures[i].image);
     }
   }
 

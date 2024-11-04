@@ -214,6 +214,30 @@ src/config.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/vulkan_rogue.dir/build.make CMakeFiles/vulkan_rogue.dir/src/config.c.s
 .PHONY : src/config.c.s
 
+src/controls.o: src/controls.c.o
+.PHONY : src/controls.o
+
+# target to build an object file
+src/controls.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/vulkan_rogue.dir/build.make CMakeFiles/vulkan_rogue.dir/src/controls.c.o
+.PHONY : src/controls.c.o
+
+src/controls.i: src/controls.c.i
+.PHONY : src/controls.i
+
+# target to preprocess a source file
+src/controls.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/vulkan_rogue.dir/build.make CMakeFiles/vulkan_rogue.dir/src/controls.c.i
+.PHONY : src/controls.c.i
+
+src/controls.s: src/controls.c.s
+.PHONY : src/controls.s
+
+# target to generate assembly for a file
+src/controls.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/vulkan_rogue.dir/build.make CMakeFiles/vulkan_rogue.dir/src/controls.c.s
+.PHONY : src/controls.c.s
+
 src/drawing.o: src/drawing.c.o
 .PHONY : src/drawing.o
 
@@ -238,29 +262,29 @@ src/drawing.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/vulkan_rogue.dir/build.make CMakeFiles/vulkan_rogue.dir/src/drawing.c.s
 .PHONY : src/drawing.c.s
 
-src/input.o: src/input.c.o
-.PHONY : src/input.o
+src/gfx_input.o: src/gfx_input.c.o
+.PHONY : src/gfx_input.o
 
 # target to build an object file
-src/input.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/vulkan_rogue.dir/build.make CMakeFiles/vulkan_rogue.dir/src/input.c.o
-.PHONY : src/input.c.o
+src/gfx_input.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/vulkan_rogue.dir/build.make CMakeFiles/vulkan_rogue.dir/src/gfx_input.c.o
+.PHONY : src/gfx_input.c.o
 
-src/input.i: src/input.c.i
-.PHONY : src/input.i
+src/gfx_input.i: src/gfx_input.c.i
+.PHONY : src/gfx_input.i
 
 # target to preprocess a source file
-src/input.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/vulkan_rogue.dir/build.make CMakeFiles/vulkan_rogue.dir/src/input.c.i
-.PHONY : src/input.c.i
+src/gfx_input.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/vulkan_rogue.dir/build.make CMakeFiles/vulkan_rogue.dir/src/gfx_input.c.i
+.PHONY : src/gfx_input.c.i
 
-src/input.s: src/input.c.s
-.PHONY : src/input.s
+src/gfx_input.s: src/gfx_input.c.s
+.PHONY : src/gfx_input.s
 
 # target to generate assembly for a file
-src/input.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/vulkan_rogue.dir/build.make CMakeFiles/vulkan_rogue.dir/src/input.c.s
-.PHONY : src/input.c.s
+src/gfx_input.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/vulkan_rogue.dir/build.make CMakeFiles/vulkan_rogue.dir/src/gfx_input.c.s
+.PHONY : src/gfx_input.c.s
 
 src/main.o: src/main.c.o
 .PHONY : src/main.o
@@ -401,12 +425,15 @@ help:
 	@echo "... src/config.o"
 	@echo "... src/config.i"
 	@echo "... src/config.s"
+	@echo "... src/controls.o"
+	@echo "... src/controls.i"
+	@echo "... src/controls.s"
 	@echo "... src/drawing.o"
 	@echo "... src/drawing.i"
 	@echo "... src/drawing.s"
-	@echo "... src/input.o"
-	@echo "... src/input.i"
-	@echo "... src/input.s"
+	@echo "... src/gfx_input.o"
+	@echo "... src/gfx_input.i"
+	@echo "... src/gfx_input.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

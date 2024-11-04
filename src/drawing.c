@@ -43,8 +43,9 @@ int cacheCountGrow(GfxCache** caches_ptr, int* cache_c){
   return 0;
 }
 
-void gfxClear( GfxCache* dst ){
-  memset(dst->data, 0, dst->count * sizeof(GfxGlyph));
+void gfxClear( GfxGlobal* gfx ){
+  GfxCache* cache = &gfx->caches[gfx->cache_x];
+  memset(cache->data, 0, cache->count * sizeof(GfxGlyph));
 }
 
 int cacheCreate(GfxCache* dst, const char* name, enum GfxCacheType type){
@@ -59,8 +60,7 @@ int cacheCreate(GfxCache* dst, const char* name, enum GfxCacheType type){
   
   dst->count = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
   dst->data = (GfxGlyph*)malloc(dst->count * sizeof(GfxGlyph));
-
-  gfxClear(dst);
+  memset(dst->data, 0, dst->count * sizeof(GfxGlyph));
 
   return 0;
 }

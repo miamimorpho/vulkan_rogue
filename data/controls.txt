@@ -1,5 +1,4 @@
          WASD  | movement
 Mouse + Click  | movement
             b  | tile select
-            c  | color select
             .  | place tile
