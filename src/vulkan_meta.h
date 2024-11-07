@@ -28,13 +28,16 @@ typedef struct {
   VkSampler sampler;
 } GfxImage;
 
+typedef uint32_t (*DecoderFunc)(uint32_t* encoding, uint32_t count, uint32_t unicode);
+
 typedef struct{
   GfxImage image;
   uint32_t image_h;
   uint32_t image_w;
   uint32_t channels;
   
-  uint32_t* encoding;
+  uint32_t* encodings;
+  DecoderFunc decoder;
   uint32_t glyph_c;
   uint32_t glyph_h;
   uint32_t glyph_w;

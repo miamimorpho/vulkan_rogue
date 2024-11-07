@@ -1,37 +1,32 @@
 * TODO
 
-message buffer -> ring buffer
 changing view of tileset < - >
 changing tileset < - >
-
-handling non8*8 tiles
+changing bg / fg color <->
 FOV/Line of Sight
+add fat pointer string library
+message buffer -> ring buffer
 NPCs / enemies basic basic
-png->bdf to redistribute some assets
+standardise width of tilesets to 32 chars
+handling non8*8 tiles
+maintain cursor/color state like ncurses
 
-* Input
-input_t funcPtr = inputPad(x, y)
-mousePos pos = funcPtr();
-
-ANSI escape sequences
-input state struct
-
-char gfxQueryKey(); vs int gfxQueryInput(KEY);
-gfxQueryInput(MOUSE_X), gfxQueryInput(MOUSE_Y)
-gfxGetMouse(int* x, int* y)
-
-getKey()
-getMousePos()
+* Build System
+plan 9mk -> unix
+cmake -> windows3
 
 * Cache System
 
+text rendering is as fast as can be now anyway
+-> further optimisation: reduce instance attributes
 Be able to save CPU redrawing by cacheing GPU draw commands
 Adds 'layers' though being able to write to a buffer then arrange
 their painting order before redrawing the whole screen each frame
 Ability to save common GUI elements like buttons, scroll bars, ect
+reduces cpu -> gpu transactions which saves some battery life speed on mobile platforms
 
 - cacheChange(string_id)
-if string_id does not exist, adds it to the list of buffers and alloc some memory for i
+if string_id does not exist, adds it to the list of buffers and alloc some memory for it
 uploads current scratch buffer to GPU
 internally changes state of current buffer to new id;
 
@@ -57,7 +52,8 @@ Bakeries
 Tofu, Scrambled, grilled, deep fried, ect
 Triffid Rum
 Synth's are made of vegan meat
-
+cultists
+prefixes: cyber, pink, hellish
 * vulkan style
 | Functions | gfxFunctionName |
 | Types     | GfxType         |

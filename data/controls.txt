@@ -2,3 +2,4 @@
 Mouse + Click  | movement
             b  | tile select
             .  | place tile
+          Quit | platform

@@ -4,7 +4,12 @@
 typedef struct{
   float x;
   float y;
-}vec2;
+} vec2;
+
+typedef struct{
+  int x;
+  int y;
+} ivec2;
 
 typedef struct{
   int x;

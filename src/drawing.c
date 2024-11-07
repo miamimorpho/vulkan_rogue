@@ -115,21 +115,12 @@ int gfxCacheChange(GfxGlobal* gfx, const char* name){
   return 0;
 }
 
-uint32_t getUnicodeUV(GfxTileset tileset, uint32_t unicode){
-  for(uint32_t i = 0; i < tileset.glyph_c; i++){
-    if(tileset.encoding[i] == unicode){
-      return i;
-    }
-  }
-  return 0;
-}
-
 int gfxAddCh(GfxGlobal* gfx, uint16_t x, uint16_t y,
 	      uint16_t encoding, uint16_t texture_index,
 	      uint16_t fg, uint16_t bg){
 
-  GfxTileset texture = gfx->textures[texture_index];
-  if(texture.image.handle == NULL){
+  GfxTileset tex = gfx->textures[texture_index];
+  if(tex.image.handle == NULL){
     texture_index = ASCII_TEXTURE_INDEX;
   }
 
@@ -138,9 +129,10 @@ int gfxAddCh(GfxGlobal* gfx, uint16_t x, uint16_t y,
 
   GfxGlyph dst = {
     .pos = pack16into32(x, y),
-    .tex_encoding = getUnicodeUV(texture, encoding),
+    .tex_encoding =
+    tex.decoder(tex.encodings, tex.glyph_c, encoding),
     .tex_index_and_width =
-    pack16into32(texture_index, texture.image_w / ASCII_TILE_SIZE),
+    pack16into32(texture_index, tex.image_w / ASCII_TILE_SIZE),
 
     .color_indices = pack16into32(fg, bg)
   };

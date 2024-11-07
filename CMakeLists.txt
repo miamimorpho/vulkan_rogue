@@ -2,6 +2,12 @@
 cmake_minimum_required(VERSION 3.10)
 project(vulkan_rogue)
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
+   include_directories(SYSTEM "/usr/include/c++/v1")
+   include_directories("/usr/X11R6/include")
+   link_directories("/usr/X11R6/lib")
+endif()
+
 ###############################################################################
 ## file globbing ##############################################################
 ###############################################################################
@@ -28,6 +34,7 @@ endfunction()
 add_executable(${PROJECT_NAME} ${sources})
 add_dependencies(${PROJECT_NAME} shaders)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_FLAGS "-g -O0 -std=c99 -Wall -pedantic -Wfloat-conversion -Wno-misleading-indentation -Wno-nullability-extension")
 target_include_directories(${PROJECT_NAME} PUBLIC src/ extern/)
 
@@ -47,11 +54,6 @@ add_custom_target(shaders
 
 find_package(Vulkan REQUIRED)
 find_program(GLSLANG_VALIDATOR glslangValidator REQUIRED)
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
-  include_directories("/usr/X11R6/include")
-  link_directories("/usr/X11R6/lib")
-endif()
 
 # This is a workaround for msys/mingw not playing nice with glfw
 if (MINGW)

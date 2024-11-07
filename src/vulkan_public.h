@@ -1,6 +1,7 @@
 #ifndef VTERM_PUBLIC_H
 #define VTERM_PUBLIC_H
 #include "config.h"
+#include "gfx_input.h"
 #include <stdint.h>
 
 struct GfxGlobal;

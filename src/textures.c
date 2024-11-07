@@ -6,7 +6,36 @@
 #include <string.h>
 #include <stdlib.h>
 
-typedef int (*Opener_f)(const char* filename, GfxTileset* img, uint8_t** pixels, size_t* size);
+typedef int (*OpenerFunc)(const char* filename, GfxTileset* img, uint8_t** pixels, size_t* size);
+
+int bsearchCompare(const void *a, const void *b) {
+    return (*(uint32_t *)a - *(uint32_t *)b);
+}
+
+uint32_t DecoderBinarySearch(uint32_t* encodings, uint32_t count, uint32_t unicode){
+  uint32_t* result = (uint32_t *)bsearch(&unicode, encodings, count, sizeof(uint32_t), bsearchCompare);
+  if(result != NULL)
+    return result - encodings;
+
+  return 0;
+}
+
+uint32_t DecoderLinearSearch(uint32_t* encodings, uint32_t count, uint32_t unicode){
+  if(unicode > count) return 0;
+  for(uint32_t i = 0; i < count; i++){
+    if(encodings[i] == unicode){
+      return i;
+    }
+  }
+  return 0;
+}
+
+uint32_t DecoderArrayGet(uint32_t* encodings, uint32_t count, uint32_t unicode){
+  if(unicode < count){
+    return encodings[unicode];
+  }
+  return 0;
+}
 
 int
 gfxTexturesDescriptorsUpdate(GfxContext global, GfxTileset* textures, uint32_t count)
@@ -171,10 +200,11 @@ int pngFileLoad(const char* filename, GfxTileset* tileset, uint8_t** pixels, siz
   tileset->glyph_c = ( x * y ) / ( ASCII_TILE_SIZE * ASCII_TILE_SIZE) ;
   tileset->channels = n;
   
-  tileset->encoding = malloc(tileset->glyph_c * sizeof(uint32_t));
+  tileset->encodings = malloc(tileset->glyph_c * sizeof(uint32_t));
   for(uint32_t i = 0; i < tileset->glyph_c; i++){
-    tileset->encoding[i] = i;
+    tileset->encodings[i] = i;
   }
+  tileset->decoder = &DecoderArrayGet;
   
   return 0;
 }
@@ -246,7 +276,7 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
     return 2;
   }/* META LOADING END */
 
-  font->encoding = malloc(font->glyph_c * sizeof(uint32_t));
+  font->encodings = malloc(font->glyph_c * sizeof(uint32_t));
   
   // allocate pixel data to Z order array
   font->channels = 1;
@@ -316,7 +346,7 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
     if(strcmp(prefix, "ENCODING") == 0){
       char code[W_LEN];
       sscanf(line, "%*s %s", code);
-      font->encoding[glyph_i] = atoi(code);
+      font->encodings[glyph_i] = atoi(code);
       continue;
     }
 
@@ -333,7 +363,8 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
       continue;
     }
   }/* BYTE LOADING END*/
-
+  font->decoder = &DecoderBinarySearch;
+  
   fclose(fp);
   return 0;  
 }
@@ -343,7 +374,7 @@ int errFileLoad(const char* filename, GfxTileset* img, uint8_t** ptr_pixels, siz
   return 1;
 }
 
-Opener_f getFileOpener(const char *filename) {
+OpenerFunc getFileOpener(const char *filename) {
     char *ext = strrchr(filename, '.');
     if(!ext || ext == filename) return &errFileLoad;
     ext++;
@@ -371,7 +402,7 @@ int gfxTextureLoad(GfxGlobal* gfx, const char* filename){
   /* load pixels from file */
   uint8_t* pixels = NULL;
   size_t size = 0;
-  Opener_f imageOpen = getFileOpener(filename);
+  OpenerFunc imageOpen = getFileOpener(filename);
   int err = imageOpen(filename, texture, &pixels, &size);
   if(err > 0){
     printf("error opening file, err = %d\n", err);

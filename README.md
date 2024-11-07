@@ -23,7 +23,11 @@ vulkan-tools
 glslang-tools
 ```
 ## Build
+
+There is a GNUmakefile for Unix systems
+```make```
+a cmake file has been provided for windows
 ```
 cmake CMakeLists.txt
-gmake
+make
 ```
