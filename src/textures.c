@@ -209,7 +209,7 @@ int pngFileLoad(const char* filename, GfxTileset* tileset, uint8_t** pixels, siz
   return 0;
 }
 
-int hexToInt(char ch)
+int HexToUINT4(char ch)
 {
     if (ch >= '0' && ch <= '9')
         return ch - '0';
@@ -229,7 +229,7 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
   char x_offset_s[W_LEN];
   char y_offset_s[W_LEN];
 
-  int y_offset;
+  int font_y_offset;
   
   FILE *fp = fopen(filename, "r");
   if(fp == NULL) {
@@ -256,7 +256,7 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
 
       font->glyph_w = atoi(x_s);
       font->glyph_h = atoi(y_s);
-      y_offset = atoi(y_offset_s);
+      font_y_offset = atoi(y_offset_s);
    
       supported_c += 1;
       continue;
@@ -280,16 +280,15 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
   
   // allocate pixel data to Z order array
   font->channels = 1;
-  font->image_w = font->glyph_w;
-  font->image_h = font->glyph_h * font->glyph_c;
+  font->image_w = font->glyph_w * ATLAS_WIDTH;
+  font->image_h = font->glyph_h * ATLAS_WIDTH;
   *size = font->image_w * font->image_h;
   *ptr_pixels = malloc(*size);
   memset(*ptr_pixels, 0, *size);
 
   rewind(fp);
-  int in_hex = 0;
   int glyph_i = 0; // assuming C99 uses ASCII 437 
-  int glyph_y = 0;
+  int glyph_y = -1;
 
   int bbx_size = 0;
   int bby_size = 0;
@@ -302,40 +301,39 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
     sscanf(line, "%s", prefix);
     
     if(strcmp(prefix, "ENDCHAR") == 0){
-      in_hex = 0;
       glyph_i++;
-      glyph_y = 0;
+      glyph_y = -1;
       continue;
     }
 
     /* bdf files store 4 1-bit pixels across
      * as one hex char */
-    if(in_hex > 0){
-      int glyph_hex_width = strlen(line) -1;
+    if(glyph_y >= 0){
 
+      //int width_in_tiles = font->glyph_w * ATLAS_WIDTH;
+      int atlas_y = glyph_i / ATLAS_WIDTH;
+      int atlas_x = glyph_i % ATLAS_WIDTH;
+      
+      int dst_y =  (atlas_y * font->glyph_h) + font_y_offset; // atlas pixel pos
+          dst_y += (8 - bby_size  - bby_offset); // local pixel pos
+      int dst_x =  (atlas_x * font->glyph_w);
+          dst_x += (8 - bbx_size) - bbx_offset;
+      
       for(unsigned int i = 0; i < font->glyph_w; i++) {
-	int hex_index = i / 4;
-	if(hex_index >= glyph_hex_width) break;
-	uint8_t hex_value = hexToInt(line[hex_index]);
-	
-	uint8_t pixel = 0;
-	int bit_index = 3 - (i % 4);
-	if((hex_value >> bit_index) & 0x1){
-	  pixel = 255;
-	}
-	int dst_y = (glyph_i * font->glyph_h) + y_offset; // file
-	dst_y += glyph_y + (8 - bby_size - bby_offset); // local
-	
-	int dst_xy = (dst_y * font->glyph_w) + i
-	  + (8 - bbx_size) - bbx_offset;
 
-	(*ptr_pixels)[dst_xy] = pixel;
+	// read in one binary pixel
+	uint8_t four_pixels = HexToUINT4(line[ i / 4]);
+	int pixel_index = 3 - (i % 4);
+	uint8_t dst_pixel = ((four_pixels >> pixel_index) & 0x1);
+
+	// draw in one uint8 pixel	
+	int dst_xy = ((dst_y + glyph_y ) * font->image_w) + dst_x + i;
+	(*ptr_pixels)[dst_xy] = dst_pixel * 255;
       }
       glyph_y++;
       continue;
     }
-
-        
+ 
     if(strcmp(prefix, "STARTCHAR") == 0){
       char* glyph_name = strchr(line, ' ');
       if(glyph_name != NULL)glyph_name += 1;
@@ -356,10 +354,11 @@ int bdfFileLoad(const char* filename, GfxTileset* font, uint8_t** ptr_pixels, si
       bby_size = atoi(y_s);
       bbx_offset = atoi(x_offset_s);
       bby_offset = atoi(y_offset_s);
+      continue;
     }
     
     if(strcmp(prefix, "BITMAP") == 0){
-      in_hex = 1;
+      glyph_y = 0;
       continue;
     }
   }/* BYTE LOADING END*/

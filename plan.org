@@ -1,24 +1,17 @@
 * TODO
 
-changing view of tileset < - >
-changing tileset < - >
-changing bg / fg color <->
 FOV/Line of Sight
+NPCs / enemies basic basic
 add fat pointer string library
 message buffer -> ring buffer
-NPCs / enemies basic basic
-standardise width of tilesets to 32 chars
+changing tileset < - >
 handling non8*8 tiles
 maintain cursor/color state like ncurses
-
-* Build System
-plan 9mk -> unix
-cmake -> windows3
+break out into lua at some point for gui
 
 * Cache System
 
 text rendering is as fast as can be now anyway
--> further optimisation: reduce instance attributes
 Be able to save CPU redrawing by cacheing GPU draw commands
 Adds 'layers' though being able to write to a buffer then arrange
 their painting order before redrawing the whole screen each frame
@@ -35,14 +28,14 @@ create indirect draw command for that section of glyphs in cmdb
 always upload current cache to GPU before refreshing
 
 * Instance Attributes
-| InPosition           | x, y   | uint8_t uint8_t |
-/limits terminal dimensions to 256/256 chars/
-| UV Encoding          | i      | uint16_t        |
-/caps each texture atlas at 65536 glyphs, unicode will be broken into several different atlasses/
-| texture Index        | i      | uint8_t         |
-/limits renderer to 256 texture atlasses. Need to standardise the width of texture atlasses to 256 ( 256^2 = UINT16_MAX)/
-| color indices        | fg, bg | uint4_t uint4_t  |
-/limits colour palette to 16 colours/
+| InPosition           | x, y   | uint16_t uint16_t |
+/limits terminal dimensions to 65536 chars by 65536 chars
+| UV Encoding          | i      | uint10_t        |
+/caps each texture atlas at 1024 characters each 0 - 1023 /
+| texture Index        | i      | uint6_t         |
+/limits renderer to 64 different texture samplers 0 - 63 /
+| color indices        | fg, bg | uint8_t uint8_t  |
+/limits colour palette to 256 colours/
 /spare 16 bit number/
 * Enemies and Items
 spot - boston dynamics dog

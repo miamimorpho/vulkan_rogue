@@ -25,8 +25,8 @@ int guiButton(Gfx gfx, uint16_t x, uint16_t y, const char* label, uint16_t fg, u
   gfxAddString(gfx, x, y, label, fg, bg);
   int mouse_x, mouse_y;
   gfxMousePos(&mouse_x, &mouse_y);
-  if(mouse_x >= x && mouse_x < strlen(label) &&
-     mouse_y >= y && gfxInputUnicode() == PUA_LEFT_CLICK){
+  if(mouse_x >= x && mouse_x < x + strlen(label) &&
+     mouse_y == y && gfxInputUnicode() == PUA_LEFT_CLICK){
     return 1;
   }
   return 0;
@@ -34,8 +34,8 @@ int guiButton(Gfx gfx, uint16_t x, uint16_t y, const char* label, uint16_t fg, u
 
 GameAction guiPickTile(Gfx gfx)
 {
-  int width_in_tiles = 32;
-  int viewport_size = 16;
+ 
+  const int viewport_size = 16;
   
   gfxCacheChange(gfx, "background");
 
@@ -54,20 +54,7 @@ GameAction guiPickTile(Gfx gfx)
 	     i, i);
   }
 
-  // glyph picker
-  const int glyph_pick_offset = 5;
-  gfxAddString(gfx, 0, glyph_pick_offset -1, "Glyph", 15, 0);
-  for(int y = 0; y < viewport_size; y++){
-    for(int x = 0; x < viewport_size; x++){
-      int i = y * width_in_tiles + x;
-      uint32_t bg = 0;
-      if((x % 2) - (y % 2) == 0) bg = 1;
-      gfxAddCh(gfx, x,
-	       y + glyph_pick_offset, i, DRAW_TEXTURE_INDEX,
-	       15, bg);
-    }// end of x loop
-  }// end of y loop
-  
+  static uint32_t atlas_page = 0;
   static uint32_t target_uv = 0;
   static uint32_t target_fg = 15;
   static uint32_t target_bg = 0;
@@ -90,12 +77,36 @@ GameAction guiPickTile(Gfx gfx)
       target_bg = bg_pick.mouse_x;
     }
 
+    // glyph picker
+    int page_x_offset = (atlas_page % 2) * viewport_size;
+    int page_y_offset = (atlas_page / 2) * viewport_size;
+    
+    const int glyph_pick_offset = 5;  
+    gfxAddString(gfx, 0, glyph_pick_offset -1, "Glyph", 15, 0);
+    for(int y = 0; y < viewport_size; y++){
+      for(int x = 0; x < viewport_size; x++){
+	int i = ((y + page_y_offset) * ATLAS_WIDTH) + x + page_x_offset;
+	uint32_t bg = 0;
+	if((x % 2) - (y % 2) == 0) bg = 1;
+	gfxAddCh(gfx, x,
+		 y + glyph_pick_offset, i, DRAW_TEXTURE_INDEX,
+		 15, bg);
+      }// end of x loop
+    }// end of y loop
+    
     GfxInput glyph_pick = guiPad(gfx, 0, glyph_pick_offset, 16, glyph_pick_offset +16);
     if(glyph_pick.unicode == PUA_LEFT_CLICK){
-	target_uv = glyph_pick.mouse_y * 32 + glyph_pick.mouse_x;
+	target_uv = glyph_pick.mouse_y * ATLAS_WIDTH + glyph_pick.mouse_x;
 	printf("%d\n", target_uv);
     }
 
+    if(guiButton(gfx, 13, 21, "<", 0, 8) == 1){
+      atlas_page = (atlas_page - 1) % 4;
+    }
+    if(guiButton(gfx, 15, 21, ">", 0, 8) == 1){
+      atlas_page = (atlas_page + 1) % 4;
+    }
+    
     if(guiButton(gfx, 0, 22, " Done ", 0, 8) == 1){
       break;
     }

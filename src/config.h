@@ -16,6 +16,7 @@
 /* Tested on ThinkpadX230 */
 #define DRAW_BUFFER_COUNT 2
 #define MAX_SAMPLERS 64
+#define ATLAS_WIDTH 32
 
 /* Build Options */
 #define DEBUG_BUFFER 0

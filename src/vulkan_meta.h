@@ -75,9 +75,7 @@ typedef struct{
 
 typedef struct{
   uint32_t pos;
-  uint32_t tex_encoding;
-  uint32_t tex_index_and_width;
-  uint32_t color_indices;
+  uint32_t unicode_atlas_and_colors;
 } GfxGlyph;
 
 enum GfxCacheType {

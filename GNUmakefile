@@ -25,6 +25,6 @@ shaders/frag.spv:shaders/shader.frag
 	glslangValidator -V shaders/shader.frag -o shaders/frag.spv 
 
 clean:
-	rm -f ${NAME} ${OBJS} extern/vma.o
+	rm -f ${NAME} ${OBJS} extern/vma.o shaders/*.spv
 
 .PHONY: clean

@@ -115,26 +115,31 @@ int gfxCacheChange(GfxGlobal* gfx, const char* name){
   return 0;
 }
 
+uint32_t pack_indices(uint16_t unicode, uint8_t atlas_index,
+		      uint8_t fg_index, uint8_t bg_index) {
+  return (uint32_t)((unicode & 0x3FF) << 22) | 
+    ((atlas_index & 0x3F) << 16) | 
+    (fg_index << 8) | 
+    bg_index;
+}
+
 int gfxAddCh(GfxGlobal* gfx, uint16_t x, uint16_t y,
-	      uint16_t encoding, uint16_t texture_index,
+	      uint16_t encoding, uint16_t atlas_index,
 	      uint16_t fg, uint16_t bg){
 
-  GfxTileset tex = gfx->textures[texture_index];
+  GfxTileset tex = gfx->textures[atlas_index];
   if(tex.image.handle == NULL){
-    texture_index = ASCII_TEXTURE_INDEX;
+    atlas_index = ASCII_TEXTURE_INDEX;
   }
 
   if(x >= ASCII_SCREEN_WIDTH || x < 0) return 1;
   if(y >= ASCII_SCREEN_HEIGHT || y < 0) return 1;
 
+  uint16_t unicode_uv = tex.decoder(tex.encodings, tex.glyph_c, encoding);
+  
   GfxGlyph dst = {
     .pos = pack16into32(x, y),
-    .tex_encoding =
-    tex.decoder(tex.encodings, tex.glyph_c, encoding),
-    .tex_index_and_width =
-    pack16into32(texture_index, tex.image_w / ASCII_TILE_SIZE),
-
-    .color_indices = pack16into32(fg, bg)
+    .unicode_atlas_and_colors = pack_indices(unicode_uv, atlas_index, fg, bg)
   };
   GfxCache* dst_cache = &gfx->caches[gfx->cache_x];
   dst_cache->data[y * ASCII_SCREEN_WIDTH + x] = dst;
@@ -418,7 +423,7 @@ int gfxPipelineInit(GfxContext* vk){
   };
 
   // Vertex Buffer Creation
-  int attribute_count = 4;
+  int attribute_count = 2;
   VkVertexInputAttributeDescription attribute_descriptions[attribute_count];
 
   /* some instance attributes are two UINT16 packed
@@ -435,21 +440,7 @@ int gfxPipelineInit(GfxContext* vk){
   attribute_descriptions[1].location = 1;
   attribute_descriptions[1].format = VK_FORMAT_R32_UINT;
   attribute_descriptions[1].offset =
-    offsetof(GfxGlyph, tex_encoding);
-
-  // Texture Index + size PACKED
-  attribute_descriptions[2].binding = 0;
-  attribute_descriptions[2].location = 2;
-  attribute_descriptions[2].format = VK_FORMAT_R32_UINT;
-  attribute_descriptions[2].offset =
-    offsetof(GfxGlyph, tex_index_and_width);
-
-  // Colors, two 16 bit numbers packed into a 32bit
-  attribute_descriptions[3].binding = 0;
-  attribute_descriptions[3].location = 3;
-  attribute_descriptions[3].format = VK_FORMAT_R32_UINT;
-  attribute_descriptions[3].offset =
-    offsetof(GfxGlyph, color_indices);
+    offsetof(GfxGlyph, unicode_atlas_and_colors);
 
   VkVertexInputBindingDescription binding_description = {
     .binding = 0,
