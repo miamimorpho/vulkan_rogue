@@ -77,12 +77,12 @@ void doAction(GameWorld* w, GameAction action){
 int _dropAction(GameWorld* w, int args_c, Argument* args){
   if(w == NULL) return 1;
   if(args_c > 1) return 1;
-  int x = w->actors[0].pos.x;
-  int y = w->actors[0].pos.y;
+  int x = w->actors[0].x;
+  int y = w->actors[0].y;
 
-  Entity target = w->actors[0].inventory[0];
+  Entity target = w->actors[0].inventory.data[0];
   
-  mapPutTile(w, target, x, y);
+  mapPutTile(&w->terrain, target, x, y);
   return 0;
 }
 GameAction dropAction(int entity_index){
@@ -98,10 +98,10 @@ int _moveEntityAction(GameWorld* w, int args_c, Argument* args){
   int vy = args[2].val.i;
   
   Entity* e = &w->actors[entity_index];
-  Entity dst = mapGetTile(*w, e->pos.x + vx, e->pos.y + vy);
+  Entity dst = mapGetTile(w->terrain, e->x + vx, e->y + vy);
   if(dst.collide == 0){
-    e->pos.x += vx;
-    e->pos.y += vy;
+    e->x += vx;
+    e->y += vy;
   }
 
   return 0;
@@ -117,7 +117,7 @@ int _paintEntityAction(GameWorld* w, int args_c, Argument* args){
   if(w == NULL) return 1;
   if(args_c > 3) return 1;
 
-  Entity* dst = &w->actors[0].inventory[0];
+  Entity* dst = &w->actors[0].inventory.data[0];
   if(args[0].val.i >= 0)
     dst->uv = args[0].val.i;
   if(args[1].val.i >= 0)

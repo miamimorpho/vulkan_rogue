@@ -18,12 +18,13 @@ int main(void){
 
   Entity* player = entityInit(&world, 0);
   player->uv = 417;
-  player->inventory_c = 1;
-  player->inventory = malloc(sizeof(Entity));
-  player->inventory[0].fg = 15;
-  player->inventory[0].bg = 0;
-  player->inventory[0].uv = 1;
-  player->inventory[0].collide = 0;
+  player->inventory.count = 1;
+  Entity* holding = &player->inventory.data[0];
+  holding->fg = 15;
+  holding->bg = 0;
+  holding->uv = 1;
+  holding->collide = 1;
+  holding->blocks_sight = 1;
 
   gfxCacheChange(gfx, "ui");
   gfxAddString(gfx, 0, ASCII_SCREEN_HEIGHT-2,

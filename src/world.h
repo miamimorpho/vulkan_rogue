@@ -9,29 +9,40 @@ typedef struct{
 } Pos;
 
 typedef struct Entity Entity;
+
+typedef struct{
+  size_t capacity;
+  int count;
+  Entity* data;
+} EntityArray;
+
 struct Entity{
   int is_init;
-  Pos pos; // make xy
+  int x;
+  int y;
   int uv;
   uint32_t fg;
   uint32_t bg;
   int collide;
-  Entity* inventory;
-  int inventory_c;
+  int blocks_sight;
+  EntityArray inventory;
 };
 
 typedef struct{
   Entity* tiles;
   int width;
   int size;
+} GameWorldTerrain;
+
+typedef struct{
+  GameWorldTerrain terrain;
   Entity* props;
   Entity* actors;
   unsigned int actors_count;
 } GameWorld;
 
-
-int mapPutTile(GameWorld*, Entity, int, int);
-Entity mapGetTile(GameWorld, int x, int y);
+int mapPutTile(GameWorldTerrain*, Entity, int, int);
+Entity mapGetTile(GameWorldTerrain, int x, int y);
 int worldInit(GameWorld*, int, int);
 Entity* entityInit(GameWorld*, unsigned int);
 int worldDraw(Gfx, GameWorld, Entity);
