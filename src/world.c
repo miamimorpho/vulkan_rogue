@@ -1,7 +1,7 @@
 #include "world.h"
+#include "maths.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include <math.h>
 
 EntityArray entityArrayMalloc(size_t capacity){
@@ -31,11 +31,6 @@ Entity* entityInit(GameWorld* world, unsigned int entity_index){
   return e;
 }
 
-typedef struct {
-    int num;
-    int den;
-} Fraction;
-
 // Row structure
 typedef struct {
     int depth;
@@ -50,16 +45,6 @@ enum {
     SOUTH = 2,
     WEST = 3
 };
-
-// Helper functions for fractions
-Fraction fractionNew(int num, int den) {
-    Fraction f = {num, den};
-    return f;
-}
-
-bool fractionCompare(Fraction small, Fraction large){
-  return(small.num * large.den <= large.num * small.den);
-}
 
 // Calculate slope as a fraction
 Fraction slope(int row_depth, int col) {
@@ -109,8 +94,6 @@ bool is_symmetric(Row* row, int col) {
     return (start_check >= depth_times_start && end_check <= depth_times_end);
 }
 
-
-// Example usage:
 bool is_blocking(GameWorldTerrain terrain, int x, int y) {
   Entity tile = mapGetTile(terrain, x, y);
   if(tile.blocks_sight == 1)
@@ -124,37 +107,34 @@ void mark_visible(GameWorldTerrain terrain, EntityArray* to_draw_buffer, int x, 
   if(to_draw_buffer->count +1 > to_draw_buffer->capacity){
     printf("FATAL: out of memory\n");
   }
-  //printf("(%d %d)\n", x, y);
   to_draw_buffer->data[to_draw_buffer->count++] = tile;
-  // Implement your visibility marking here
-  //printf("Marked visible: (%d, %d)\n", x, y);
 }
 
-// Main FOV computation function
 void compute_fov(GameWorldTerrain terrain, EntityArray* to_draw_buffer, int origin_x, int origin_y)
 {    
   mark_visible(terrain, to_draw_buffer, origin_x, origin_y);
   
   for(int cardinal = 0; cardinal < 4; cardinal++) {
-   
-    // Initialize first row
+    
     Row first_row = {
       .depth = 1,
       .start_slope = fractionNew(-1, 1),
       .end_slope = fractionNew(1, 1)
     };
     
-    Row* row_stack = malloc(sizeof(Row) * 1000); // Adjust size as needed
+    Row* row_stack = malloc(sizeof(Row) * 1000);
     int stack_size = 1;
     row_stack[0] = first_row;
     
     while(stack_size > 0) {
+
       Row current_row = row_stack[--stack_size];
 
+      // allows early termination on invalid angles
       if (fractionCompare(current_row.end_slope, current_row.start_slope)) {
 	continue;
       }
-      
+
       // int * fraction
       int min_col = round_ties_up( (double)
 	(current_row.depth * current_row.start_slope.num)
@@ -162,11 +142,9 @@ void compute_fov(GameWorldTerrain terrain, EntityArray* to_draw_buffer, int orig
       int max_col = round_ties_down(
 	(double)(current_row.depth * current_row.end_slope.num)
 	/ (double)current_row.end_slope.den);
-
-      
+  
       bool prev_was_wall = false;
-      bool prev_was_floor = false;      
-
+ 
       // Scan through tiles in the row
       for(int col = min_col; col <= max_col; col++) {
 	int x, y;
@@ -176,14 +154,13 @@ void compute_fov(GameWorldTerrain terrain, EntityArray* to_draw_buffer, int orig
 	bool is_wall = is_blocking(terrain, x, y);
         
 	if(is_wall || is_symmetric(&current_row, col)) {
-	  mark_visible(terrain, to_draw_buffer, x, y);
-	  
+	  mark_visible(terrain, to_draw_buffer, x, y);	  
 	}
         
 	if(prev_was_wall && !is_wall) {
 	  current_row.start_slope = slope(current_row.depth, col);
 	}
-        
+	
 	if(!prev_was_wall && is_wall && stack_size < 999) {
 	  Row next_row = {
 	    .depth = current_row.depth + 1,
@@ -192,13 +169,12 @@ void compute_fov(GameWorldTerrain terrain, EntityArray* to_draw_buffer, int orig
 	  };
 	  row_stack[stack_size++] = next_row;
 	}
-        
+		
 	prev_was_wall = is_wall;
-	prev_was_floor = !is_wall;
       }// end of row scanning
-      
-      // If we hit floor at the end, scan next row
-      if(prev_was_floor && stack_size < 999) {
+
+      // if floor at last tile, create new tile
+      if(!prev_was_wall && stack_size < 999) {
 	Row next_row = {
 	  .depth = current_row.depth + 1,
 	  .start_slope = current_row.start_slope,
@@ -206,10 +182,10 @@ void compute_fov(GameWorldTerrain terrain, EntityArray* to_draw_buffer, int orig
 	};
 	row_stack[stack_size++] = next_row;
       }
-    }
-    
+      
+    } // end of depth(n) scan
     free(row_stack);
-  }
+  } // end of quartile scan
 }
 
 int worldDraw(Gfx gfx, GameWorld world, Entity camera){
