@@ -14,7 +14,7 @@ int main(void){
   gfxTextureLoad(gfx, "textures/mrmotext-ex11.png");
   
   GameWorld world;
-  worldInit(&world, 16, 16);
+  worldInit(&world, 32, 32);
 
   Entity* player = entityInit(&world, 0);
   player->uv = 417;

@@ -31,7 +31,6 @@ Entity* entityInit(GameWorld* world, unsigned int entity_index){
   return e;
 }
 
-// Fraction structure to replace Python's Fraction class
 typedef struct {
     int num;
     int den;
@@ -53,9 +52,18 @@ enum {
 };
 
 // Helper functions for fractions
-Fraction fraction_new(int num, int den) {
+Fraction fractionNew(int num, int den) {
     Fraction f = {num, den};
     return f;
+}
+
+bool fractionCompare(Fraction small, Fraction large){
+  return(small.num * large.den <= large.num * small.den);
+}
+
+// Calculate slope as a fraction
+Fraction slope(int row_depth, int col) {
+    return fractionNew(2 * col - 1, 2 * row_depth);
 }
 
 // Transform coordinates based on quadrant
@@ -82,25 +90,25 @@ void transform_coords(int cardinal, int ox, int oy, int row, int col, int* out_x
 
 // Helper functions for rounding
 int round_ties_up(double n) {
-    return (int)floor(n + 0.5);
+      return (int)floor(n + 0.5);
 }
 
 int round_ties_down(double n) {
-    return (int)ceil(n - 0.5);
+   return (int)ceil(n - 0.5);
+
 }
 
-// Calculate slope as a fraction
-Fraction slope(int row_depth, int col) {
-    return fraction_new(2 * col - 1, 2 * row_depth);
-}
-
-// Check if position is symmetric
 bool is_symmetric(Row* row, int col) {
-    double start_slope = (double)row->start_slope.num / row->start_slope.den;
-    double end_slope = (double)row->end_slope.num / row->end_slope.den;
-    double col_slope = (double)col / row->depth;
-    return col_slope >= start_slope && col_slope <= end_slope;
+    // Multiply both sides by depth to avoid creating new fractions
+    int depth_times_start = row->depth * row->start_slope.num;
+    int start_check = col * row->start_slope.den;
+    
+    int depth_times_end = row->depth * row->end_slope.num;
+    int end_check = col * row->end_slope.den;
+    
+    return (start_check >= depth_times_start && end_check <= depth_times_end);
 }
+
 
 // Example usage:
 bool is_blocking(GameWorldTerrain terrain, int x, int y) {
@@ -113,6 +121,10 @@ bool is_blocking(GameWorldTerrain terrain, int x, int y) {
 
 void mark_visible(GameWorldTerrain terrain, EntityArray* to_draw_buffer, int x, int y) {
   Entity tile = mapGetTile(terrain, x, y);
+  if(to_draw_buffer->count +1 > to_draw_buffer->capacity){
+    printf("FATAL: out of memory\n");
+  }
+  //printf("(%d %d)\n", x, y);
   to_draw_buffer->data[to_draw_buffer->count++] = tile;
   // Implement your visibility marking here
   //printf("Marked visible: (%d, %d)\n", x, y);
@@ -121,81 +133,83 @@ void mark_visible(GameWorldTerrain terrain, EntityArray* to_draw_buffer, int x, 
 // Main FOV computation function
 void compute_fov(GameWorldTerrain terrain, EntityArray* to_draw_buffer, int origin_x, int origin_y)
 {    
-  // Mark origin as visible
- 
   mark_visible(terrain, to_draw_buffer, origin_x, origin_y);
   
-    // Process each quadrant
-    for(int cardinal = 0; cardinal < 4; cardinal++) {
-        // Initialize first row
-        Row first_row = {
-            .depth = 1,
-            .start_slope = fraction_new(-1, 1),
-            .end_slope = fraction_new(1, 1)
-        };
-        
-        // Stack-based implementation of row scanning
-        // (replacing recursive calls in Python version)
-        Row* row_stack = malloc(sizeof(Row) * 1000); // Adjust size as needed
-        int stack_size = 1;
-        row_stack[0] = first_row;
-        
-        while(stack_size > 0) {
-            Row current_row = row_stack[--stack_size];
-            
-            // Calculate tile range for current row
-            double start_f = (double)current_row.start_slope.num / current_row.start_slope.den;
-            double end_f = (double)current_row.end_slope.num / current_row.end_slope.den;
-            
-            int min_col = round_ties_up(current_row.depth * start_f);
-            int max_col = round_ties_down(current_row.depth * end_f);
-            
-            bool prev_was_wall = false;
-            bool prev_was_floor = false;
-            
-            // Scan through tiles in the row
-            for(int col = min_col; col <= max_col; col++) {
-                int x, y;
-                transform_coords(cardinal, origin_x, origin_y, 
-                               current_row.depth, col, &x, &y);
-                
-                bool is_wall = is_blocking(terrain, x, y);
-                
-                if(is_wall || is_symmetric(&current_row, col)) {
-		  mark_visible(terrain, to_draw_buffer, x, y);
+  for(int cardinal = 0; cardinal < 4; cardinal++) {
+   
+    // Initialize first row
+    Row first_row = {
+      .depth = 1,
+      .start_slope = fractionNew(-1, 1),
+      .end_slope = fractionNew(1, 1)
+    };
+    
+    Row* row_stack = malloc(sizeof(Row) * 1000); // Adjust size as needed
+    int stack_size = 1;
+    row_stack[0] = first_row;
+    
+    while(stack_size > 0) {
+      Row current_row = row_stack[--stack_size];
+
+      if (fractionCompare(current_row.end_slope, current_row.start_slope)) {
+	continue;
+      }
+      
+      // int * fraction
+      int min_col = round_ties_up( (double)
+	(current_row.depth * current_row.start_slope.num)
+	/ (double)current_row.start_slope.den);
+      int max_col = round_ties_down(
+	(double)(current_row.depth * current_row.end_slope.num)
+	/ (double)current_row.end_slope.den);
+
+      
+      bool prev_was_wall = false;
+      bool prev_was_floor = false;      
+
+      // Scan through tiles in the row
+      for(int col = min_col; col <= max_col; col++) {
+	int x, y;
+	transform_coords(cardinal, origin_x, origin_y, 
+			 current_row.depth, col, &x, &y);
 	
-                }
-                
-                if(prev_was_wall && !is_wall) {
-                    current_row.start_slope = slope(current_row.depth, col);
-                }
-                
-                if(!prev_was_wall && is_wall && stack_size < 999) {
-                    Row next_row = {
-                        .depth = current_row.depth + 1,
-                        .start_slope = current_row.start_slope,
-                        .end_slope = slope(current_row.depth, col)
-                    };
-                    row_stack[stack_size++] = next_row;
-                }
-                
-                prev_was_wall = is_wall;
-                prev_was_floor = !is_wall;
-            }
-            
-            // If we hit floor at the end, scan next row
-            if(prev_was_floor && stack_size < 999) {
-                Row next_row = {
-                    .depth = current_row.depth + 1,
-                    .start_slope = current_row.start_slope,
-                    .end_slope = current_row.end_slope
-                };
-                row_stack[stack_size++] = next_row;
-            }
-        }
+	bool is_wall = is_blocking(terrain, x, y);
         
-        free(row_stack);
+	if(is_wall || is_symmetric(&current_row, col)) {
+	  mark_visible(terrain, to_draw_buffer, x, y);
+	  
+	}
+        
+	if(prev_was_wall && !is_wall) {
+	  current_row.start_slope = slope(current_row.depth, col);
+	}
+        
+	if(!prev_was_wall && is_wall && stack_size < 999) {
+	  Row next_row = {
+	    .depth = current_row.depth + 1,
+	    .start_slope = current_row.start_slope,
+	    .end_slope = slope(current_row.depth, col)
+	  };
+	  row_stack[stack_size++] = next_row;
+	}
+        
+	prev_was_wall = is_wall;
+	prev_was_floor = !is_wall;
+      }// end of row scanning
+      
+      // If we hit floor at the end, scan next row
+      if(prev_was_floor && stack_size < 999) {
+	Row next_row = {
+	  .depth = current_row.depth + 1,
+	  .start_slope = current_row.start_slope,
+	  .end_slope = current_row.end_slope
+	};
+	row_stack[stack_size++] = next_row;
+      }
     }
+    
+    free(row_stack);
+  }
 }
 
 int worldDraw(Gfx gfx, GameWorld world, Entity camera){
@@ -205,7 +219,7 @@ int worldDraw(Gfx gfx, GameWorld world, Entity camera){
   int x_offset = (ASCII_SCREEN_WIDTH / 2);
   int y_offset = (ASCII_SCREEN_HEIGHT / 2);
 
-  EntityArray to_draw_buffer = entityArrayMalloc(1000);
+  EntityArray to_draw_buffer = entityArrayMalloc(5000);
   compute_fov(world.terrain, &to_draw_buffer, camera.x, camera.y);
   for(int i = 0; i < to_draw_buffer.count; i++){
     Entity tile = to_draw_buffer.data[i];
@@ -248,7 +262,7 @@ int worldInit(GameWorld* w, int width, int height){
   Entity air = {
     .uv = 0,
     .fg = 15,
-    .bg = 0,
+    .bg = 3,
     .collide = 0,
     .blocks_sight = 0
   };
@@ -271,7 +285,7 @@ int worldInit(GameWorld* w, int width, int height){
 Entity mapGetTile(GameWorldTerrain terrain, int x, int y){
   Entity null_ent = {
     .uv = 370,
-    .fg = 1,
+    .fg = 3,
     .bg = 0,
     .collide = 0,
     .blocks_sight = 1,

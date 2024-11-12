@@ -12,7 +12,7 @@ typedef struct Entity Entity;
 
 typedef struct{
   size_t capacity;
-  int count;
+  size_t count;
   Entity* data;
 } EntityArray;
 
