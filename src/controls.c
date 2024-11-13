@@ -1,3 +1,4 @@
+
 #include "controls.h"
 #include "action.h"
 #include "config.h"
@@ -96,8 +97,9 @@ GameAction guiPickTile(Gfx gfx)
     
     GfxInput glyph_pick = guiPad(gfx, 0, glyph_pick_offset, 16, glyph_pick_offset +16);
     if(glyph_pick.unicode == PUA_LEFT_CLICK){
-	target_uv = glyph_pick.mouse_y * ATLAS_WIDTH + glyph_pick.mouse_x;
-	printf("%d\n", target_uv);
+      target_uv = ((glyph_pick.mouse_y + page_y_offset) * ATLAS_WIDTH) + glyph_pick.mouse_x + page_x_offset;
+      //target_uv = glyph_pick.mouse_y * ATLAS_WIDTH + glyph_pick.mouse_x + page_offset;
+      printf("%d\n", target_uv);
     }
 
     if(guiButton(gfx, 13, 21, "<", 0, 8) == 1){

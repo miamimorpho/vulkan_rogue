@@ -1,6 +1,5 @@
 * TODO
 
-FOV/Line of Sight
 NPCs / enemies basic basic
 add fat pointer string library
 message buffer -> ring buffer
@@ -75,6 +74,8 @@ Static worldmap, procederal local tiles
 writing driven story
 william burroughs cut up tecnique
 
+markov chains + NLP
+
 * Art
 
 | Machine        | Display in Tiles   | Tile Size |
@@ -89,8 +90,6 @@ timur novikov style landscapes for long distances, some towns
 background of horizon can change for weather/time/biome
 foreground is game area, could be follow cam or static cam.k
 mayan glyphs in textmode appear as characters.
-
-
 
 * Turn based
 https://journal.stuffwithstuff.com/2014/07/15/a-turn-based-game-loop/
@@ -111,3 +110,15 @@ usable objects
 * combat
 not annoying, tedious
 pokemon mysery dungeon
+
+* lore
+"And there arose in the digital wastes a great bird of blue and it was named X and the users looked upon it and knew not their home"
+"The servers lay dead in their racks like ancient bones, their fans whispering quiet liturgies into the cold datacenter dark"
+"They witnessed the NFTs fall, their worthless tokens scattered across the blockchain like the teeth of dead men in a desert"
+"The moderators rode forth into that digital waste, banning and smiting with neither mercy nor remorse, and their shadow was long upon the forum"
+"And the Musk did speak cryptic utterances into the void, and his words carried a market Cap across the virtual plains like plague winds"
+"In the subreddit there was a great silence. No post. No comment stirred upon the front page. The downvotes lay like dark stars in that digital firmament"
+"Threads rose from the Meta depths like some ancient leviathan, bearing marks and scars of platforms long dead and forgotten"
+"The TikTok algorithms moved through the data like wolves through sheep, devouring attention spans with neither mercy nor satiety"
+"And the cryptocurrency traders wandered those broken markets like mendicant monks, clutching their worthless coins and muttering prayers to dead chains"
+"Discord lay against the digital horizon like a burning city, its servers crying out in tongues of error logs and crash reports"
