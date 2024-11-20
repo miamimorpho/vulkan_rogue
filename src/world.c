@@ -2,41 +2,164 @@
 #include "maths.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include <math.h>
+#include <string.h>
 
-EntityArray entityArrayMalloc(size_t capacity){
-  return (EntityArray){
-    .capacity = capacity,
-    .count = 0,
-    .data = malloc(sizeof(Entity) * capacity)
-  };
+#define container_of(ptr, type, member) \
+    ((type *)((char *)(ptr) - offsetof(type, member)))
+
+struct GameObjectBufferImpl{
+  size_t capacity;
+  size_t count;
+  GameObject* data;
+};
+
+GameObjectBuffer objectBufferCreate(size_t capacity){
+  size_t* allocation = malloc(
+    sizeof(size_t) * 2 +
+    sizeof(GameObject) * capacity);
+  if(!allocation) return NULL;
+
+  allocation[0] = capacity;
+  allocation[1] = 0;
+
+  return (GameObjectBuffer)(allocation + 2);
 }
 
-Entity* entityInit(GameWorld* world, unsigned int entity_index){
-
-  if(entity_index > world->actors_count){
-    return NULL;
-  }
+void objectRemove(GameObjectBuffer objects, size_t index){
+  size_t count = *bufferSize(objects);
+  if(index >= count) return;
   
-  Entity* e = &world->actors[entity_index];
-  e->is_init = 1;
-  e->x = 0;
-  e->y = 0;
-  e->uv = 1024;
-  e->fg = 15;
-  e->bg = 0;
-  e->collide = 1;
-  e->inventory = entityArrayMalloc(10);
-    
-  return e;
+  memmove(&objects[index],
+	  &objects[index +1],
+	  (count - index - 1) * sizeof(GameObject) );
+
+  (*bufferSize(objects))--;
 }
 
-// Row structure
-typedef struct {
-    int depth;
-    Fraction start_slope;
-    Fraction end_slope;
-} Row;
+int objectPush(GameObjectBuffer objects, GameObject src){
+  size_t capacity = *bufferCapacity(objects);
+  size_t count = *bufferSize(objects);
+ 
+  if(count >= capacity) return 1;
+
+  objects[count] = src;
+  (*bufferSize(objects))++;
+  
+  return 0;
+}
+
+void objectBufferDestroy(GameObjectBuffer buffer){
+  if(!buffer) return;
+  free(BUFFER_METADATA(buffer));
+}
+
+
+MapChunk* mapChunkCreate(void){
+
+  MapChunk* chunk = malloc(sizeof(MapChunk));
+  chunk->terrain = objectBufferCreate(CHUNK_WIDTH * CHUNK_WIDTH);
+
+  GameObject air = {
+    OBJECT_TERRAIN,
+    .unicode = 0,
+    .atlas = DRAW_TEXTURE_INDEX,
+    .fg = 15,
+    .bg = 3,
+    .data.terra = {
+      .blocks_movement = 0,
+      .blocks_sight = 0
+    },
+    .inventory = NULL
+  };
+  
+  for(size_t i = 0; i < *bufferCapacity(chunk->terrain); i++){
+    objectPush(chunk->terrain, air);
+  }
+
+  chunk->mobiles = objectBufferCreate(CHUNK_OBJECT_C);
+ 
+  return chunk;
+}
+
+GameObject* mobileCreate(MapPosition dst){
+
+  MapChunk* local_chunk = dst.chunk_ptr;
+  
+  GameObject proto_mob = {
+    OBJECT_MOBILE,
+    .unicode = 1,
+    .atlas = ASCII_TEXTURE_INDEX,
+    .fg = 15,
+    .bg = 0,
+    .data.mob = {
+      .pos = dst
+    },
+    .inventory = objectBufferCreate(4)
+  };
+  GameObject proto_item = {
+    OBJECT_ITEM,
+    .unicode = 0,
+    .atlas = ASCII_TEXTURE_INDEX,
+    .fg = 15,
+    .bg = 0,
+    .data.item = {
+      .id = 4
+    },
+    .inventory = NULL,
+  };
+  objectPush(proto_mob.inventory, proto_item);
+  
+  //printf("mobile create %u\n", proto.data.mob.pos.x);
+  GameObjectBuffer mobiles = local_chunk->mobiles;
+  if(objectPush(mobiles, proto_mob) != 0){
+    printf("err\n");
+    return NULL;
+  }  
+
+  return &mobiles[*bufferSize(mobiles) -1];
+}
+
+GameObject mapGetTerrain(MapPosition pos){
+  MapChunk* chunk = pos.chunk_ptr;
+  
+  GameObject null_object = {
+    OBJECT_TERRAIN,
+    .unicode = 370,
+    .atlas = DRAW_TEXTURE_INDEX,
+    .fg = 3,
+    .bg = 0,
+    .data.terra = {
+      .blocks_movement = 0,
+      .blocks_sight = 1,
+    }
+  };
+
+  uint32_t offset = (pos.y * CHUNK_WIDTH) + pos.x;  
+  if(pos.x < 0 ||
+     pos.x >= CHUNK_WIDTH ||
+     offset >= *bufferSize(chunk->terrain)){
+    return null_object;
+  }
+
+  return chunk->terrain[offset];
+}
+
+int mapSetTerrain(GameObject proto, MapPosition pos){
+  if(proto.type != OBJECT_TERRAIN) return 1;
+
+  MapChunk* chunk = pos.chunk_ptr;
+  uint32_t offset = (pos.y * CHUNK_WIDTH) + pos.x;  
+  if(pos.x < 0 ||
+     pos.x >= CHUNK_WIDTH ||
+     offset >= *bufferSize(chunk->terrain)){
+    return 1;
+  }
+
+  chunk->terrain[offset] = proto;
+  return 0;
+}
+
+/* Shadowcasting */
 
 // Cardinal directions
 enum {
@@ -46,10 +169,13 @@ enum {
     WEST = 3
 };
 
-// Calculate slope as a fraction
-Fraction slope(int row_depth, int col) {
-    return fractionNew(2 * col - 1, 2 * row_depth);
-}
+// Row structure
+typedef struct {
+  int cardinal;
+  int depth;
+  Fraction start_slope;
+  Fraction end_slope;
+} Row;
 
 // Transform coordinates based on quadrant
 void transform_coords(int cardinal, int ox, int oy, int row, int col, int* out_x, int* out_y) {
@@ -80,220 +206,148 @@ int round_ties_up(double n) {
 
 int round_ties_down(double n) {
    return (int)ceil(n - 0.5);
-
 }
 
-bool is_symmetric(Row* row, int col) {
-    // Multiply both sides by depth to avoid creating new fractions
-    int depth_times_start = row->depth * row->start_slope.num;
-    int start_check = col * row->start_slope.den;
-    
-    int depth_times_end = row->depth * row->end_slope.num;
-    int end_check = col * row->end_slope.den;
-    
-    return (start_check >= depth_times_start && end_check <= depth_times_end);
+// Calculate slope as a fraction
+Fraction slope(int row_depth, int col) {
+    return fractionNew(2 * col - 1, 2 * row_depth);
 }
 
-bool is_blocking(GameWorldTerrain terrain, int x, int y) {
-  Entity tile = mapGetTile(terrain, x, y);
-  if(tile.blocks_sight == 1)
+bool is_symmetric(Row* row, int col)
+{
+  /* checks if slope (col/row) is 
+   * between start and end slopes */
+    int depth_mul_start = row->depth * row->start_slope.num;
+  int col_div_start = col * row->start_slope.den;
+  
+  int depth_mul_end = row->depth * row->end_slope.num;
+  int col_div_end = col * row->end_slope.den;
+  
+  return (col_div_start >= depth_mul_start &&
+	  col_div_end <= depth_mul_end);
+}
+
+bool is_blocking(MapPosition pos) {
+  GameObject t = mapGetTerrain(pos);
+  if(t.data.terra.blocks_sight == 1)
     return true;
 
   return false;
 }
 
-void mark_visible(GameWorldTerrain terrain, EntityArray* to_draw_buffer, int x, int y) {
-  Entity tile = mapGetTile(terrain, x, y);
-  if(to_draw_buffer->count +1 > to_draw_buffer->capacity){
-    printf("FATAL: out of memory\n");
-  }
-  to_draw_buffer->data[to_draw_buffer->count++] = tile;
+void mark_visible(GameObjectBuffer to_draw, MapPosition pos) {
+  GameObject terrain = mapGetTerrain(pos);
+  terrain.type = OBJECT_MOBILE;
+  terrain.data.mob.pos = pos;
+  objectPush(to_draw, terrain);
 }
 
-void compute_fov(GameWorldTerrain terrain, EntityArray* to_draw_buffer, int origin_x, int origin_y)
-{    
-  mark_visible(terrain, to_draw_buffer, origin_x, origin_y);
+void shadowcast_scan_row(GameObjectBuffer to_draw, MapPosition camera, Row current_row){
   
+  // allows early termination on invalid angles
+  if (fractionCompare(current_row.end_slope, current_row.start_slope)) {
+    return;
+  }
+
+  // int * fraction
+  int min_col = round_ties_up( (double)
+    (current_row.depth * current_row.start_slope.num)
+    / (double)current_row.start_slope.den);
+  int max_col = round_ties_down( (double)
+    (current_row.depth * current_row.end_slope.num)
+    / (double)current_row.end_slope.den);
+  
+  bool prev_was_wall = false;
+ 
+  for(int col = min_col; col <= max_col; col++) {    
+    int target_x, target_y;
+    transform_coords(current_row.cardinal, camera.x, camera.y, 
+		     current_row.depth, col, &target_x, &target_y);
+
+    MapPosition current_pos = 
+      { target_x, target_y, camera.chunk_ptr };
+    bool is_wall = is_blocking(current_pos);
+    
+    if(is_wall || is_symmetric(&current_row, col)) {
+      if(relativeDistance(current_row.depth, col) < 12.5 * 12.5)
+	mark_visible(to_draw, current_pos);	  
+    }
+    
+    if(prev_was_wall && !is_wall) {
+      current_row.start_slope = slope(current_row.depth, col);
+    }
+    
+    if(!prev_was_wall && is_wall) {
+      Row next_row = {
+	.cardinal = current_row.cardinal,
+	.depth = current_row.depth + 1,
+	.start_slope = current_row.start_slope,
+	.end_slope = slope(current_row.depth, col)
+      };
+      shadowcast_scan_row(to_draw, camera, next_row);
+    }
+    
+    prev_was_wall = is_wall;
+  }// end of row scanning
+  
+  // if floor at last tile, create new tile
+  if(!prev_was_wall) {
+    Row next_row = {
+      .cardinal = current_row.cardinal,
+      .depth = current_row.depth + 1,
+      .start_slope = current_row.start_slope,
+      .end_slope = current_row.end_slope
+    };
+    shadowcast_scan_row(to_draw, camera, next_row);
+  }
+  
+}
+
+GameObjectBuffer shadowcast_fov(MapPosition camera){
+
+  GameObjectBuffer to_draw = objectBufferCreate(3000);
+
+  mark_visible(to_draw, camera);
   for(int cardinal = 0; cardinal < 4; cardinal++) {
     
     Row first_row = {
+      .cardinal = cardinal,
       .depth = 1,
       .start_slope = fractionNew(-1, 1),
       .end_slope = fractionNew(1, 1)
     };
+    shadowcast_scan_row(to_draw, camera, first_row);
     
-    Row* row_stack = malloc(sizeof(Row) * 1000);
-    int stack_size = 1;
-    row_stack[0] = first_row;
-    
-    while(stack_size > 0) {
-
-      Row current_row = row_stack[--stack_size];
-
-      // allows early termination on invalid angles
-      if (fractionCompare(current_row.end_slope, current_row.start_slope)) {
-	continue;
-      }
-
-      // int * fraction
-      int min_col = round_ties_up( (double)
-	(current_row.depth * current_row.start_slope.num)
-	/ (double)current_row.start_slope.den);
-      int max_col = round_ties_down(
-	(double)(current_row.depth * current_row.end_slope.num)
-	/ (double)current_row.end_slope.den);
-  
-      bool prev_was_wall = false;
- 
-      // Scan through tiles in the row
-      for(int col = min_col; col <= max_col; col++) {
-	int x, y;
-	transform_coords(cardinal, origin_x, origin_y, 
-			 current_row.depth, col, &x, &y);
-	
-	bool is_wall = is_blocking(terrain, x, y);
-        
-	if(is_wall || is_symmetric(&current_row, col)) {
-	  mark_visible(terrain, to_draw_buffer, x, y);	  
-	}
-        
-	if(prev_was_wall && !is_wall) {
-	  current_row.start_slope = slope(current_row.depth, col);
-	}
-	
-	if(!prev_was_wall && is_wall && stack_size < 999) {
-	  Row next_row = {
-	    .depth = current_row.depth + 1,
-	    .start_slope = current_row.start_slope,
-	    .end_slope = slope(current_row.depth, col)
-	  };
-	  row_stack[stack_size++] = next_row;
-	}
-		
-	prev_was_wall = is_wall;
-      }// end of row scanning
-
-      // if floor at last tile, create new tile
-      if(!prev_was_wall && stack_size < 999) {
-	Row next_row = {
-	  .depth = current_row.depth + 1,
-	  .start_slope = current_row.start_slope,
-	  .end_slope = current_row.end_slope
-	};
-	row_stack[stack_size++] = next_row;
-      }
-      
-    } // end of depth(n) scan
-    free(row_stack);
-  } // end of quartile scan
+  }
+  return to_draw;
 }
 
-int worldDraw(Gfx gfx, GameWorld world, Entity camera){
+int mapChunkDraw(Gfx gfx, MapPosition camera){
 
   gfxClear(gfx);
   
   int x_offset = (ASCII_SCREEN_WIDTH / 2);
   int y_offset = (ASCII_SCREEN_HEIGHT / 2);
 
-  EntityArray to_draw_buffer = entityArrayMalloc(5000);
-  compute_fov(world.terrain, &to_draw_buffer, camera.x, camera.y);
-  for(int i = 0; i < to_draw_buffer.count; i++){
-    Entity tile = to_draw_buffer.data[i];
-    int tile_x = tile.x - camera.x + x_offset;
-    int tile_y = tile.y - camera.y + y_offset;;
-    gfxAddCh(gfx, tile_x, tile_y, tile.uv, DRAW_TEXTURE_INDEX, tile.fg, tile.bg);
+  GameObjectBuffer to_draw = shadowcast_fov(camera);
+  size_t draw_count = *bufferSize(to_draw);
+
+  for(unsigned int i = 0; i < draw_count; i++){
+    GameObject tile = to_draw[i];
+    int tile_x = tile.data.mob.pos.x - camera.x + x_offset;
+    int tile_y = tile.data.mob.pos.y - camera.y + y_offset;
+    gfxAddCh(gfx, tile_x, tile_y, tile.unicode, tile.atlas, tile.fg, tile.bg);
   }
-  free(to_draw_buffer.data);
-  
-  /*
-  for(int y = 0; y < ASCII_SCREEN_HEIGHT; y++){
-    for(int x = 0; x < ASCII_SCREEN_WIDTH; x++){
-      Entity tile = mapGetTile(world.terrain,
-			       camera.pos.x - x_offset +x,
-			       camera.pos.y - y_offset +y);
-      gfxAddCh(gfx, x, y,
-	       tile.uv, DRAW_TEXTURE_INDEX,
-	       tile.fg, tile.bg);
-    }
-  }
-  */
-  
+  objectBufferDestroy(to_draw);
+ 
   // render list of entities (actors)
-  for(unsigned int i = 0; i < world.actors_count; i++){
-    Entity actor = world.actors[i];
-    if(actor.is_init == 1){
-      gfxAddCh(gfx, x_offset, y_offset,
-	       actor.uv, DRAW_TEXTURE_INDEX,
-	       actor.fg, actor.bg);
-    }
+  // TODO: line of sight
+  GameObjectBuffer mobiles = camera.chunk_ptr->mobiles;
+  for(size_t i = 0; i < *bufferSize(mobiles); i++){
+    GameObject actor = mobiles[i];
+    gfxAddCh(gfx, x_offset, y_offset,
+	     actor.unicode, actor.atlas,
+	     actor.fg, actor.bg);
   }
   return 0;
-}
-
-int worldInit(GameWorld* w, int width, int height){
-  w->terrain.width = width;
-  w->terrain.size = width * height;
-  w->terrain.tiles = (Entity*)malloc(w->terrain.size * sizeof(Entity));
-
-  Entity air = {
-    .uv = 0,
-    .fg = 15,
-    .bg = 3,
-    .collide = 0,
-    .blocks_sight = 0
-  };
-  
-  for(int y = 0; y < height; y++){
-    for(int x = 0; x < width; x++){
-      mapPutTile(&w->terrain, air, x, y);
-    }
-  }
-  int actor_c = 8;
-  w->actors = malloc(actor_c * sizeof(Entity));
-  w->actors_count = actor_c;
-  for(int i = 0; i < actor_c; i++){
-    w->actors[i].is_init = 0;
-  }
-  
-  return 0;
-}
-
-Entity mapGetTile(GameWorldTerrain terrain, int x, int y){
-  Entity null_ent = {
-    .uv = 370,
-    .fg = 3,
-    .bg = 0,
-    .collide = 0,
-    .blocks_sight = 1,
-    .x = x,
-    .y = y
-  };
-  if(x >= terrain.width) return null_ent;
-  if(x < 0) return null_ent;
-  if(y < 0) return null_ent;
-  
-  int offset = (y * terrain.width) + x;
-  if(offset >= terrain.size) return null_ent;
-  return terrain.tiles[offset];
-}
-
-int mapPutTile(GameWorldTerrain* terrain, Entity entity, int x, int y){
-
-  if(x >= terrain->width) return 1;
-  if(x < 0) return 1;
-  if(y < 0) return 1;
-  int offset = (y * terrain->width) + x;  
-  if(offset >= terrain->size ) return 1;
-  
-  entity.x = x;
-  entity.y = y;
-  terrain->tiles[offset] = entity;
-  return 0;
-}
-
-Entity* entityGet(GameWorld* world, unsigned int entity_index){
-  if(entity_index > world->actors_count){
-    return NULL;
-  }
-  return &world->actors[entity_index];
 }

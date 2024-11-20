@@ -3,48 +3,68 @@
 #include "vulkan_public.h"
 #include <stdint.h>
 
+#define CHUNK_WIDTH 32
+#define CHUNK_OBJECT_C 8
+
+typedef struct GameObject GameObject;
+typedef struct GameObject* GameObjectBuffer;
+
+#define BUFFER_METADATA(buffer) \
+  ((size_t*)(buffer) - 2)
+static inline size_t* bufferCapacity(GameObjectBuffer b){
+  return &(BUFFER_METADATA(b)[0]);
+}
+static inline size_t* bufferSize(GameObjectBuffer b){
+  return &(BUFFER_METADATA(b)[1]);
+}
+
 typedef struct{
-  int x;
-  int y;
-} Pos;
-
-typedef struct Entity Entity;
+  GameObjectBuffer terrain;
+  GameObjectBuffer mobiles;
+} MapChunk;
 
 typedef struct{
-  size_t capacity;
-  size_t count;
-  Entity* data;
-} EntityArray;
+  int32_t x;
+  int32_t y;
+  MapChunk* chunk_ptr;
+} MapPosition;
 
-struct Entity{
-  int is_init;
-  int x;
-  int y;
-  int uv;
+typedef enum {
+    OBJECT_TERRAIN,
+    OBJECT_MOBILE,
+    OBJECT_ITEM,
+    // Add other types as needed
+} GameObjectType;
+
+struct GameObject{
+  GameObjectType type;
+  uint32_t unicode;
+  uint32_t atlas;
   uint32_t fg;
   uint32_t bg;
-  int collide;
-  int blocks_sight;
-  EntityArray inventory;
+  union {
+    struct {
+      uint8_t blocks_sight;
+      uint8_t blocks_movement;
+    } terra;
+    
+    struct {
+      MapPosition pos;
+    } mob;
+    
+    struct {
+      int id;
+    } item;
+    
+  } data;
+  GameObjectBuffer inventory;
 };
 
-typedef struct{
-  Entity* tiles;
-  int width;
-  int size;
-} GameWorldTerrain;
-
-typedef struct{
-  GameWorldTerrain terrain;
-  Entity* props;
-  Entity* actors;
-  unsigned int actors_count;
-} GameWorld;
-
-int mapPutTile(GameWorldTerrain*, Entity, int, int);
-Entity mapGetTile(GameWorldTerrain, int x, int y);
-int worldInit(GameWorld*, int, int);
-Entity* entityInit(GameWorld*, unsigned int);
-int worldDraw(Gfx, GameWorld, Entity);
+MapChunk* mapChunkCreate(void);
+GameObject mapGetTerrain(MapPosition);
+int mapSetTerrain(GameObject, MapPosition);
+GameObject* mobileCreate(MapPosition);
+GameObjectBuffer shadowcast_fov(MapPosition);
+int mapChunkDraw(Gfx, MapPosition);
 
 #endif // WORLD_H

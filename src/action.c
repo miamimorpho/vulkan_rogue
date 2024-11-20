@@ -21,9 +21,9 @@ typedef struct {
   ArgValue val;
 }Argument;
 
-typedef int (*Action_f)(GameWorld* w, int args_c, Argument* args);
+typedef int (*Action_f)(GameObject* object_ptr, int args_c, Argument* args);
 
-struct _GameAction{
+struct GameActionImpl{
     Action_f func;
     int args_c;
     Argument* args;
@@ -31,40 +31,40 @@ struct _GameAction{
 
 GameAction requestAction(Action_f func, int args_c, ...){
 
-  struct _GameAction action;
-  action.func = func;
-  action.args_c = args_c;
-  action.args = malloc(sizeof(Argument) * args_c);
+  GameAction action = malloc(sizeof(struct GameActionImpl));
+  action->func = func;
+  action->args_c = args_c;
+  action->args = malloc(sizeof(Argument) * args_c);
 
   va_list args;
   va_start(args, args_c);
   for(int i = 0; i < args_c; i++){
     // even number args specify type
     ArgType type = va_arg(args, ArgType);
-    action.args[i].type = type;
+    action->args[i].type = type;
 
     // odd number args specify type
     switch(type){
     case ARG_INT:
-      action.args[i].val.i = va_arg(args, int);
+      action->args[i].val.i = va_arg(args, int);
       break;
     case ARG_FLOAT:
-      action.args[i].val.f = (float)va_arg(args, double);
+      action->args[i].val.f = (float)va_arg(args, double);
       break;
     case ARG_STRING:
-      action.args[i].val.s = va_arg(args, const char*);
+      action->args[i].val.s = va_arg(args, const char*);
       break;
     }
    
   }
   va_end(args);
-  struct _GameAction* action_ptr = malloc(sizeof(struct _GameAction));
-  *action_ptr = action;
-  return action_ptr;
+  //GameAction* action_ptr = malloc(sizeof(GameAction));
+  //*action_ptr = action;
+  return action;
 }
 
-void doAction(GameWorld* w, GameAction action){
-  int err = action->func(w, action->args_c, action->args);
+void doAction(GameObject* object_ptr, GameAction action){
+  int err = action->func(object_ptr, action->args_c, action->args);
   // segfault on _noAction
   if(err == 1){
     printf("action error\n");
@@ -74,60 +74,61 @@ void doAction(GameWorld* w, GameAction action){
 }
 
 /* Start of in-game functions */
-int _dropAction(GameWorld* w, int args_c, Argument* args){
-  if(w == NULL) return 1;
+/* Arg 1 = ARG_INT, Arg2 entity Index */
+int _buildTerrainAction(GameObject* object_ptr, int args_c, Argument* args){
+  if(object_ptr == NULL) return 1;
   if(args_c > 1) return 1;
-  int x = w->actors[0].x;
-  int y = w->actors[0].y;
+  int inventory_index = args[0].val.i;
+  GameObject tool = object_ptr->inventory[inventory_index];
 
-  Entity target = w->actors[0].inventory.data[0];
-  
-  mapPutTile(&w->terrain, target, x, y);
-  return 0;
+  tool.type = OBJECT_TERRAIN;
+  tool.data.terra.blocks_sight = 1;
+  tool.data.terra.blocks_movement = 1;
+
+  return mapSetTerrain(tool, object_ptr->data.mob.pos);
 }
-GameAction dropAction(int entity_index){
-  return requestAction(_dropAction, 1,
+GameAction buildTerrainAction(int entity_index){
+  return requestAction(_buildTerrainAction, 1,
 		       ARG_INT, entity_index);
 }
 
-int _moveEntityAction(GameWorld* w, int args_c, Argument* args){
-  if(w == NULL) return 1;
-  if(args_c > 3) return 1;
-  int entity_index = args[0].val.i;
-  int vx = args[1].val.i;
-  int vy = args[2].val.i;
-  
-  Entity* e = &w->actors[entity_index];
-  Entity dst = mapGetTile(w->terrain, e->x + vx, e->y + vy);
-  if(dst.collide == 0){
-    e->x += vx;
-    e->y += vy;
+int _moveMobileAction(GameObject* object_ptr, int args_c, Argument* args){
+  if(object_ptr == NULL) return 1;
+  if(object_ptr->type != OBJECT_MOBILE) return 1;
+  if(args_c > 2) return 1;
+  int dx = args[0].val.i;
+  int dy = args[1].val.i;
+
+  MapPosition pos = object_ptr->data.mob.pos;
+  pos.x += dx;
+  pos.y += dy;
+  if(mapGetTerrain(pos).data.terra.blocks_movement == 0){
+    object_ptr->data.mob.pos = pos;
   }
 
   return 0;
 }
-GameAction moveEntityAction(int entity_index, int x, int y){
-  return requestAction(_moveEntityAction, 3,
-                  ARG_INT, entity_index,
+GameAction moveMobileAction(int x, int y){
+  return requestAction(_moveMobileAction, 2,
                   ARG_INT, x,
                   ARG_INT, y);
 }
 
-int _paintEntityAction(GameWorld* w, int args_c, Argument* args){
-  if(w == NULL) return 1;
+int _paintEntityAction(GameObject* object_ptr, int args_c, Argument* args){
+  if(object_ptr == NULL) return 1;
   if(args_c > 3) return 1;
 
-  Entity* dst = &w->actors[0].inventory.data[0];
+  GameObject* item = &object_ptr->inventory[0];
+  
   if(args[0].val.i >= 0)
-    dst->uv = args[0].val.i;
+    item->unicode = args[0].val.i;
   if(args[1].val.i >= 0)
-    dst->fg = args[1].val.i;
+    item->fg = args[1].val.i;
   if(args[2].val.i >= 0)
-    dst->bg = args[2].val.i;
+    item->bg = args[2].val.i;
 
   return 0;
 }
-
 GameAction paintEntityAction(int uv, int fg, int bg){
   return requestAction(_paintEntityAction, 3,
 		       ARG_INT, uv,
@@ -135,9 +136,11 @@ GameAction paintEntityAction(int uv, int fg, int bg){
 		       ARG_INT, bg);
 }
 
-int _noAction(GameWorld* w, int args_c, Argument* args){
+int _noAction(GameObject* object_ptr, int args_c, Argument* args){
   return 0;
 }
 GameAction noAction(void){
-  return requestAction(_noAction, 1, 1);
+  return requestAction(_noAction, 0, 0);
 }
+
+//end

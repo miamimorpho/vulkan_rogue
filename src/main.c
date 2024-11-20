@@ -13,19 +13,13 @@ int main(void){
   gfxTextureLoad(gfx, "textures/icl8x8u.bdf");
   gfxTextureLoad(gfx, "textures/mrmotext-ex11.png");
   
-  GameWorld world;
-  worldInit(&world, 32, 32);
+  MapChunk* chunk = mapChunkCreate();
+  MapPosition start_pos = { 2, 2, chunk };
 
-  Entity* player = entityInit(&world, 0);
-  player->uv = 417;
-  player->inventory.count = 1;
-  Entity* holding = &player->inventory.data[0];
-  holding->fg = 15;
-  holding->bg = 0;
-  holding->uv = 1;
-  holding->collide = 1;
-  holding->blocks_sight = 1;
-
+  GameObject* player = mobileCreate(start_pos);
+  player->unicode = 417;
+  player->atlas = DRAW_TEXTURE_INDEX;
+  
   gfxCacheChange(gfx, "ui");
   gfxAddString(gfx, 0, ASCII_SCREEN_HEIGHT-2,
 	       "Press ? for help",
@@ -33,12 +27,10 @@ int main(void){
   gfxCacheChange(gfx, "main");
   
   while(getExitState() == 0){
-    worldDraw(gfx, world, *player);
-    // move to gfxUserInput
+    mapChunkDraw(gfx, player->data.mob.pos);
 
-    GameAction user_action = gfxUserInput(gfx, 0);
-    // change gfxUserInput() to function pointer
-    doAction(&world, user_action);
+    GameAction user_action = gfxUserInput(gfx);
+    doAction(player, user_action);
     
     gfxCachePresent(gfx, "main");
     gfxCachePresent(gfx, "ui");

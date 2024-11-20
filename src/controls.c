@@ -135,7 +135,7 @@ int userInputHelpScreen(Gfx gfx)
   return 0;
 }
 
-GameAction gfxUserInput(Gfx gfx, int entity_index)
+GameAction gfxUserInput(Gfx gfx)
 {
   gfxPollEvents(gfx);
   if(getExitState() == 1) return noAction();
@@ -155,22 +155,22 @@ GameAction gfxUserInput(Gfx gfx, int entity_index)
   GameAction action = noAction();
   switch(input_code) {
   case 's':
-    action = moveEntityAction(entity_index, 0, 1);
+    action = moveMobileAction(0, 1);
     break;
   case 'w':
-    action = moveEntityAction(entity_index, 0, -1);
+    action = moveMobileAction(0, -1);
     break;
   case 'a':
-    action = moveEntityAction(entity_index, -1, 0);
+    action = moveMobileAction(-1, 0);
     break;
   case 'd':
-    action = moveEntityAction(entity_index, 1, 0);
+    action = moveMobileAction(1, 0);
     break;
   case 'b':
     action = guiPickTile(gfx);
     break;
   case '.':
-    action = dropAction(entity_index);
+    action = buildTerrainAction(0);
     break;
   case '?':
     userInputHelpScreen(gfx);
@@ -187,7 +187,7 @@ GameAction gfxUserInput(Gfx gfx, int entity_index)
     if(mouse_x < center_x) delta_x = -1;
     if(mouse_y > center_y) delta_y = 1;
     if(mouse_y < center_y) delta_y = -1;
-    action = moveEntityAction(entity_index, delta_x, delta_y);
+    action = moveMobileAction(delta_x, delta_y);
   } // end of mouse input
  
   return action;

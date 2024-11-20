@@ -1,13 +1,106 @@
 * TODO
 
 NPCs / enemies basic basic
+saving
 add fat pointer string library
 message buffer -> ring buffer
-changing tileset < - >
-handling non8*8 tiles
+changing tileset < - > in editor
 maintain cursor/color state like ncurses
-break out into lua at some point for gui
+container_of() on graphics API?
 
+* NPCs
+pathfinding
+AI ( move, stab )
+speech
+
+* hashmap?
+items -> positions or other objects
+mobiles -> positions
+store parent in object
+// can get world from position returned
+terrain -> positions // not as useful
+positions -> terrain // implicit
+
+positions -> items, mobiles
+
+
+* world
+s
+
+Entity{
+   type
+   union{
+    terrain
+    item
+    monster
+   }
+   common elements...
+}
+
+World chunk{
+cells[size]
+width = 64;
+height = 64;
+entities[];
+items[];
+TODO nesw pointers graph
+}
+
+portals to simulate 3D room-over-room
+restricted to fixed size "zones" that are connected by a graph
+fixed interesting world size - beginning - end
+forking branch like nethack
+
+* Algebra of Space
+
+on a worldmap level, get rid of x/y in favor of position structures
+positions know what map they belong to and their
+world of coordinates -> positions -> pointers to things
+things know what position tile they are on
+thus we can get position by going things -> positions -> coordinates
+
+world map{
+.positions[] (children)
+.width
+.size
+}
+
+position{
+.x
+.y
+.entities
+.map* (parent node)
+}
+
+entity{
+.position* (parent node)
+.extendable attributes
+  attribute{
+  .name
+  .type
+  .value
+  }
+}
+
+* Spatial Distortions
+to reduce memory usage across vast empty areas, a quadtree could be used to compress data, allowing empty quarters to have less memory associated with them. To create the kind of spatial distortions that may
+feel like travelling through 3D or nD space, children can have multiple parent nodes. 'Folding' the 2D space and allowing mobiles to 'wormhole' across different areas on the map. It can also simulate 'room-over-room' in a strictly 2D world. To understand the world can only be described in relative coordinates from the observers point of view in many calculations. Field of vision, only being able to see from one point,
+gives consistent orientation. Thus, the rules for movement are largely similar to those of seeing.
+
+ if you know how minecraft and voxel engines represent spare-data
+ and imagine those octotrees, each node is either empty, has blocks or
+ have children with blocks  [13:15]
+ if you start 'sharing' children across equally depth-n parents, you
+	 start to fold space and can create wormholes
+
+when perception enters a transitionary node, there is only one version of cells to see,
+when perception leaves a node, there is two sets of neighbours it could see.
+How do decide with side of the portal to see?
+Light is always transported
+hrmm, this process should feel like a natural movement through space and not a visual anomoly
+this becomes a lot easier to imagine with 'transitionary rooms' that are convex shapes with one exit
+and one entrance, and can be mixed amongst ordinary architecture
+	 
 * Cache System
 
 text rendering is as fast as can be now anyway
@@ -16,6 +109,7 @@ Adds 'layers' though being able to write to a buffer then arrange
 their painting order before redrawing the whole screen each frame
 Ability to save common GUI elements like buttons, scroll bars, ect
 reduces cpu -> gpu transactions which saves some battery life speed on mobile platforms
+goto?
 
 - cacheChange(string_id)
 if string_id does not exist, adds it to the list of buffers and alloc some memory for it
@@ -37,15 +131,14 @@ always upload current cache to GPU before refreshing
 /limits colour palette to 256 colours/
 /spare 16 bit number/
 * Enemies and Items
-spot - boston dynamics dog
-Gov't TV License Enforcement 
+spot - boston dynamics dog 
 Palestine Cola
 Bakeries
 Tofu, Scrambled, grilled, deep fried, ect
-Triffid Rum
 Synth's are made of vegan meat
 cultists
 prefixes: cyber, pink, hellish
+
 * vulkan style
 | Functions | gfxFunctionName |
 | Types     | GfxType         |
@@ -67,14 +160,15 @@ curses   refresh()   Tell the curses system to dump the contents on the screen. 
 mvwaddch()	Move the cursor to a given position and then print as by addch() but into the given window.
 Current implementation is addch(x, y, fg, bg, texture_index, ch);
 probably better this way;
+handling internal state may be shorter codebase.
 
 * Procederal
 Static worldmap, procederal local tiles
 
 writing driven story
 william burroughs cut up tecnique
-
 markov chains + NLP
+probably want to break out in python for string manipulation
 
 * Art
 
@@ -90,17 +184,16 @@ timur novikov style landscapes for long distances, some towns
 background of horizon can change for weather/time/biome
 foreground is game area, could be follow cam or static cam.k
 mayan glyphs in textmode appear as characters.
+mario like overworld dragon quest 
 
 * Turn based
 https://journal.stuffwithstuff.com/2014/07/15/a-turn-based-game-loop/
+Actions can take 1 or 2 'turns' this is decided randomly
+Dexterity effects chance of action taking two turns
+Moving diagnolly has a slightly higher chance of taking two turns
+movement speed of 1 should be more typical
+most time/speed systems become so complicated it appears as static to the player. Really all is important is the player knows when a 'double strike' or 'flurry' and some way to represent differences in walking speed over distance.
 
-* world
-entities as rooms, multi tile entities
-fixed interesting world size
-player can walk into the wilderness/void like fallout 4, random chance of enemies spawning near the player
-Multiple Z Levels
-   stairs ^
-can see enemies on multiple Z levels, X@COM
 
 * woodcutting, firestarting
 trees

@@ -3,12 +3,13 @@
 
 #include "world.h"
 
-typedef struct _GameAction* GameAction;
+struct GameActionImpl;
+typedef struct GameActionImpl* GameAction;
 
-GameAction moveEntityAction(int, int, int);
-GameAction dropAction(int);
+GameAction moveMobileAction(int, int);
 GameAction paintEntityAction(int, int, int);
+GameAction buildTerrainAction(int);
 GameAction noAction(void);
-void doAction(GameWorld*, GameAction);
+void doAction(GameObject*, GameAction);
 
 #endif // ACTION_H
