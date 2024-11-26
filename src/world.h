@@ -1,7 +1,7 @@
 #ifndef WORLD_H
 #define WORLD_H
-#include "vulkan_public.h"
-#include <stdint.h>
+#include "vkterm/vkterm.h"
+#include "bitmap.h"
 
 #define CHUNK_WIDTH 32
 #define CHUNK_OBJECT_C 8
@@ -9,17 +9,16 @@
 typedef struct GameObject GameObject;
 typedef struct GameObject* GameObjectBuffer;
 
-#define BUFFER_METADATA(buffer) \
-  ((size_t*)(buffer) - 2)
-static inline size_t* bufferCapacity(GameObjectBuffer b){
-  return &(BUFFER_METADATA(b)[0]);
-}
-static inline size_t* bufferSize(GameObjectBuffer b){
-  return &(BUFFER_METADATA(b)[1]);
-}
+struct GameObjectBufferInfo{
+  size_t capacity;
+  size_t count;
+};
 
 typedef struct{
+  BitMap* blocks_sight_bmp;
+  BitMap* blocks_movement_bmp;
   GameObjectBuffer terrain;
+  
   GameObjectBuffer mobiles;
 } MapChunk;
 
@@ -37,7 +36,7 @@ typedef enum {
 } GameObjectType;
 
 struct GameObject{
-  GameObjectType type;
+  GameObjectType type_enum;
   uint32_t unicode;
   uint32_t atlas;
   uint32_t fg;
@@ -56,7 +55,7 @@ struct GameObject{
       int id;
     } item;
     
-  } data;
+  } type;
   GameObjectBuffer inventory;
 };
 
@@ -64,7 +63,7 @@ MapChunk* mapChunkCreate(void);
 GameObject mapGetTerrain(MapPosition);
 int mapSetTerrain(GameObject, MapPosition);
 GameObject* mobileCreate(MapPosition);
-GameObjectBuffer shadowcast_fov(MapPosition);
+BitMap* shadowcast_fov(MapPosition);
 int mapChunkDraw(Gfx, MapPosition);
 
 #endif // WORLD_H

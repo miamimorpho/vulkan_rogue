@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include "config.h"
+//#include "config.h"
 #include "action.h"
 
 typedef enum{
@@ -81,11 +81,11 @@ int _buildTerrainAction(GameObject* object_ptr, int args_c, Argument* args){
   int inventory_index = args[0].val.i;
   GameObject tool = object_ptr->inventory[inventory_index];
 
-  tool.type = OBJECT_TERRAIN;
-  tool.data.terra.blocks_sight = 1;
-  tool.data.terra.blocks_movement = 1;
+  tool.type_enum = OBJECT_TERRAIN;
+  tool.type.terra.blocks_sight = 1;
+  tool.type.terra.blocks_movement = 1;
 
-  return mapSetTerrain(tool, object_ptr->data.mob.pos);
+  return mapSetTerrain(tool, object_ptr->type.mob.pos);
 }
 GameAction buildTerrainAction(int entity_index){
   return requestAction(_buildTerrainAction, 1,
@@ -94,16 +94,16 @@ GameAction buildTerrainAction(int entity_index){
 
 int _moveMobileAction(GameObject* object_ptr, int args_c, Argument* args){
   if(object_ptr == NULL) return 1;
-  if(object_ptr->type != OBJECT_MOBILE) return 1;
+  if(object_ptr->type_enum != OBJECT_MOBILE) return 1;
   if(args_c > 2) return 1;
   int dx = args[0].val.i;
   int dy = args[1].val.i;
 
-  MapPosition pos = object_ptr->data.mob.pos;
+  MapPosition pos = object_ptr->type.mob.pos;
   pos.x += dx;
   pos.y += dy;
-  if(mapGetTerrain(pos).data.terra.blocks_movement == 0){
-    object_ptr->data.mob.pos = pos;
+  if(mapGetTerrain(pos).type.terra.blocks_movement == 0){
+    object_ptr->type.mob.pos = pos;
   }
 
   return 0;
@@ -116,22 +116,25 @@ GameAction moveMobileAction(int x, int y){
 
 int _paintEntityAction(GameObject* object_ptr, int args_c, Argument* args){
   if(object_ptr == NULL) return 1;
-  if(args_c > 3) return 1;
+  if(args_c > 4) return 1;
 
   GameObject* item = &object_ptr->inventory[0];
   
   if(args[0].val.i >= 0)
     item->unicode = args[0].val.i;
   if(args[1].val.i >= 0)
-    item->fg = args[1].val.i;
+    item->atlas = args[1].val.i;
   if(args[2].val.i >= 0)
-    item->bg = args[2].val.i;
+    item->fg = args[2].val.i;
+  if(args[3].val.i >= 0)
+    item->bg = args[3].val.i;
 
   return 0;
 }
-GameAction paintEntityAction(int uv, int fg, int bg){
-  return requestAction(_paintEntityAction, 3,
+GameAction paintEntityAction(int uv, int atlas, int fg, int bg){
+  return requestAction(_paintEntityAction, 4,
 		       ARG_INT, uv,
+		       ARG_INT, atlas,
 		       ARG_INT, fg,
 		       ARG_INT, bg);
 }

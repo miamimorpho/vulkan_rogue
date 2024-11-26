@@ -2,13 +2,13 @@
 #define VULKAN_META_H
 
 #define VMA_DEBUG_LOG
-#include "../extern/vk_mem_alloc.h"
+#include "../../extern/vk_mem_alloc.h"
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include "key_codes.h"
-#include "maths.h"
-#include "config.h"
+#include "vk_maths.h"
+#include "vk_config.h"
 #include <stdint.h>
 
 typedef void (VKAPI_PTR *PFN_vkCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*);
@@ -67,6 +67,7 @@ typedef struct{
   /* const */ VkDescriptorSet texture_descriptors;
   /* const */ VkPipelineLayout pipeline_layout;
   /* const */ VkPipeline pipeline;
+  
 }GfxContext;
 
 typedef struct{
@@ -93,6 +94,8 @@ typedef struct{
 
 typedef struct{
   GfxContext vk;
+  uint32_t width_in_tiles;
+  uint32_t height_in_tiles;
   uint32_t swapchain_x;
   uint32_t frame_x;
   GfxTileset* textures;
@@ -113,6 +116,7 @@ int gfxCmdSingleEnd(GfxContext, VkCommandBuffer);
 int gfxVertBufferCreate(GfxContext, size_t, GfxBuffer*);
 int gfxBufferAppend(VmaAllocator, GfxBuffer*,
 		    const void*, VkDeviceSize);
+size_t gfxBufferCapacity(VmaAllocator, GfxBuffer);
 GfxBuffer* gfxBufferNext(VmaAllocator, GfxBuffer*);
 int gfxBufferCreate(VmaAllocator, VkBufferUsageFlags, VkDeviceSize, GfxBuffer*);
 int gfxBufferDestroy(VmaAllocator, GfxBuffer*);
@@ -142,7 +146,12 @@ int gfxDescriptorsPool(GfxContext*);
 int gfxSyncInit(GfxContext*);
 int gfxCmdBuffersInit(GfxContext*);
 int gfxTextureDescriptorsInit(GfxContext*);
+int gfxPipelineInit(GfxContext*);
 int gfxSpvLoad(VkDevice, const char*, VkShaderModule*);
+int gfxTexturesInit(GfxTileset**);
+
+/* Drawing Functions */
+int gfxCacheChange(GfxGlobal* gfx, const char* name);
 
 /** Free Functions **/
 int _gfxSwapchainDestroy(GfxContext);

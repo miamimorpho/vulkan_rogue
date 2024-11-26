@@ -82,6 +82,14 @@ int gfxBufferAppend(VmaAllocator allocator, GfxBuffer* dest,
   return 0;
 }
 
+size_t gfxBufferCapacity(VmaAllocator allocator, GfxBuffer buffer){
+  VmaAllocationInfo info;
+  vmaGetAllocationInfo(allocator,
+		       buffer.allocation,
+		       &info);
+  return info.size;
+}
+
 GfxBuffer* gfxBufferNext(VmaAllocator allocator, GfxBuffer* first)
 {
 
@@ -738,7 +746,6 @@ int gfxDescriptorsPool(GfxContext* gfx){
 
   return 0;
 }
-
 
 int gfxSyncInit(GfxContext* gfx){
   

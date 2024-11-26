@@ -4,78 +4,78 @@
 #include <stdio.h>
 #include <string.h>
 
-#define container_of(ptr, type, member) \
-    ((type *)((char *)(ptr) - offsetof(type, member)))
-
-struct GameObjectBufferImpl{
-  size_t capacity;
-  size_t count;
-  GameObject* data;
-};
+struct GameObjectBufferInfo*
+bufferInfo(GameObjectBuffer buffer){
+  return ( ( (struct GameObjectBufferInfo*)(buffer) ) - 1 );
+}
 
 GameObjectBuffer objectBufferCreate(size_t capacity){
-  size_t* allocation = malloc(
-    sizeof(size_t) * 2 +
+  struct GameObjectBufferInfo* allocation = malloc(
+    sizeof(struct GameObjectBufferInfo) +
     sizeof(GameObject) * capacity);
   if(!allocation) return NULL;
 
-  allocation[0] = capacity;
-  allocation[1] = 0;
+  allocation->count = 0;
+  allocation->capacity = capacity;
 
-  return (GameObjectBuffer)(allocation + 2);
+  return (GameObjectBuffer)(allocation +1);
 }
 
 void objectRemove(GameObjectBuffer objects, size_t index){
-  size_t count = *bufferSize(objects);
-  if(index >= count) return;
+  
+  struct GameObjectBufferInfo* info = bufferInfo(objects);
+  if(index >= info->count) return;
   
   memmove(&objects[index],
 	  &objects[index +1],
-	  (count - index - 1) * sizeof(GameObject) );
+	  (info->count - index - 1) * sizeof(GameObject) );
 
-  (*bufferSize(objects))--;
+  info->count--;
 }
 
 int objectPush(GameObjectBuffer objects, GameObject src){
-  size_t capacity = *bufferCapacity(objects);
-  size_t count = *bufferSize(objects);
- 
-  if(count >= capacity) return 1;
 
-  objects[count] = src;
-  (*bufferSize(objects))++;
+  struct GameObjectBufferInfo* info = bufferInfo(objects);
+ 
+  if(info->count >= info->capacity) return 1;
+
+  objects[info->count] = src;
+  info->count++;
   
   return 0;
 }
 
 void objectBufferDestroy(GameObjectBuffer buffer){
   if(!buffer) return;
-  free(BUFFER_METADATA(buffer));
+  free(bufferInfo(buffer));
 }
-
 
 MapChunk* mapChunkCreate(void){
 
+  const int size = CHUNK_WIDTH * CHUNK_WIDTH;
+  
   MapChunk* chunk = malloc(sizeof(MapChunk));
-  chunk->terrain = objectBufferCreate(CHUNK_WIDTH * CHUNK_WIDTH);
-
+ 
   GameObject air = {
-    OBJECT_TERRAIN,
+    OBJECT_ITEM,
     .unicode = 0,
-    .atlas = DRAW_TEXTURE_INDEX,
+    .atlas = 2,//DRAW_TEXTURE_INDEX
     .fg = 15,
     .bg = 3,
-    .data.terra = {
-      .blocks_movement = 0,
-      .blocks_sight = 0
+    .type.item = {
+      .id = 0,
     },
     .inventory = NULL
   };
-  
-  for(size_t i = 0; i < *bufferCapacity(chunk->terrain); i++){
+
+  chunk->blocks_sight_bmp = bitMapCreate(CHUNK_WIDTH, CHUNK_WIDTH);
+  chunk->blocks_movement_bmp = bitMapCreate(CHUNK_WIDTH, CHUNK_WIDTH);
+
+  chunk->terrain = objectBufferCreate(size);
+  for(size_t i = 0; i < size; i++){
     objectPush(chunk->terrain, air);
   }
-
+  
   chunk->mobiles = objectBufferCreate(CHUNK_OBJECT_C);
  
   return chunk;
@@ -88,10 +88,10 @@ GameObject* mobileCreate(MapPosition dst){
   GameObject proto_mob = {
     OBJECT_MOBILE,
     .unicode = 1,
-    .atlas = ASCII_TEXTURE_INDEX,
+    .atlas = 1,//ASCII_TEXTURE_INDEX,
     .fg = 15,
     .bg = 0,
-    .data.mob = {
+    .type.mob = {
       .pos = dst
     },
     .inventory = objectBufferCreate(4)
@@ -99,10 +99,10 @@ GameObject* mobileCreate(MapPosition dst){
   GameObject proto_item = {
     OBJECT_ITEM,
     .unicode = 0,
-    .atlas = ASCII_TEXTURE_INDEX,
+    .atlas = 1,//ASCII_TEXTURE_INDEX,
     .fg = 15,
     .bg = 0,
-    .data.item = {
+    .type.item = {
       .id = 4
     },
     .inventory = NULL,
@@ -116,7 +116,7 @@ GameObject* mobileCreate(MapPosition dst){
     return NULL;
   }  
 
-  return &mobiles[*bufferSize(mobiles) -1];
+  return &mobiles[bufferInfo(mobiles)->count -1];
 }
 
 GameObject mapGetTerrain(MapPosition pos){
@@ -125,10 +125,10 @@ GameObject mapGetTerrain(MapPosition pos){
   GameObject null_object = {
     OBJECT_TERRAIN,
     .unicode = 370,
-    .atlas = DRAW_TEXTURE_INDEX,
+    .atlas = 2,//DRAW_TEXTURE_INDEX,
     .fg = 3,
     .bg = 0,
-    .data.terra = {
+    .type.terra = {
       .blocks_movement = 0,
       .blocks_sight = 1,
     }
@@ -137,7 +137,7 @@ GameObject mapGetTerrain(MapPosition pos){
   uint32_t offset = (pos.y * CHUNK_WIDTH) + pos.x;  
   if(pos.x < 0 ||
      pos.x >= CHUNK_WIDTH ||
-     offset >= *bufferSize(chunk->terrain)){
+     offset >= bufferInfo(chunk->terrain)->count){
     return null_object;
   }
 
@@ -145,16 +145,27 @@ GameObject mapGetTerrain(MapPosition pos){
 }
 
 int mapSetTerrain(GameObject proto, MapPosition pos){
-  if(proto.type != OBJECT_TERRAIN) return 1;
+  if(proto.type_enum != OBJECT_TERRAIN) return 1;
 
   MapChunk* chunk = pos.chunk_ptr;
   uint32_t offset = (pos.y * CHUNK_WIDTH) + pos.x;  
   if(pos.x < 0 ||
      pos.x >= CHUNK_WIDTH ||
-     offset >= *bufferSize(chunk->terrain)){
+     offset >= bufferInfo(chunk->terrain)->count){
     return 1;
   }
 
+  if(proto.type.terra.blocks_sight == 1){
+    BitMap* blocks_sight = chunk->blocks_sight_bmp;
+    bitMapSetPx(blocks_sight, pos.x, pos.y, 1);
+  }
+  if(proto.type.terra.blocks_movement == 1){
+    BitMap* blocks_movement = chunk->blocks_movement_bmp;
+    bitMapSetPx(blocks_movement, pos.x, pos.y, 1);
+  }
+
+  proto.type_enum = OBJECT_ITEM;
+  proto.type.item.id = 0;
   chunk->terrain[offset] = proto;
   return 0;
 }
@@ -228,21 +239,19 @@ bool is_symmetric(Row* row, int col)
 }
 
 bool is_blocking(MapPosition pos) {
-  GameObject t = mapGetTerrain(pos);
-  if(t.data.terra.blocks_sight == 1)
-    return true;
-
+  MapChunk* chunk = pos.chunk_ptr;
+  if(bitMapGetPx(chunk->blocks_sight_bmp, pos.x, pos.y)){
+     return true;
+  }
+     
   return false;
 }
 
-void mark_visible(GameObjectBuffer to_draw, MapPosition pos) {
-  GameObject terrain = mapGetTerrain(pos);
-  terrain.type = OBJECT_MOBILE;
-  terrain.data.mob.pos = pos;
-  objectPush(to_draw, terrain);
+void mark_visible(BitMap* shadow_mask, MapPosition pos) {
+  bitMapSetPx(shadow_mask, pos.x, pos.y, 0);
 }
 
-void shadowcast_scan_row(GameObjectBuffer to_draw, MapPosition camera, Row current_row){
+void shadowcast_scan_row(BitMap* dst_mask, MapPosition camera, Row current_row){
   
   // allows early termination on invalid angles
   if (fractionCompare(current_row.end_slope, current_row.start_slope)) {
@@ -270,7 +279,7 @@ void shadowcast_scan_row(GameObjectBuffer to_draw, MapPosition camera, Row curre
     
     if(is_wall || is_symmetric(&current_row, col)) {
       if(relativeDistance(current_row.depth, col) < 12.5 * 12.5)
-	mark_visible(to_draw, current_pos);	  
+	mark_visible(dst_mask, current_pos);	  
     }
     
     if(prev_was_wall && !is_wall) {
@@ -284,7 +293,7 @@ void shadowcast_scan_row(GameObjectBuffer to_draw, MapPosition camera, Row curre
 	.start_slope = current_row.start_slope,
 	.end_slope = slope(current_row.depth, col)
       };
-      shadowcast_scan_row(to_draw, camera, next_row);
+      shadowcast_scan_row(dst_mask, camera, next_row);
     }
     
     prev_was_wall = is_wall;
@@ -298,16 +307,17 @@ void shadowcast_scan_row(GameObjectBuffer to_draw, MapPosition camera, Row curre
       .start_slope = current_row.start_slope,
       .end_slope = current_row.end_slope
     };
-    shadowcast_scan_row(to_draw, camera, next_row);
+    shadowcast_scan_row(dst_mask, camera, next_row);
   }
   
 }
 
-GameObjectBuffer shadowcast_fov(MapPosition camera){
+BitMap* shadowcast_fov(MapPosition camera){
 
-  GameObjectBuffer to_draw = objectBufferCreate(3000);
-
-  mark_visible(to_draw, camera);
+  BitMap* shadow_mask = bitMapCreate(128, 128);
+  bitMapFill(shadow_mask, 1);
+  
+  mark_visible(shadow_mask, camera);
   for(int cardinal = 0; cardinal < 4; cardinal++) {
     
     Row first_row = {
@@ -316,38 +326,53 @@ GameObjectBuffer shadowcast_fov(MapPosition camera){
       .start_slope = fractionNew(-1, 1),
       .end_slope = fractionNew(1, 1)
     };
-    shadowcast_scan_row(to_draw, camera, first_row);
+    shadowcast_scan_row(shadow_mask, camera, first_row);
     
   }
-  return to_draw;
+  return shadow_mask;
 }
 
 int mapChunkDraw(Gfx gfx, MapPosition camera){
 
   gfxClear(gfx);
+
+  int screen_width = 0;
+  int screen_height = 0;
+  gfxGetScreenDimensions(gfx, &screen_width, &screen_height);
   
-  int x_offset = (ASCII_SCREEN_WIDTH / 2);
-  int y_offset = (ASCII_SCREEN_HEIGHT / 2);
+  int x_offset = camera.x - (screen_width / 2);
+  int y_offset = camera.y - (screen_height / 2);
 
-  GameObjectBuffer to_draw = shadowcast_fov(camera);
-  size_t draw_count = *bufferSize(to_draw);
+  BitMap* shadow_mask = shadowcast_fov(camera);
 
-  for(unsigned int i = 0; i < draw_count; i++){
-    GameObject tile = to_draw[i];
-    int tile_x = tile.data.mob.pos.x - camera.x + x_offset;
-    int tile_y = tile.data.mob.pos.y - camera.y + y_offset;
-    gfxAddCh(gfx, tile_x, tile_y, tile.unicode, tile.atlas, tile.fg, tile.bg);
+  GameObjectBuffer terrain = camera.chunk_ptr->terrain;
+  struct GameObjectBufferInfo info = *bufferInfo(terrain);
+  //printf("%zu %zu %zu\n", info.capacity, info.count, draw_count);
+  for(unsigned int i = 0; i < info.count; i++){
+    int shadow_x = i % CHUNK_WIDTH;
+    int shadow_y = i / CHUNK_WIDTH;
+    if(bitMapGetPx(shadow_mask, shadow_x, shadow_y) == 0){
+      GameObject tile = terrain[i];
+      int tile_x = shadow_x - x_offset;
+      int tile_y = shadow_y - y_offset;
+      gfxAddCh(gfx, tile_x, tile_y, tile.unicode, tile.atlas, tile.fg, tile.bg);
+    }
+    
   }
-  objectBufferDestroy(to_draw);
- 
-  // render list of entities (actors)
-  // TODO: line of sight
+
   GameObjectBuffer mobiles = camera.chunk_ptr->mobiles;
-  for(size_t i = 0; i < *bufferSize(mobiles); i++){
+  for(size_t i = 0; i < bufferInfo(mobiles)->count; i++){
+    
     GameObject actor = mobiles[i];
-    gfxAddCh(gfx, x_offset, y_offset,
+    MapPosition pos = actor.type.mob.pos;
+    if(bitMapGetPx(shadow_mask, actor.type.mob.pos.x, actor.type.mob.pos.y) == 0){
+      gfxAddCh(gfx, pos.x - x_offset, pos.y - y_offset,
 	     actor.unicode, actor.atlas,
 	     actor.fg, actor.bg);
+    }
   }
+
+  bitMapDestroy(shadow_mask);
+  
   return 0;
 }

@@ -26,7 +26,7 @@ int guiButton(Gfx gfx, uint16_t x, uint16_t y, const char* label, uint16_t fg, u
   gfxAddString(gfx, x, y, label, fg, bg);
   int mouse_x, mouse_y;
   gfxMousePos(&mouse_x, &mouse_y);
-  if(mouse_x >= x && mouse_x < x + strlen(label) &&
+  if(mouse_x >= x && mouse_x < (int)(x + strlen(label)) &&
      mouse_y == y && gfxInputUnicode() == PUA_LEFT_CLICK){
     return 1;
   }
@@ -118,7 +118,8 @@ GameAction guiPickTile(Gfx gfx)
     gfxRefresh(gfx);
     gfxPollEvents(gfx);
   } // end of GUI loop
-  return paintEntityAction(target_uv, target_fg, target_bg);
+  return paintEntityAction(target_uv, DRAW_TEXTURE_INDEX,
+			   target_fg, target_bg);
 }
 
 int userInputHelpScreen(Gfx gfx)

@@ -1,51 +1,119 @@
 * TODO
 
+write memory safe copy to allocation function
+stitching maps?
+add bitmap.c to terrain and fov
+  can be used to ask if object->pos is visable or not
 NPCs / enemies basic basic
-saving
-add fat pointer string library
+pathfinding
+saving...
+
+add fat pointer string library, polymorphise buffers?
 message buffer -> ring buffer
 changing tileset < - > in editor
 maintain cursor/color state like ncurses
 container_of() on graphics API?
+defer?
+spatial hash space
+
+* Adding Lua
+
+<morpho> but for entities i am going to try a hybrid approach? some data is
+	 stored as an entity struct member, some data is stored in a seperate
+	 array but with the same index as the entity and some data is going to
+	 be stored in a lua table
+
+1 create the lua table instance
+2 copy prototype data to instance table
+3 return to C
+4 store lua table in entity struct and further populate C struct with some init values from lua table
+5 not all components need a mirror, only graphics and 'blocks_movement' for now, they will be redundantly left on lua table anyway
+6 components can be accessed by the struct members, querying the lua table with keys or even stored in an external structure like a map chunk as is the case with 'blocking movement'
+
+new entity
+
+enum GameComponentType {
+  TYPE_INT,
+  TYPE_STR,
+  TYPE_FLOAT,
+  TYPE_BOOL,
+}
+
+struct GameComponent {
+  GameComponentType type;
+  const char* key;
+  union {
+  int i;
+  char* str,
+  bool b,
+  float f,
+  } data;
+}
+
+struct entity {
+  struct {
+    int unicode;
+    int texture;
+    int fg;
+    int bg;
+  } graphics
+  MapPosition pos;
+  GameComponent* components;
+  /* could GameComponents be made to be a pointer to a lua table, leveraging luas hash tables instead of writing my own */
+}
+
+
+config and recompositon
+config script, controls config
+textures used
+prefab tiles ( unicode, texture_name, fg, bg )
+creating monsters, this can be garbage collected
+
+have pure data files and ffi files!
+write pure data first in one file
+
+composing level terrain generation
+NPC AI
 
 * NPCs
 pathfinding
 AI ( move, stab )
 speech
 
-* hashmap?
-items -> positions or other objects
-mobiles -> positions
-store parent in object
-// can get world from position returned
-terrain -> positions // not as useful
-positions -> terrain // implicit
+* Space 2
 
-positions -> items, mobiles
+figure out the 360 degree portal in a field problem
+a portal is two spaces of imaginary coordinates that share a position
+add diagnol tiles, fill a cache then use that as base. for FOV
+
+"The fundamental concept is that certain locations exist
+simultaneously in multiple realities - like quantum entangled
+spaces. Instead of thinking of them as doorways or connections,
+they're better understood as areas where two separate spaces overlap
+and share the same existence, similar to a Venn diagram in 3D
+space."  [00:36]
+"The shared space itself is defined by negative space - the absence
+of normal space in both realities, What appears as a shadow on the surface of
+the void is actually a window into another connected space."
+
+When in zone A looking at a wormhole into zone B, light goes A -> Portal -> B is cast as shadow
+When in zone B looking through a wormhole into zone A, A -> Portal -> A is cast as shadow
+when in portal zone, draw both zone A and zone B on top of each other with OR gate
 
 
-* world
-s
 
-Entity{
-   type
-   union{
-    terrain
-    item
-    monster
-   }
-   common elements...
-}
+* Space 1
 
-World chunk{
-cells[size]
-width = 64;
-height = 64;
-entities[];
-items[];
-TODO nesw pointers graph
-}
-
+chunks can be stithed together on their cardinal borders
+they overlap one row on a AND gate for movement bitmaps, so a variety of room prefabs can be designed with loose rules that garuntee some connectedness to their neighbors. this creates the problem of corners,
+ a chunk position diagnolly of the current chunk has two
+ potential states. NW could be accessed by
+ O -> W -> NW
+ O -> N -> NW
+ the corner pieces will also be the AND result of potentially 4
+ different chunks.
+ 
+ 
 portals to simulate 3D room-over-room
 restricted to fixed size "zones" that are connected by a graph
 fixed interesting world size - beginning - end

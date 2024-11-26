@@ -1,5 +1,5 @@
 #include "macros.h"
-#include "drawing.h"
+#include "vkterm_private.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -70,12 +70,17 @@ int gfxCacheSendToGPU(GfxGlobal gfx, int i){
 
   const int glyph_c = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
   const int src_size = glyph_c * sizeof(GfxGlyph);
- 
-  vmaCopyMemoryToAllocation(gfx.vk.allocator,
+
+  if(gfx.caches[i].data == NULL){
+    printf("fatal\n");
+    return 1;
+  }
+    
+  VK_CHECK(vmaCopyMemoryToAllocation(gfx.vk.allocator,
     gfx.caches[i].data,
     gfx.gpu_glyph_cache.allocation,
     src_size * i,
-    src_size );		    
+    src_size ));		    
 			    
   return 0;
 }
@@ -127,6 +132,7 @@ int gfxAddCh(GfxGlobal* gfx, uint16_t x, uint16_t y,
 	      uint16_t encoding, uint16_t atlas_index,
 	      uint16_t fg, uint16_t bg){
 
+  if(atlas_index > MAX_SAMPLERS) return 1;
   GfxTileset tex = gfx->textures[atlas_index];
   if(tex.image.handle == NULL){
     atlas_index = ASCII_TEXTURE_INDEX;
