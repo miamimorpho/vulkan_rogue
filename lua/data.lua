@@ -1,7 +1,7 @@
 textures = {
-  "color.png",
-  "icl8x8u.bdf",
-  "mrmotext-ex11.png"
+  "textures/color.png",
+  "textures/icl8x8u.bdf",
+  "textures/mrmotext-ex11.png"
 }
 
 terrain = {

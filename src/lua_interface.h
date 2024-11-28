@@ -1,3 +1,3 @@
-#include "vulkan_public.h"
+#include "vkterm/vkterm.h"
 
-int loadLuaConfigs(Gfx gfx);
+int loadLuaConfigTextures(Gfx gfx);

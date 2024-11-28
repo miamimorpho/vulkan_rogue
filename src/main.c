@@ -2,7 +2,7 @@
 #include "world.h"
 #include "controls.h"
 #include "action.h"
-//#include "lua_interface.h"
+#include "lua_interface.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -10,11 +10,8 @@ int main(void){
 
   Gfx gfx = gfxScreenInit();
 
-  //loadLuaConfigs();
-  gfxTextureLoad(gfx, "textures/color.png");
-  gfxTextureLoad(gfx, "textures/icl8x8u.bdf");
-  gfxTextureLoad(gfx, "textures/mrmotext-ex11.png");
-  
+  loadLuaConfigTextures(gfx);
+   
   MapChunk* chunk = mapChunkCreate();
   MapPosition start_pos = { 2, 2, chunk };
 

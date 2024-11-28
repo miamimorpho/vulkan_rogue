@@ -1,6 +1,8 @@
 * TODO
 
+copy entities from lua to C
 write memory safe copy to allocation function
+linting
 stitching maps?
 add bitmap.c to terrain and fov
   can be used to ask if object->pos is visable or not
@@ -18,50 +20,12 @@ spatial hash space
 
 * Adding Lua
 
-<morpho> but for entities i am going to try a hybrid approach? some data is
-	 stored as an entity struct member, some data is stored in a seperate
-	 array but with the same index as the entity and some data is going to
-	 be stored in a lua table
-
-1 create the lua table instance
-2 copy prototype data to instance table
-3 return to C
-4 store lua table in entity struct and further populate C struct with some init values from lua table
-5 not all components need a mirror, only graphics and 'blocks_movement' for now, they will be redundantly left on lua table anyway
-6 components can be accessed by the struct members, querying the lua table with keys or even stored in an external structure like a map chunk as is the case with 'blocking movement'
-
-new entity
-
-enum GameComponentType {
-  TYPE_INT,
-  TYPE_STR,
-  TYPE_FLOAT,
-  TYPE_BOOL,
-}
-
-struct GameComponent {
-  GameComponentType type;
-  const char* key;
-  union {
-  int i;
-  char* str,
-  bool b,
-  float f,
-  } data;
-}
-
-struct entity {
-  struct {
-    int unicode;
-    int texture;
-    int fg;
-    int bg;
-  } graphics
-  MapPosition pos;
-  GameComponent* components;
-  /* could GameComponents be made to be a pointer to a lua table, leveraging luas hash tables instead of writing my own */
-}
-
+GetMousePos()
+GetUnicodeInput()
+Create_mobile()
+Move_object()
+Paint_object()
+Build_terrain()
 
 config and recompositon
 config script, controls config
