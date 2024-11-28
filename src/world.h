@@ -60,7 +60,8 @@ struct GameObject{
 };
 
 MapChunk* mapChunkCreate(void);
-GameObject mapGetTerrain(MapPosition);
+uint8_t terraBlocksMove(MapPosition pos);
+uint8_t terraBlocksSight(MapPosition pos);
 int mapSetTerrain(GameObject, MapPosition);
 GameObject* mobileCreate(MapPosition);
 BitMap* shadowcast_fov(MapPosition);

@@ -6,7 +6,6 @@
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include "key_codes.h"
 #include "vk_maths.h"
 #include "vk_config.h"
 #include <stdint.h>

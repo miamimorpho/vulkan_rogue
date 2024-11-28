@@ -16,6 +16,7 @@ VKTERM_LD = -L/usr/local/lib -lglfw -lstdc++ -lpthread -lvulkan -lm
 $(shell mkdir -p obj lib)
 
 all: lib/$(VKTERM_NAME) ${NAME}
+
 lib/$(VKTERM_NAME): $(VKTERM_OBJ)
 	cc -shared -fPIC ${CFLAGS} ${INCLUDE} -o $@ $^ ${VKTERM_LD}
 
@@ -29,7 +30,7 @@ lib/vma.o:extern/vk_mem_alloc.h
 	c++ -O0 -Wno-nullability-completeness -c extern/vma.cpp -o $@ -I/usr/local/include
 
 ${NAME}: ${COBJ} lib/vma.o shaders/vert.spv shaders/frag.spv
-	cc ${COBJ} lib/vma.o lib/${VKTERM_NAME} -o ${NAME} ${LDFLAGS} ${LDADD}
+	cc -rdynamic ${COBJ} lib/vma.o lib/${VKTERM_NAME} -o ${NAME} ${LDFLAGS} ${LDADD}
 
 shaders/vert.spv:shaders/shader.vert
 	glslangValidator -V shaders/shader.vert -o shaders/vert.spv 

@@ -1,8 +1,5 @@
 #include <stdio.h>
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
-#include "luajit.h"
+
 #include "lua_interface.h"
 
 #define LUA_ERROR(L, res) do {					       \
@@ -13,6 +10,38 @@
       return 1; /* Return from the calling function */		       \
     }								       \
   } while (0)
+
+int objectLuaRunScript(lua_State* L, GameObject* object_ptr){
+
+  lua_pushlightuserdata(L, object_ptr);
+  lua_setglobal(L, "CURRENT_GAME_OBJECT");
+
+  int res = luaL_dofile(L, "lua/controls_handler.lua");
+  if(res != LUA_OK){
+    fprintf(stderr, "Load error: %s\n", lua_tostring(L, -1));
+    lua_pop(L, 1);
+    return -1;
+  }
+  
+  return 0;
+}
+
+lua_State* loadLuaConfigControls(void){
+
+  lua_State* L = luaL_newstate();
+  if(L == NULL) return NULL;
+
+   luaL_openlibs(L);
+
+   int res = luaL_dofile(L, "lua/controls.lua");
+
+   if(res != LUA_OK){
+    printf("fatal lua error\n");
+    return NULL;
+  }
+
+   return L;
+}
 
 int loadLuaConfigTextures(Gfx gfx){
 

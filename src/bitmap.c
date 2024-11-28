@@ -55,7 +55,7 @@ uint8_t bitMapGetPx(BitMap* bmp, int32_t x, int32_t y){
   return getBitInByte(offset, byte);
 }
 
-int bitMapSetPx(BitMap* bmp, int32_t x, int32_t y, uint8_t val){
+uint8_t bitMapSetPx(BitMap* bmp, int32_t x, int32_t y, uint8_t val){
   if( x < 0 || x >= (int)bmp->width ||
       y < 0 || y >= (int)bmp->height){
     return 1;

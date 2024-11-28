@@ -144,7 +144,17 @@ GameObject mapGetTerrain(MapPosition pos){
   return chunk->terrain[offset];
 }
 
-int mapSetTerrain(GameObject proto, MapPosition pos){
+uint8_t terraBlocksMove(MapPosition pos){
+  MapChunk* chunk = pos.chunk_ptr;
+  return bitMapGetPx(chunk->blocks_movement_bmp, pos.x, pos.y);
+}
+
+uint8_t terraBlocksSight(MapPosition pos) {
+  MapChunk* chunk = pos.chunk_ptr;
+  return bitMapGetPx(chunk->blocks_sight_bmp, pos.x, pos.y);
+}
+
+int terraSet(GameObject proto, MapPosition pos){
   if(proto.type_enum != OBJECT_TERRAIN) return 1;
 
   MapChunk* chunk = pos.chunk_ptr;
@@ -238,20 +248,11 @@ bool is_symmetric(Row* row, int col)
 	  col_div_end <= depth_mul_end);
 }
 
-bool is_blocking(MapPosition pos) {
-  MapChunk* chunk = pos.chunk_ptr;
-  if(bitMapGetPx(chunk->blocks_sight_bmp, pos.x, pos.y)){
-     return true;
-  }
-     
-  return false;
-}
-
-void mark_visible(BitMap* shadow_mask, MapPosition pos) {
+void shadowcastMarkVisible(BitMap* shadow_mask, MapPosition pos) {
   bitMapSetPx(shadow_mask, pos.x, pos.y, 0);
 }
 
-void shadowcast_scan_row(BitMap* dst_mask, MapPosition camera, Row current_row){
+void shadowcastScanRow(BitMap* dst_mask, MapPosition camera, Row current_row){
   
   // allows early termination on invalid angles
   if (fractionCompare(current_row.end_slope, current_row.start_slope)) {
@@ -275,11 +276,11 @@ void shadowcast_scan_row(BitMap* dst_mask, MapPosition camera, Row current_row){
 
     MapPosition current_pos = 
       { target_x, target_y, camera.chunk_ptr };
-    bool is_wall = is_blocking(current_pos);
+    uint8_t is_wall = terraBlocksSight(current_pos);
     
     if(is_wall || is_symmetric(&current_row, col)) {
       if(relativeDistance(current_row.depth, col) < 12.5 * 12.5)
-	mark_visible(dst_mask, current_pos);	  
+	shadowcastMarkVisible(dst_mask, current_pos);	  
     }
     
     if(prev_was_wall && !is_wall) {
@@ -293,7 +294,7 @@ void shadowcast_scan_row(BitMap* dst_mask, MapPosition camera, Row current_row){
 	.start_slope = current_row.start_slope,
 	.end_slope = slope(current_row.depth, col)
       };
-      shadowcast_scan_row(dst_mask, camera, next_row);
+      shadowcastScanRow(dst_mask, camera, next_row);
     }
     
     prev_was_wall = is_wall;
@@ -307,17 +308,17 @@ void shadowcast_scan_row(BitMap* dst_mask, MapPosition camera, Row current_row){
       .start_slope = current_row.start_slope,
       .end_slope = current_row.end_slope
     };
-    shadowcast_scan_row(dst_mask, camera, next_row);
+    shadowcastScanRow(dst_mask, camera, next_row);
   }
   
 }
 
-BitMap* shadowcast_fov(MapPosition camera){
+BitMap* shadowcastFOV(MapPosition camera){
 
   BitMap* shadow_mask = bitMapCreate(128, 128);
   bitMapFill(shadow_mask, 1);
   
-  mark_visible(shadow_mask, camera);
+  shadowcastMarkVisible(shadow_mask, camera);
   for(int cardinal = 0; cardinal < 4; cardinal++) {
     
     Row first_row = {
@@ -326,7 +327,7 @@ BitMap* shadowcast_fov(MapPosition camera){
       .start_slope = fractionNew(-1, 1),
       .end_slope = fractionNew(1, 1)
     };
-    shadowcast_scan_row(shadow_mask, camera, first_row);
+    shadowcastScanRow(shadow_mask, camera, first_row);
     
   }
   return shadow_mask;
@@ -343,7 +344,7 @@ int mapChunkDraw(Gfx gfx, MapPosition camera){
   int x_offset = camera.x - (screen_width / 2);
   int y_offset = camera.y - (screen_height / 2);
 
-  BitMap* shadow_mask = shadowcast_fov(camera);
+  BitMap* shadow_mask = shadowcastFOV(camera);
 
   GameObjectBuffer terrain = camera.chunk_ptr->terrain;
   struct GameObjectBufferInfo info = *bufferInfo(terrain);

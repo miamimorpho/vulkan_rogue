@@ -1,6 +1,5 @@
 #include "vkterm/vkterm.h"
 #include "world.h"
-#include "controls.h"
 #include "action.h"
 #include "lua_interface.h"
 #include <stdio.h>
@@ -11,7 +10,9 @@ int main(void){
   Gfx gfx = gfxScreenInit();
 
   loadLuaConfigTextures(gfx);
-   
+
+  lua_State* L = loadLuaConfigControls();
+
   MapChunk* chunk = mapChunkCreate();
   MapPosition start_pos = { 2, 2, chunk };
 
@@ -28,8 +29,14 @@ int main(void){
   while(getExitState() == 0){
     mapChunkDraw(gfx, player->type.mob.pos);
 
+    /*
     GameAction user_action = gfxUserInput(gfx);
     doAction(player, user_action);
+    */
+
+    gfxPollEvents(gfx);
+    objectLuaRunScript(L, player);
+
     
     gfxCachePresent(gfx, "main");
     gfxCachePresent(gfx, "ui");

@@ -2,6 +2,20 @@
 #include "input.h"
 #include <stdio.h>
 
+enum GfxInputState{
+  HOVER,
+  QUIT,
+  OUT_OF_BOUNDS
+};
+
+typedef struct{
+  double time;
+  uint32_t unicode;
+  uint16_t mouse_x;
+  uint16_t mouse_y;
+  enum GfxInputState state;
+} GfxInput;
+
 static GfxInput g_input;
 
 uint32_t gfxInputUnicode(void){
@@ -50,8 +64,8 @@ void closeCallback(GLFWwindow* window) {
 }
 
 void gfxMousePos(int* dst_x, int* dst_y){
-  *dst_x = g_input.mouse_x;
-  *dst_y = g_input.mouse_y;
+  if(dst_x != NULL) *dst_x = g_input.mouse_x;
+  if(dst_y != NULL) *dst_y = g_input.mouse_y;
 }
 
 void mouseCallback(GLFWwindow* window, int button, int action, int mods)
