@@ -11,8 +11,8 @@ enum GfxInputState{
 typedef struct{
   double time;
   uint32_t unicode;
-  uint16_t mouse_x;
-  uint16_t mouse_y;
+  double mouse_x_norm;
+  double mouse_y_norm;
   enum GfxInputState state;
 } GfxInput;
 
@@ -44,9 +44,13 @@ void gfxPollEvents(GfxGlobal* gfx){
   
   double xpos, ypos;
   glfwGetCursorPos(gfx->vk.window, &xpos, &ypos);
+  /*
   g_input.mouse_x = (int)((int)xpos / (ASCII_SCALE * ASCII_TILE_SIZE));
   g_input.mouse_y = (int)((int)ypos / (ASCII_SCALE * ASCII_TILE_SIZE));
-
+  */
+  g_input.mouse_x_norm = xpos / gfx->vk.extent.width;
+  g_input.mouse_y_norm = ypos / gfx->vk.extent.height;
+  
 }
 
 GfxInput gfxGetInput(void){
@@ -63,9 +67,9 @@ void closeCallback(GLFWwindow* window) {
     g_input.state = QUIT;
 }
 
-void gfxMousePos(int* dst_x, int* dst_y){
-  if(dst_x != NULL) *dst_x = g_input.mouse_x;
-  if(dst_y != NULL) *dst_y = g_input.mouse_y;
+void gfxMouseNorm(double* dst_x, double* dst_y){
+  if(dst_x != NULL) *dst_x = g_input.mouse_x_norm;
+  if(dst_y != NULL) *dst_y = g_input.mouse_y_norm;
 }
 
 void mouseCallback(GLFWwindow* window, int button, int action, int mods)

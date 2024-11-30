@@ -136,14 +136,6 @@ int userInputHelpScreen(Gfx gfx)
   return 0;
 }
 
-GameAction gfxUserInput(Gfx gfx)
-{
-  gfxPollEvents(gfx);
-  if(getExitState() == 1) return noAction();
-
-  uint32_t input_code = gfxInputUnicode();
-  if(input_code == 0) return noAction();
-  
   /*
   static double old_time = 0;
   double delta_time = glfwGetTime() - old_time;
@@ -152,44 +144,3 @@ GameAction gfxUserInput(Gfx gfx)
   gfxDrawString(fps_str, 0, 0, 15, 0);
   old_time = glfwGetTime();
   */
-
-  GameAction action = noAction();
-  switch(input_code) {
-  case 's':
-    action = moveMobileAction(0, 1);
-    break;
-  case 'w':
-    action = moveMobileAction(0, -1);
-    break;
-  case 'a':
-    action = moveMobileAction(-1, 0);
-    break;
-  case 'd':
-    action = moveMobileAction(1, 0);
-    break;
-  case 'b':
-    action = guiPickTile(gfx);
-    break;
-  case '.':
-    action = buildTerrainAction(0);
-    break;
-  case '?':
-    userInputHelpScreen(gfx);
-    break;
-  }
-   
-  if(input_code >= PUA_START){
-    int mouse_x, mouse_y;
-    gfxMousePos(&mouse_x, &mouse_y);
-    int center_x = ASCII_SCREEN_WIDTH / 2;
-    int center_y = ASCII_SCREEN_HEIGHT / 2;
-    int delta_x = 0, delta_y = 0;
-    if(mouse_x > center_x) delta_x = 1;
-    if(mouse_x < center_x) delta_x = -1;
-    if(mouse_y > center_y) delta_y = 1;
-    if(mouse_y < center_y) delta_y = -1;
-    action = moveMobileAction(delta_x, delta_y);
-  } // end of mouse input
- 
-  return action;
-}

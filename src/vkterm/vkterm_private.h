@@ -97,6 +97,7 @@ typedef struct{
   uint32_t height_in_tiles;
   uint32_t swapchain_x;
   uint32_t frame_x;
+  
   GfxTileset* textures;
   
   GfxCache* caches;

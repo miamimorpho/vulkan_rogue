@@ -1,15 +1,15 @@
 * TODO
 
-copy entities from lua to C
-write memory safe copy to allocation function
-linting
+screen resizing revisited
+lua gui library - pick tile and editing modes to seperate debug tools from game engine
 stitching maps?
-add bitmap.c to terrain and fov
-  can be used to ask if object->pos is visable or not
 NPCs / enemies basic basic
 pathfinding
 saving...
 
+* Linting
+tidy vkterm
+write memory safe copy to allocation function vulkan
 add fat pointer string library, polymorphise buffers?
 message buffer -> ring buffer
 changing tileset < - > in editor
@@ -17,8 +17,17 @@ maintain cursor/color state like ncurses
 container_of() on graphics API?
 defer?
 spatial hash space
+phase out C stdlib
 
-* Adding Lua
+* GUI
+
+MousePos
+KeyboardInput
+Single Chars
+Strings
+Buttons register functions for (on hover) and (on click)
+
+* Lua
 
 GetMousePos()
 GetUnicodeInput()

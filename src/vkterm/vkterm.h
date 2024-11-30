@@ -22,7 +22,7 @@ int gfxCachePresent(Gfx, const char*);
 int gfxRefresh(Gfx);
 
 /* Input Functions */
-void gfxMousePos(int*, int*);
+void gfxMouseNorm(double*, double*);
 void gfxPollEvents(Gfx);
 uint32_t gfxInputUnicode(void);
 int getExitState(void);

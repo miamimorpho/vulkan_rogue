@@ -1,0 +1,18 @@
+* LUA
+parsing data
+quake-like debug mode
+AI
+10th Rule
+
+* Algebra of Space
+World is organised in a spatial hash grid
+where each hash key indexes into bucket of cartesian space
+Position is an opaque type that maintains chunk locality and cartesian position relative to that chunk
+Direction is not simply another vector across XY space, but also an offset local to an origin in hash-space.
+Chunks are not garunteed to be arranged in any particular way
+Paths are a list of directions from a position
+There is a reason Portal games use static-sized portals, in our games chunks can be connected in a non-linear way and FOV should work through them creating seamless cuts through space. They are probably best mimic'ed as 'doors' with a front and back.
+Experiment with shadowcasting
+
+* Cache System GUI
+most expensive part of GPU rendering is the CPU -> GPU memory barrier. The GUI aims to be 'immediate mode' from the GPU but the programmer still needs to be explicit about the the memory transfer. By limiting drawing to one 'cache' image at a time, which is uploaded to the GPU between cache changes and at the end of a frame, in most patterns, usually culls most data from being re-uploaded every frame which is the worse case scenario we want to avoid. This can also be thought of as 'damaged section' or 'dirty chunk' system but we track damage across Z layers rather than XY chunks.

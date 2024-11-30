@@ -1,15 +1,15 @@
 #include "vkterm/vkterm.h"
 #include "world.h"
 
-extern int lMouseX(void){
-  int x = 0;
-  gfxMousePos(&x, NULL);
+extern double lMouseX(void){
+  double x = 0;
+  gfxMouseNorm(&x, NULL);
   return x;
 }
 
-extern int lMouseY(void){
-  int y = 0;
-  gfxMousePos(NULL, &y);
+extern double lMouseY(void){
+  double y = 0;
+  gfxMouseNorm(NULL, &y);
   return y;
 }
 

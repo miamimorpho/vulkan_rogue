@@ -29,14 +29,8 @@ int main(void){
   while(getExitState() == 0){
     mapChunkDraw(gfx, player->type.mob.pos);
 
-    /*
-    GameAction user_action = gfxUserInput(gfx);
-    doAction(player, user_action);
-    */
-
     gfxPollEvents(gfx);
     objectLuaRunScript(L, player);
-
     
     gfxCachePresent(gfx, "main");
     gfxCachePresent(gfx, "ui");
