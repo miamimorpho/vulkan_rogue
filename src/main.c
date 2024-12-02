@@ -30,8 +30,7 @@ int main(void){
     gfxPollEvents(gfx);
     luaControls(L, player);
     
-    gfxCachePresent(gfx, "main");
-    gfxCachePresent(gfx, "ui");
+    //gfxCachePresent(gfx, "ui");
     gfxRefresh(gfx);
   }
   

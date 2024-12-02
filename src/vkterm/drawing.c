@@ -171,8 +171,6 @@ int gfxRenderElement(GfxGlobal* gfx,
   int i = 0;
   int start_x = 0;
   
-  printf("working\n");
-
   while(str[i] != '\0') {
     if(str[i] == '\n'){
       y++;
@@ -295,6 +293,9 @@ int gfxBakeCommandBuffer(GfxGlobal* gfx)
 }
 
 int gfxRefresh(GfxGlobal* gfx){
+
+    gfxCachePresent(gfx, "main");
+
   GfxContext vk = gfx->vk;
   
   // waits on last VkQueueSubmit to be done

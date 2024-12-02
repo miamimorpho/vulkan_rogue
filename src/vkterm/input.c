@@ -2,18 +2,12 @@
 #include "input.h"
 #include <stdio.h>
 
-enum GfxInputState{
-  HOVER,
-  QUIT,
-  OUT_OF_BOUNDS
-};
-
 typedef struct{
   double time;
   uint32_t unicode;
   double mouse_x_norm;
   double mouse_y_norm;
-  enum GfxInputState state;
+  uint8_t exit_status;
 } GfxInput;
 
 static GfxInput g_input;
@@ -44,29 +38,19 @@ void gfxPollEvents(GfxGlobal* gfx){
   
   double xpos, ypos;
   glfwGetCursorPos(gfx->vk.window, &xpos, &ypos);
-  /*
-  g_input.mouse_x = (int)((int)xpos / (ASCII_SCALE * ASCII_TILE_SIZE));
-  g_input.mouse_y = (int)((int)ypos / (ASCII_SCALE * ASCII_TILE_SIZE));
-  */
+ 
   g_input.mouse_x_norm = xpos / gfx->vk.extent.width;
   g_input.mouse_y_norm = ypos / gfx->vk.extent.height;
   
 }
 
-/*
-GfxInput gfxGetInput(void){
-  return g_input;
-}
-*/
-
 int getExitState(void){
-  if(g_input.state == QUIT) return 1;
-  
+  if(g_input.exit_status == 1) return 1;
   return 0;
 }
 
 void closeCallback(GLFWwindow* window) {
-    g_input.state = QUIT;
+    g_input.exit_status = 1;
 }
 
 double gfxMouseX(void){
@@ -95,6 +79,6 @@ void gfxInputInit(GLFWwindow* window){
   //glfwSetKeyCallback(window, keyCallback);
   glfwSetMouseButtonCallback(window, mouseCallback);
 
-  g_input.state = HOVER;
+  g_input.exit_status = 0;
   g_input.time = 0;
 }

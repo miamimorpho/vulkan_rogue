@@ -9,6 +9,8 @@ ffi.cdef[[
     double gfxMouseX(void);
     double gfxMouseY(void);
     int gfxGetKey(void);
+    int gfxGetScreenWidth(Gfx);
+    int gfxGetScreenHeight(Gfx);
     int gfxRenderElement(Gfx, uint16_t x, uint16_t y,
                          const char* str,
                          uint16_t atlas_index,
@@ -16,10 +18,10 @@ ffi.cdef[[
     int gfxRefresh(Gfx);
 ]]
 
-if not GFX_RAW_PTR then
-   error("No GFX_RAW_PTR set from C side")
+if not GFX_IMPL then
+   error("No GFX_IMPL set from C side")
 else
-   gfx_cast_ptr = ffi.cast("Gfx", GFX_RAW_PTR)
+   gfx_cast_ptr = ffi.cast("Gfx", GFX_IMPL)
 end
 
 local vkterm = {}
@@ -27,7 +29,10 @@ vkterm.pollEvents = function() ffi.C.gfxPollEvents(gfx_cast_ptr) end
 vkterm.mouseX = ffi.C.gfxMouseX
 vkterm.mouseY = ffi.C.gfxMouseY
 vkterm.getUnicode = ffi.C.gfxGetKey
-vkterm.refresh = function() ffi.C.gfxRefresh(gfx_cast_ptr) end
+
+vkterm.screenWidth = function() return ffi.C.gfxGetScreenWidth(gfx_cast_ptr) end
+vkterm.screenHeight = function() return ffi.C.gfxGetScreenHeight(gfx_cast_ptr) end
+vkterm.refresh = function() return ffi.C.gfxRefresh(gfx_cast_ptr) end
 
 -- CONSTANTS --
 vkterm.PUA_START = 0xE000
@@ -45,6 +50,7 @@ function vkterm.isMouseClicked()
     if unicode_int >= vkterm.PUA_START then
        return true
     end
+    return false
 end
 
 -- LUA ONLY GUI MODE --
@@ -58,23 +64,9 @@ local function renderElement(element)
         element.bg)
 end
 
-local function newCstyleString(luaString)
-
-    local buffer = ffi.new("char[?]", #luaString + 1)  -- +1 for null terminator
-    ffi.copy(buffer, luaString)
-    -- Null terminate the string
-    buffer[#luaString] = 0  -- Set the last byte to 0
-
-    return buffer
-end
-
 local function compileElement(options)
-    if options.text then
-       local text_c_string = newCstyleString(options.text)
-    end
-
     return {
-        text = text_c_string or " ",
+        text = options.text or " ",
         x = options.x or 0,
         y = options.y or 0,
         fg = options.fg or 4,
@@ -87,27 +79,19 @@ local function compileElement(options)
     }
 end
 
-local function compileElementTable(raw_elements)
-    local compiled_table = {}
-    for _, e in ipairs(raw_elements) do
-        local compiled_e = compileElement(e)
-        table.insert(compiled_table, compiled_e)
-    end
-    return compiled_table
-end
-
 local function runElementTable(elements)
 
     local mouse_x = vkterm.mouseX()
     local mouse_y = vkterm.mouseY()
 
-    for _, element in ipairs(elements) do
-        -- Check if mouse is within element bounds
+    for _, element_raw in ipairs(elements) do
+        local element = compileElement(element_raw)
+
         local in_bounds = 
-            mouse_x >= element.x and 
-            mouse_x <= (element.x + element.width) and
-            mouse_y >= element.y and 
-            mouse_y <= (element.y + element.height)
+            mouse_x > element.x / vkterm.screenWidth() and 
+            mouse_x <= (element.x + element.width) / vkterm.screenWidth() and
+            mouse_y > element.y / vkterm.screenHeight() and 
+            mouse_y <= (element.y + element.height) / vkterm.screenHeight()
         
         -- Handle hover state
         if in_bounds then
@@ -116,21 +100,22 @@ local function runElementTable(elements)
             end
             
             -- Check for click
-            if vkterm.isMouseClicked() and element.onclick then
-                element:onclick()
+            if vkterm.isMouseClicked() and element.on_click then
+                element:on_click()
             end
         end
         
         renderElement(element)
+        if element.to_exit then return 1 end
     end
     return 0
 end
 
 function vkterm.runGui(elements_table)
-         local dom = compileElementTable(elements_table)
-         while(runElementTable(dom) == 0) do 
-
-         end
+    while(runElementTable(elements_table) == 0) do 
+      vkterm.pollEvents()
+      vkterm.refresh()
+    end
 end
 
 return vkterm

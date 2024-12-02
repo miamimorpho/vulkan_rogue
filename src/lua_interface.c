@@ -48,7 +48,7 @@ lua_State* luaStateInit(Gfx gfx, const char* script_name){
     luaL_openlibs(L);
 
     lua_pushlightuserdata(L, gfx);
-    lua_setglobal(L, "GFX_RAW_PTR");
+    lua_setglobal(L, "GFX_IMPL");
 
     int res = luaL_dofile(L, script_name);
     if(res != LUA_OK){

@@ -1,8 +1,6 @@
 * LUA
-parsing data
-quake-like debug mode
-AI
-10th Rule
+"Any sufficiently complicated C or Fortran program contains an ad hoc, informally-specified, bug-ridden, slow implementation of half of Common Lisp" and Lua is a Lisp!
+Currently Lua is used for customising controls and UI, we also use lua tables syntax to load in assets.
 
 * Algebra of Space
 World is organised in a spatial hash grid

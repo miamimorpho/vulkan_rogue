@@ -336,13 +336,9 @@ BitMap* shadowcastFOV(MapPosition camera){
 int mapChunkDraw(Gfx gfx, MapPosition camera){
 
   gfxClear(gfx);
-
-  int screen_width = 0;
-  int screen_height = 0;
-  gfxGetScreenDimensions(gfx, &screen_width, &screen_height);
   
-  int x_offset = camera.x - (screen_width / 2);
-  int y_offset = camera.y - (screen_height / 2);
+  int x_offset = camera.x - (gfxGetScreenWidth(gfx) / 2);
+  int y_offset = camera.y - (gfxGetScreenHeight(gfx) / 2);
 
   BitMap* shadow_mask = shadowcastFOV(camera);
 

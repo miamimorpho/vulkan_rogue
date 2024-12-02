@@ -24,9 +24,12 @@ VkResult init_vkCmdBeginRenderingKHR(VkDevice device) {
     return VK_SUCCESS;
 }
 
-void gfxGetScreenDimensions(GfxGlobal* gfx, int* dst_width, int* dst_height){
-  *dst_width = gfx->width_in_tiles;
-  *dst_height = gfx->height_in_tiles;
+int gfxGetScreenWidth(GfxGlobal* gfx){
+    return gfx->vk.extent.width / (ASCII_TILE_SIZE * ASCII_SCALE);
+}
+
+int gfxGetScreenHeight(GfxGlobal* gfx){
+    return gfx->vk.extent.height / (ASCII_TILE_SIZE * ASCII_SCALE);
 }
 
 VkCommandBuffer gfxCmdSingleBegin(GfxContext vk)
@@ -898,9 +901,7 @@ int _gfxConstFree(GfxContext gfx){
   vkDestroyDescriptorPool(gfx.ldev, gfx.descriptor_pool, NULL);
 
   _gfxSwapchainDestroy(gfx);
-    
-  //vkDestroyRenderPass(gfx.ldev, gfx.renderpass, NULL);
-  
+
   vmaDestroyAllocator(gfx.allocator);
   
   vkDestroyDevice(gfx.ldev, NULL);
@@ -914,7 +915,6 @@ int _gfxConstFree(GfxContext gfx){
 
 }
 
-// local
 GfxGlobal* gfxScreenInit(void){
 
   GfxGlobal* gfx = malloc(sizeof(GfxGlobal));

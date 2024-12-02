@@ -7,65 +7,15 @@ NPCs / enemies basic basic
 pathfinding
 saving...
 
-* Defer
-
-
 * Linting
 tidy vkterm
 write memory safe copy to allocation function vulkan
 add fat pointer string library, polymorphise buffers?
 message buffer -> ring buffer
 changing tileset < - > in editor
-maintain cursor/color state like ncurses
 container_of() on graphics API?
-defer?
 spatial hash space
 phase out C stdlib
-
-* GUI
-
-declare output default state
-add listerners
-process listerners to mutate output state
-draw output state
-
-
-LUA -> Draw Instructions -> C
-C -> Input State -> Lua
-
-Label some string, fg, bg
-Label.on_hover
-Label.on_click
-localise input to a zone
-
-
-
-MousePos
-KeyboardInput
-Single Chars
-Strings
-Buttons register functions for (on hover) and (on click)
-
-* Lua
-
-GetMousePos()
-GetUnicodeInput()
-Create_mobile()
-Move_object()
-Paint_object()
-Build_terrain()
-
-config and recompositon
-config script, controls config
-textures used
-prefab tiles ( unicode, texture_name, fg, bg )
-creating monsters, this can be garbage collected
-
-have pure data files and ffi files!
-write pure data first in one file
-
-composing level terrain generation
-NPC AI
 
 * NPCs
 pathfinding

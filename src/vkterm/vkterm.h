@@ -11,7 +11,8 @@ typedef struct GfxGlobal* Gfx;
 Gfx gfxScreenInit(void);
 int gfxTextureLoad(Gfx, const char*);
 int gfxScreenClose(Gfx);
-void gfxGetScreenDimensions(Gfx, int*, int*);
+int gfxGetScreenWidth(Gfx);
+int gfxGetScreenHeight(Gfx);
 
 /* Drawing Functions */
 void gfxClear(Gfx);
