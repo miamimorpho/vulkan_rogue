@@ -356,7 +356,7 @@ int mapChunkDraw(Gfx gfx, MapPosition camera){
       GameObject tile = terrain[i];
       int tile_x = shadow_x - x_offset;
       int tile_y = shadow_y - y_offset;
-      gfxAddCh(gfx, tile_x, tile_y, tile.unicode, tile.atlas, tile.fg, tile.bg);
+      gfxRenderGlyph(gfx, tile_x, tile_y, tile.unicode, tile.atlas, tile.fg, tile.bg);
     }
     
   }
@@ -367,7 +367,7 @@ int mapChunkDraw(Gfx gfx, MapPosition camera){
     GameObject actor = mobiles[i];
     MapPosition pos = actor.type.mob.pos;
     if(bitMapGetPx(shadow_mask, actor.type.mob.pos.x, actor.type.mob.pos.y) == 0){
-      gfxAddCh(gfx, pos.x - x_offset, pos.y - y_offset,
+      gfxRenderGlyph(gfx, pos.x - x_offset, pos.y - y_offset,
 	     actor.unicode, actor.atlas,
 	     actor.fg, actor.bg);
     }

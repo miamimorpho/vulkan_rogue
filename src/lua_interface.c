@@ -2,48 +2,16 @@
 
 #include "lua_interface.h"
 
-#define LUA_ERROR(L, res) do {					       \
-    if ((res) != LUA_OK) {					       \
-      printf("fatal lua error\n");				       \
-      lua_pop((L), 1); /* remove error message from stack */	       \
-      lua_close((L));						       \
-      return 1; /* Return from the calling function */		       \
-    }								       \
-  } while (0)
+#define LUA_ERROR(L, res) do {                                          \
+        if ((res) != LUA_OK) {                                          \
+            fprintf(stderr, "Load error: %s\n", lua_tostring(L, -1));   \
+            lua_pop((L), 1); /* remove error message from stack */      \
+        }                                                               \
+    } while (0)
 
-int objectLuaRunScript(lua_State* L, GameObject* object_ptr){
 
-  lua_pushlightuserdata(L, object_ptr);
-  lua_setglobal(L, "CURRENT_GAME_OBJECT");
 
-  int res = luaL_dofile(L, "lua/controls_handler.lua");
-  if(res != LUA_OK){
-    fprintf(stderr, "Load error: %s\n", lua_tostring(L, -1));
-    lua_pop(L, 1);
-    return -1;
-  }
-  
-  return 0;
-}
-
-lua_State* loadLuaConfigControls(void){
-
-  lua_State* L = luaL_newstate();
-  if(L == NULL) return NULL;
-
-   luaL_openlibs(L);
-
-   int res = luaL_dofile(L, "lua/controls.lua");
-
-   if(res != LUA_OK){
-    printf("fatal lua error\n");
-    return NULL;
-  }
-
-   return L;
-}
-
-int loadLuaConfigTextures(Gfx gfx){
+int luaLoadTextures(Gfx gfx){
 
   lua_State* L = luaL_newstate();
   if(!L) {
@@ -51,7 +19,10 @@ int loadLuaConfigTextures(Gfx gfx){
   }
 
   int res = luaL_dofile(L, "lua/data.lua");
-  LUA_ERROR(L, res);
+  if(res != LUA_OK){
+      LUA_ERROR(L, res);
+      return 1;
+  }
   
   lua_getglobal(L, "textures");
   if(!lua_istable(L, -1)) return 1;
@@ -66,6 +37,40 @@ int loadLuaConfigTextures(Gfx gfx){
 
   lua_pop(L, 1);
   lua_close(L);
+  
+  return 0;
+}
+
+lua_State* luaStateInit(Gfx gfx, const char* script_name){
+    lua_State* L = luaL_newstate();
+    if(L == NULL) return NULL;
+
+    luaL_openlibs(L);
+
+    lua_pushlightuserdata(L, gfx);
+    lua_setglobal(L, "GFX_RAW_PTR");
+
+    int res = luaL_dofile(L, script_name);
+    if(res != LUA_OK){
+        LUA_ERROR(L, res);
+        return NULL;
+    }
+
+    return L;
+}
+
+
+int luaControls(lua_State* L, GameObject* object_ptr){
+
+  lua_getglobal(L, "handleInput");
+  lua_pushlightuserdata(L, object_ptr);
+
+  int res = lua_pcall(L, 1, 0, 0);
+
+  if(res != LUA_OK){
+      LUA_ERROR(L, res);
+      return 1;
+  }
   
   return 0;
 }

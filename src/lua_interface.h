@@ -5,6 +5,6 @@
 #include "vkterm/vkterm.h"
 #include "world.h"
 
-int loadLuaConfigTextures(Gfx gfx);
-lua_State* loadLuaConfigControls(void);
-int objectLuaRunScript(lua_State* L, GameObject* object_ptr);
+int luaLoadTextures(Gfx gfx);
+lua_State* luaStateInit(Gfx gfx, const char*);
+int luaControls(lua_State* L, GameObject* object_ptr);

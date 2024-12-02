@@ -5,6 +5,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef struct{
+  float x;
+  float y;
+} vec2;
+
+typedef struct{
+  vec2 screen_size_px;
+}GfxPushConstant;
+
 uint32_t pack16into32(uint16_t a, uint16_t b){
   return(uint32_t)a << 16 | (uint32_t)b;
 }
@@ -45,7 +54,9 @@ int cacheCountGrow(GfxCache** caches_ptr, int* cache_c){
 
 void gfxClear( GfxGlobal* gfx ){
   GfxCache* cache = &gfx->caches[gfx->cache_x];
-  memset(cache->data, 0, cache->count * sizeof(GfxGlyph));
+  if(cache != NULL){
+      memset(cache->data, 0, cache->count * sizeof(GfxGlyph));
+  }
 }
 
 int cacheCreate(GfxCache* dst, const char* name, enum GfxCacheType type){
@@ -128,7 +139,7 @@ uint32_t pack_indices(uint16_t unicode, uint8_t atlas_index,
     bg_index;
 }
 
-int gfxAddCh(GfxGlobal* gfx, uint16_t x, uint16_t y,
+int gfxRenderGlyph(GfxGlobal* gfx, uint16_t x, uint16_t y,
 	      uint16_t encoding, uint16_t atlas_index,
 	      uint16_t fg, uint16_t bg){
 
@@ -152,20 +163,23 @@ int gfxAddCh(GfxGlobal* gfx, uint16_t x, uint16_t y,
   return 0;
 }
 
-int gfxAddString(GfxGlobal* gfx,
+int gfxRenderElement(GfxGlobal* gfx,
 		 uint16_t x, uint16_t y,
-		 const char* str,
+         const char* str,
+         uint16_t atlas_index,
 		 uint16_t fg, uint16_t bg){
   int i = 0;
   int start_x = 0;
   
+  printf("working\n");
+
   while(str[i] != '\0') {
     if(str[i] == '\n'){
       y++;
       x = start_x;
     }else{
-      gfxAddCh(gfx, x++, y,
-		str[i], ASCII_TEXTURE_INDEX,
+      gfxRenderGlyph(gfx, x++, y,
+		str[i], atlas_index,
 		fg, bg);
     }
     i++;
@@ -357,6 +371,46 @@ int gfxRefresh(GfxGlobal* gfx){
   gfx->frame_x = (gfx->frame_x + 1) % vk.frame_c;
   gfx->indirect.used_size = 0;
   
+  return 0;
+}
+
+int
+gfxSpvLoad(VkDevice l_dev, const char* filename, VkShaderModule* shader)
+{
+  
+  FILE* file = fopen(filename, "rb");
+  if(file == NULL) {
+    printf("%s not found!", filename);
+    return 1;
+  }
+  if(fseek(file, 0l, SEEK_END) != 0) {
+    printf("failed to seek to end of file!");
+    return 1;
+  }
+  size_t length = ftell(file);
+  if (length == 0){
+    printf("failed to get file size!");
+    return 1;
+  }
+
+  char *spv_code = (char *)malloc(length * sizeof(char));
+  rewind(file);
+  fread(spv_code, length, 1, file);
+
+  VkShaderModuleCreateInfo create_info = {
+    .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+    .codeSize = length,
+    .pCode = (const uint32_t*)spv_code
+  };
+
+  if (vkCreateShaderModule(l_dev, &create_info, NULL, shader)
+     != VK_SUCCESS) {
+    return 1;
+  }
+
+  fclose(file);
+  free(spv_code);
+
   return 0;
 }
 

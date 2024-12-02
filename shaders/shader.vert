@@ -7,8 +7,8 @@
 layout(location = 0) in uint inPosition;
 layout(location = 1) in uint unicode_atlas_and_colors;
 
-layout(location = 0) flat out uint atlas_index;
-layout(location = 1) out vec2 unicodeUV;
+layout(location = 0) out vec2 unicodeUV;
+layout(location = 1) flat out uint atlas_index;
 layout(location = 2) flat out vec2 fgUV;
 layout(location = 3) flat out vec2 bgUV;
 

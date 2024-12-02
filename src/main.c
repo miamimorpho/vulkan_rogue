@@ -9,9 +9,9 @@ int main(void){
 
   Gfx gfx = gfxScreenInit();
 
-  loadLuaConfigTextures(gfx);
+  luaLoadTextures(gfx);
 
-  lua_State* L = loadLuaConfigControls();
+  lua_State* L = luaStateInit(gfx, "lua/controls.lua");
 
   MapChunk* chunk = mapChunkCreate();
   MapPosition start_pos = { 2, 2, chunk };
@@ -20,17 +20,15 @@ int main(void){
   player->unicode = 417;
   player->atlas = 2;
   
-  gfxCacheChange(gfx, "ui");
-  //gfxAddString(gfx, 0, ASCII_SCREEN_HEIGHT-2,
-  //	       "Press ? for help",
-  //	       15, 0);
-  gfxCacheChange(gfx, "main");
+  //gfxCacheChange(gfx, "ui");
+  //gfxAddString(gfx, 0, 0, "Press ? for help", 15, 0);
+  //gfxCacheChange(gfx, "main");
   
   while(getExitState() == 0){
     mapChunkDraw(gfx, player->type.mob.pos);
 
     gfxPollEvents(gfx);
-    objectLuaRunScript(L, player);
+    luaControls(L, player);
     
     gfxCachePresent(gfx, "main");
     gfxCachePresent(gfx, "ui");

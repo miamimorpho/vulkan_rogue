@@ -3,8 +3,8 @@
 
 layout(set = 0, binding = 0 ) uniform sampler2D texSampler[];
 
-layout(location = 0) flat in uint texIndex;
-layout(location = 1) in vec2 texUV;
+layout(location = 0) in vec2 texUV;
+layout(location = 1) flat in uint texIndex;
 layout(location = 2) flat in vec2 fgUV;
 layout(location = 3) flat in vec2 bgUV;
 

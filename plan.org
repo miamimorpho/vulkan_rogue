@@ -7,6 +7,9 @@ NPCs / enemies basic basic
 pathfinding
 saving...
 
+* Defer
+
+
 * Linting
 tidy vkterm
 write memory safe copy to allocation function vulkan
@@ -20,6 +23,22 @@ spatial hash space
 phase out C stdlib
 
 * GUI
+
+declare output default state
+add listerners
+process listerners to mutate output state
+draw output state
+
+
+LUA -> Draw Instructions -> C
+C -> Input State -> Lua
+
+Label some string, fg, bg
+Label.on_hover
+Label.on_click
+localise input to a zone
+
+
 
 MousePos
 KeyboardInput

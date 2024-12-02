@@ -858,45 +858,7 @@ int gfxTextureDescriptorsInit(GfxContext* gfx){
   return 0;
 }
 
-int
-gfxSpvLoad(VkDevice l_dev, const char* filename, VkShaderModule* shader)
-{
-  
-  FILE* file = fopen(filename, "rb");
-  if(file == NULL) {
-    printf("%s not found!", filename);
-    return 1;
-  }
-  if(fseek(file, 0l, SEEK_END) != 0) {
-    printf("failed to seek to end of file!");
-    return 1;
-  }
-  size_t length = ftell(file);
-  if (length == 0){
-    printf("failed to get file size!");
-    return 1;
-  }
 
-  char *spv_code = (char *)malloc(length * sizeof(char));
-  rewind(file);
-  fread(spv_code, length, 1, file);
-
-  VkShaderModuleCreateInfo create_info = {
-    .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-    .codeSize = length,
-    .pCode = (const uint32_t*)spv_code
-  };
-
-  if (vkCreateShaderModule(l_dev, &create_info, NULL, shader)
-     != VK_SUCCESS) {
-    return 1;
-  }
-
-  fclose(file);
-  free(spv_code);
-
-  return 0;
-}
 
 int _gfxSwapchainDestroy(GfxContext gfx){
   /*  for(uint32_t i = 0; i < gfx.swapchain_c; i++){

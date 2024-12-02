@@ -18,7 +18,7 @@ typedef struct{
 
 static GfxInput g_input;
 
-uint32_t gfxInputUnicode(void){
+uint32_t gfxGetKey(void){
   return g_input.unicode;
 }
 
@@ -53,9 +53,11 @@ void gfxPollEvents(GfxGlobal* gfx){
   
 }
 
+/*
 GfxInput gfxGetInput(void){
   return g_input;
 }
+*/
 
 int getExitState(void){
   if(g_input.state == QUIT) return 1;
@@ -67,9 +69,12 @@ void closeCallback(GLFWwindow* window) {
     g_input.state = QUIT;
 }
 
-void gfxMouseNorm(double* dst_x, double* dst_y){
-  if(dst_x != NULL) *dst_x = g_input.mouse_x_norm;
-  if(dst_y != NULL) *dst_y = g_input.mouse_y_norm;
+double gfxMouseX(void){
+    return g_input.mouse_x_norm;
+}
+
+double gfxMouseY(void){
+    return g_input.mouse_y_norm;
 }
 
 void mouseCallback(GLFWwindow* window, int button, int action, int mods)

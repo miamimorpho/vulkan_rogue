@@ -1,12 +1,11 @@
-#ifndef VULKAN_META_H
-#define VULKAN_META_H
+#ifndef VKTERM_PRIVATE_H
+#define VKTERM_PRIVATE_H
 
 #define VMA_DEBUG_LOG
 #include "../../extern/vk_mem_alloc.h"
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include "vk_maths.h"
 #include "vk_config.h"
 #include <stdint.h>
 
@@ -70,10 +69,6 @@ typedef struct{
 }GfxContext;
 
 typedef struct{
-  vec2 screen_size_px;
-}GfxPushConstant;
-
-typedef struct{
   uint32_t pos;
   uint32_t unicode_atlas_and_colors;
 } GfxGlyph;
@@ -107,12 +102,14 @@ typedef struct{
   GfxBuffer gpu_glyph_cache;
 }GfxGlobal;
 
+/* Vulkan Extension Function */
 VkResult init_vkCmdBeginRenderingKHR(VkDevice);
 
+/* Command Buffer Singleshots */
 VkCommandBuffer gfxCmdSingleBegin(GfxContext);
 int gfxCmdSingleEnd(GfxContext, VkCommandBuffer);
 
-/** Buffer and Image Functions */
+/* Buffer and Image Functions */
 int gfxVertBufferCreate(GfxContext, size_t, GfxBuffer*);
 int gfxBufferAppend(VmaAllocator, GfxBuffer*,
 		    const void*, VkDeviceSize);
@@ -127,33 +124,14 @@ int copyBufferToImage(GfxContext, VkBuffer, VkImage, uint32_t, uint32_t);
 int transitionImageLayout(VkCommandBuffer, VkImage, VkImageLayout, VkImageLayout);
 void gfxImageDestroy(VmaAllocator, GfxImage);
 
-/** Initialisation Functions */
-void gfxInputInit(GLFWwindow* window);
-int gfxRecreateSwapchain(GfxContext*);
-int gfxAllocatorInit(GfxContext*);
-int gfxGlfwInit(GfxContext*);
-int gfxInstanceInit(GfxContext*);
-int gfxPhysicalDeviceInit(GfxContext*);
-int gfxQueueIndex(GfxContext*);
-int gfxLogicalDeviceInit(GfxContext*);
-int gfxCmdPoolInit(GfxContext*);
-int gfxSurfaceInit(GfxContext*);
-int gfxSwapchainInit(GfxContext*);
-int gfxDepthFormatCheck(GfxContext*);
-int gfxRenderpassInit(GfxContext*);
-int gfxFramebufferInit(GfxContext*);
-int gfxDescriptorsPool(GfxContext*);
-int gfxSyncInit(GfxContext*);
-int gfxCmdBuffersInit(GfxContext*);
-int gfxTextureDescriptorsInit(GfxContext*);
+/* Initialise Auxillaries */
+int gfxRecreateSwapchain(GfxContext* gfx);
 int gfxPipelineInit(GfxContext*);
-int gfxSpvLoad(VkDevice, const char*, VkShaderModule*);
 int gfxTexturesInit(GfxTileset**);
-
-/* Drawing Functions */
+void gfxInputInit(GLFWwindow* window);
 int gfxCacheChange(GfxGlobal* gfx, const char* name);
 
-/** Free Functions **/
+/* Free Functions */
 int _gfxSwapchainDestroy(GfxContext);
 int _gfxConstFree(GfxContext);
 
