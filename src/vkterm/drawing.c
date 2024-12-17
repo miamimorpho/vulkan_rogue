@@ -18,12 +18,12 @@ uint32_t pack16into32(uint16_t a, uint16_t b){
   return(uint32_t)a << 16 | (uint32_t)b;
 }
 
-int cacheSearch(GfxCache* caches, int buffer_c, const char* name){
-  if(buffer_c == 0) return -1;
+int layerSearch(GfxLayer* layers, int layer_c, const char* name){
+  if(layer_c == 0) return -1;
   int found_buffer = -1;
-  for(int i = 0; i < buffer_c; i++){
-    if(caches[i].type == NULL_CACHE) break;
-    if(strcmp(name, caches[i].name) == 0){
+  for(int i = 0; i < layer_c; i++){
+    if(layers[i].type == LAYER_TYPE_FREE) break;
+    if(strcmp(name, layers[i].name) == 0){
       found_buffer = i;
       break;
     }
@@ -31,44 +31,42 @@ int cacheSearch(GfxCache* caches, int buffer_c, const char* name){
   return found_buffer;
 }
 
-int cacheCountGrow(GfxCache** caches_ptr, int* cache_c){
-  int new_cache_c = 0;
-  if(*cache_c == 0){
-    new_cache_c = 1;
+int layerCountGrow(GfxLayer** layer_arr_ptr, int* layer_c){
+  int new_layer_c = 0;
+  if(*layer_c == 0){
+    new_layer_c = 1;
   }else{
-    new_cache_c = *cache_c * 2;
+    new_layer_c = *layer_c * 2;
   }
-  GfxCache* new_caches = realloc(*caches_ptr, new_cache_c * sizeof(GfxCache));
-  if(new_caches == NULL) return -1;
+  GfxLayer* new_layer_arr = realloc(*layer_arr_ptr, new_layer_c * sizeof(GfxLayer));
+  if(new_layer_arr == NULL) return -1;
   
-  for(int i = *cache_c; i < new_cache_c; i++){
-    GfxCache* caches_dst = &new_caches[i];
-    caches_dst->type = NULL_CACHE;
-    caches_dst->name = NULL;
+  for(int i = *layer_c; i < new_layer_c; i++){
+    GfxLayer* layer_i = &new_layer_arr[i];
+    layer_i->type = LAYER_TYPE_FREE;
+    layer_i->name = NULL;
   }
-  *cache_c = new_cache_c;
-
-  *caches_ptr = new_caches;
+  *layer_c = new_layer_c;
+  *layer_arr_ptr = new_layer_arr;
   return 0;
 }
 
 void gfxClear( GfxGlobal* gfx ){
-  GfxCache* cache = &gfx->caches[gfx->cache_x];
-  if(cache != NULL){
-      memset(cache->data, 0, cache->count * sizeof(GfxGlyph));
+  GfxLayer* layer = &gfx->layers[gfx->layer_x];
+  if(layer != NULL){
+      memset(layer->data, 0, layer->count * sizeof(GfxGlyph));
   }
 }
 
-int cacheCreate(GfxCache* dst, const char* name, enum GfxCacheType type){
-
-  dst->type = type;
+int layerCreate(GfxLayer* dst, const char* name){
 
   size_t name_len = strlen(name) +1;
   dst->name = malloc(name_len);
   if(dst->name != NULL){
     memcpy(dst->name, name, name_len);
   }
-  
+
+  dst->type = LAYER_TYPE_USED;
   dst->count = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
   dst->data = (GfxGlyph*)malloc(dst->count * sizeof(GfxGlyph));
   memset(dst->data, 0, dst->count * sizeof(GfxGlyph));
@@ -76,57 +74,59 @@ int cacheCreate(GfxCache* dst, const char* name, enum GfxCacheType type){
   return 0;
 }
 
-int gfxCacheSendToGPU(GfxGlobal gfx, int i){
-  if(i > gfx.cache_c) return 1;
-
+int gfxLayerSendToGPU(GfxGlobal gfx, int i){
+  if(i > gfx.layer_c) return 1;
+  GfxLayer* layer = &gfx.layers[i];
+  
   const int glyph_c = ASCII_SCREEN_WIDTH * ASCII_SCREEN_HEIGHT;
   const int src_size = glyph_c * sizeof(GfxGlyph);
 
-  if(gfx.caches[i].data == NULL){
+  if(layer->data == NULL){
     printf("fatal\n");
     return 1;
   }
     
-  VK_CHECK(vmaCopyMemoryToAllocation(gfx.vk.allocator,
-    gfx.caches[i].data,
-    gfx.gpu_glyph_cache.allocation,
-    src_size * i,
-    src_size ));		    
+  int res = vmaCopyMemoryToAllocation
+      (gfx.vk.allocator, layer->data,
+       gfx.gpu_glyph_cache.allocation,
+       src_size * i,
+       src_size );
+  VK_CHECK(res);
 			    
   return 0;
 }
 
-int gfxCacheChange(GfxGlobal* gfx, const char* name){
+int gfxLayerChange(GfxGlobal* gfx, const char* name){
 
   /* get cache index by searching string
    * if it does not exist, alloc and create index
    */  
-  int cache_index = cacheSearch(gfx->caches, gfx->cache_c, name);
-  if(cache_index == -1){
+  int layer_x = layerSearch(gfx->layers, gfx->layer_c, name);
+  if(layer_x == -1){
     // cache not found, find empty slot
-    int free_cache_index = -1;
-    if(gfx->cache_c > 0){
-      for(int i = 0; i < gfx->cache_c; i++){
-	if(gfx->caches[i].type == NULL_CACHE){
-	  free_cache_index = i;
-	}
+    int free_layer_x = -1;
+    if(gfx->layer_c > 0){
+      for(int i = 0; i < gfx->layer_c; i++){
+          if(gfx->layers[i].type == LAYER_TYPE_FREE){
+              free_layer_x = i;
+          }
       }
     }
 
-    if(free_cache_index == -1){
+    if(free_layer_x == -1){
       // no empty slots, realloc, try again
-      cacheCountGrow(&gfx->caches, &gfx->cache_c);
-      return gfxCacheChange(gfx, name);
+      layerCountGrow(&gfx->layers, &gfx->layer_c);
+      return gfxLayerChange(gfx, name);
     }
     // init new cache
-    GfxCache* new_cache = &gfx->caches[free_cache_index];
-    cacheCreate(new_cache, name, SHORT);
-    return gfxCacheChange(gfx, name);
+    GfxLayer* new_layer_ptr = &gfx->layers[free_layer_x];
+    layerCreate(new_layer_ptr, name);
+    return gfxLayerChange(gfx, name);
   }else{
     /* upload whatever has been drawn to this point
      * onto the GPU */
-    gfxCacheSendToGPU(*gfx, gfx->cache_x);
-    gfx->cache_x = cache_index;
+    gfxLayerSendToGPU(*gfx, gfx->layer_x);
+    gfx->layer_x = layer_x;
   }
   return 0;
 }
@@ -158,8 +158,8 @@ int gfxRenderGlyph(GfxGlobal* gfx, uint16_t x, uint16_t y,
     .pos = pack16into32(x, y),
     .unicode_atlas_and_colors = pack_indices(unicode_uv, atlas_index, fg, bg)
   };
-  GfxCache* dst_cache = &gfx->caches[gfx->cache_x];
-  dst_cache->data[y * ASCII_SCREEN_WIDTH + x] = dst;
+  GfxLayer* dst_layer = &gfx->layers[gfx->layer_x];
+  dst_layer->data[y * ASCII_SCREEN_WIDTH + x] = dst;
   return 0;
 }
 
@@ -185,14 +185,14 @@ int gfxRenderElement(GfxGlobal* gfx,
   return 0;
 }
 
-int gfxCachePresent(GfxGlobal* gfx, const char* name){
-  int i = cacheSearch(gfx->caches, gfx->cache_c, name);
-  GfxCache* cache = &gfx->caches[i];
+int gfxLayerPresent(GfxGlobal* gfx, const char* name){
+  int i = layerSearch(gfx->layers, gfx->layer_c, name);
+  GfxLayer* layer = &gfx->layers[i];
   VkDrawIndirectCommand src = {
     .vertexCount = 6,
-    .instanceCount = cache->count,
+    .instanceCount = layer->count,
     .firstVertex = 0,
-    .firstInstance = cache->count * i, // assumes every cache is same size
+    .firstInstance = layer->count * i, // assumes every cache is same size
   };
 
   gfxBufferAppend(gfx->vk.allocator, &gfx->indirect, &src,
@@ -277,11 +277,12 @@ int gfxBakeCommandBuffer(GfxGlobal* gfx)
   
   VkDeviceSize offsets[] = {0};
   vkCmdBindVertexBuffers(cmd_b, 0, 1,
-			 &gfx->gpu_glyph_cache.handle, offsets);    
+			 &gfx->gpu_glyph_cache.handle, offsets);
+
   vkCmdDrawIndirect(cmd_b, gfx->indirect.handle, 0,
-		    gfx->indirect.used_size / sizeof(VkDrawIndirectCommand),
-		    sizeof(VkDrawIndirectCommand));
-    
+  gfx->indirect.used_size / sizeof(VkDrawIndirectCommand),
+  sizeof(VkDrawIndirectCommand));
+   
   // draw end
   pfn_vkCmdEndRenderingKHR(cmd_b);
   
@@ -294,7 +295,7 @@ int gfxBakeCommandBuffer(GfxGlobal* gfx)
 
 int gfxRefresh(GfxGlobal* gfx){
 
-    gfxCachePresent(gfx, "main");
+
 
   GfxContext vk = gfx->vk;
   
@@ -326,7 +327,7 @@ int gfxRefresh(GfxGlobal* gfx){
   }
 
   // upload last drawn cache to GPU
-  gfxCacheSendToGPU(*gfx, gfx->cache_x);
+  gfxLayerSendToGPU(*gfx, gfx->layer_x);
   gfxBakeCommandBuffer(gfx);
   
   VkPipelineStageFlags wait_stages[] =

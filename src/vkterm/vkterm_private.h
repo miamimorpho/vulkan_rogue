@@ -73,18 +73,17 @@ typedef struct{
   uint32_t unicode_atlas_and_colors;
 } GfxGlyph;
 
-enum GfxCacheType {
-  NULL_CACHE,
-  SHORT,
-  LONG,
+enum GfxLayerType{
+    LAYER_TYPE_FREE,
+    LAYER_TYPE_USED,
 };
 
 typedef struct{
+  enum GfxLayerType type;    
   char* name;
-  enum GfxCacheType type;
   GfxGlyph* data;
   uint16_t count;
-} GfxCache;
+} GfxLayer;
 
 typedef struct{
   GfxContext vk;
@@ -95,9 +94,9 @@ typedef struct{
   
   GfxTileset* textures;
   
-  GfxCache* caches;
-  int cache_x;
-  int cache_c;
+  GfxLayer* layers;
+  int layer_x;
+  int layer_c;
   GfxBuffer indirect;
   GfxBuffer gpu_glyph_cache;
 }GfxGlobal;
@@ -129,7 +128,7 @@ int gfxRecreateSwapchain(GfxContext* gfx);
 int gfxPipelineInit(GfxContext*);
 int gfxTexturesInit(GfxTileset**);
 void gfxInputInit(GLFWwindow* window);
-int gfxCacheChange(GfxGlobal* gfx, const char* name);
+int gfxLayerChange(GfxGlobal* gfx, const char* name);
 
 /* Free Functions */
 int _gfxSwapchainDestroy(GfxContext);

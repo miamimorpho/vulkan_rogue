@@ -18,8 +18,8 @@ int gfxGetScreenHeight(Gfx);
 void gfxClear(Gfx);
 int gfxRenderGlyph(Gfx, uint16_t, uint16_t, uint16_t, uint16_t, uint16_t, uint16_t);
 int gfxRenderElement(Gfx, uint16_t, uint16_t, const char*, uint16_t, uint16_t, uint16_t);
-int gfxCacheChange(Gfx, const char*);
-int gfxCachePresent(Gfx, const char*);
+int gfxLayerChange(Gfx, const char*);
+int gfxLayerPresent(Gfx, const char*);
 int gfxRefresh(Gfx);
 
 /* Input Functions */

@@ -3,11 +3,6 @@
 
 #include "world.h"
 
-extern int lMouseX(void);
-extern int lMouseY(void);
-extern int lGetUnicode(void);
-extern int lMoveMobile(GameObject* object_ptr, int dx, int dy);
-
 /*
 struct GameActionImpl;
 typedef struct GameActionImpl* GameAction;

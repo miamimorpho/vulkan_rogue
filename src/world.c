@@ -3,59 +3,43 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "mystdlib.h"
 
-struct GameObjectBufferInfo*
-bufferInfo(GameObjectBuffer buffer){
-  return ( ( (struct GameObjectBufferInfo*)(buffer) ) - 1 );
+GameObjectBuffer createObjectBuffer(size_t nmemb)
+{
+  return myBufferMalloc(nmemb, sizeof(GameObject));
 }
 
-GameObjectBuffer objectBufferCreate(size_t capacity){
-  struct GameObjectBufferInfo* allocation = malloc(
-    sizeof(struct GameObjectBufferInfo) +
-    sizeof(GameObject) * capacity);
-  if(!allocation) return NULL;
-
-  allocation->count = 0;
-  allocation->capacity = capacity;
-
-  return (GameObjectBuffer)(allocation +1);
+GameObject* objectPush(GameObjectBuffer dst, GameObject* src){
+  return myBufferPush(dst, src, sizeof(GameObject));
 }
 
-void objectRemove(GameObjectBuffer objects, size_t index){
-  
-  struct GameObjectBufferInfo* info = bufferInfo(objects);
-  if(index >= info->count) return;
-  
-  memmove(&objects[index],
-	  &objects[index +1],
-	  (info->count - index - 1) * sizeof(GameObject) );
-
-  info->count--;
+int objectPop(GameObjectBuffer dst){
+  return myBufferPop(dst);
 }
 
-int objectPush(GameObjectBuffer objects, GameObject src){
+void objectBufferDestroy(GameObjectBuffer target){
+    myBufferFree(target);
+}
 
-  struct GameObjectBufferInfo* info = bufferInfo(objects);
+MapChunkBuffer createMapChunkBuffer(size_t nmemb){
+   return myBufferMalloc(nmemb, sizeof(MapChunk));
+}
+
+WorldArena createWorldArena(void){
+  WorldArena arena;
+  arena.mobiles = createObjectBuffer(10); 
+  arena.map_chunks = createMapChunkBuffer(10);
+  MapChunk* zeroeth_chunk = newMapChunk(arena.map_chunks);
+  zeroeth_chunk->ptr_to_mobiles = arena.mobiles;
  
-  if(info->count >= info->capacity) return 1;
-
-  objects[info->count] = src;
-  info->count++;
-  
-  return 0;
+  return arena;
 }
 
-void objectBufferDestroy(GameObjectBuffer buffer){
-  if(!buffer) return;
-  free(bufferInfo(buffer));
-}
-
-MapChunk* mapChunkCreate(void){
-
-  const int size = CHUNK_WIDTH * CHUNK_WIDTH;
-  
-  MapChunk* chunk = malloc(sizeof(MapChunk));
+MapChunk* newMapChunk(MapChunk* map_chunks){
  
+  MapChunk src;
+
   GameObject air = {
     OBJECT_ITEM,
     .unicode = 0,
@@ -68,23 +52,28 @@ MapChunk* mapChunkCreate(void){
     .inventory = NULL
   };
 
-  chunk->blocks_sight_bmp = bitMapCreate(CHUNK_WIDTH, CHUNK_WIDTH);
-  chunk->blocks_movement_bmp = bitMapCreate(CHUNK_WIDTH, CHUNK_WIDTH);
+  src.blocks_sight_bmp = bitMapCreate(CHUNK_WIDTH, CHUNK_WIDTH);
+  src.blocks_movement_bmp = bitMapCreate(CHUNK_WIDTH, CHUNK_WIDTH);
 
-  chunk->terrain = objectBufferCreate(size);
+  const int size = CHUNK_WIDTH * CHUNK_WIDTH;
+  src.terrain = createObjectBuffer(size);
   for(size_t i = 0; i < size; i++){
-    objectPush(chunk->terrain, air);
+    objectPush(src.terrain, &air);
   }
-  
-  chunk->mobiles = objectBufferCreate(CHUNK_OBJECT_C);
- 
-  return chunk;
+
+  src.portals = NULL;
+  src.ptr_to_mobiles = map_chunks[0].ptr_to_mobiles;
+  return myBufferPush(map_chunks, &src, sizeof(MapChunk));
 }
 
-GameObject* mobileCreate(MapPosition dst){
+GameObject* newMobile(MapPosition dst){
 
-  MapChunk* local_chunk = dst.chunk_ptr;
-  
+  if(dst.chunk_ptr == NULL ||
+     dst.chunk_ptr->ptr_to_mobiles == NULL){
+      printf("no chunk to allocate from\n");
+      return NULL;
+  }
+
   GameObject proto_mob = {
     OBJECT_MOBILE,
     .unicode = 1,
@@ -94,7 +83,7 @@ GameObject* mobileCreate(MapPosition dst){
     .type.mob = {
       .pos = dst
     },
-    .inventory = objectBufferCreate(4)
+    .inventory = createObjectBuffer(4)
   };
   GameObject proto_item = {
     OBJECT_ITEM,
@@ -107,19 +96,16 @@ GameObject* mobileCreate(MapPosition dst){
     },
     .inventory = NULL,
   };
-  objectPush(proto_mob.inventory, proto_item);
+  objectPush(proto_mob.inventory, &proto_item);
   
-  //printf("mobile create %u\n", proto.data.mob.pos.x);
-  GameObjectBuffer mobiles = local_chunk->mobiles;
-  if(objectPush(mobiles, proto_mob) != 0){
-    printf("err\n");
-    return NULL;
-  }  
+  //GameObjectBuffer mobiles = 
+    //  getArenaFromChunk(dst.chunk_ptr)->mobiles;
+  GameObjectBuffer mobiles = dst.chunk_ptr->ptr_to_mobiles;
 
-  return &mobiles[bufferInfo(mobiles)->count -1];
+  return objectPush(mobiles, &proto_mob);
 }
 
-GameObject mapGetTerrain(MapPosition pos){
+GameObject getTerra(MapPosition pos){
   MapChunk* chunk = pos.chunk_ptr;
   
   GameObject null_object = {
@@ -137,7 +123,7 @@ GameObject mapGetTerrain(MapPosition pos){
   uint32_t offset = (pos.y * CHUNK_WIDTH) + pos.x;  
   if(pos.x < 0 ||
      pos.x >= CHUNK_WIDTH ||
-     offset >= bufferInfo(chunk->terrain)->count){
+     offset >= myBufferMeta(chunk->terrain)->top){
     return null_object;
   }
 
@@ -154,14 +140,14 @@ uint8_t terraBlocksSight(MapPosition pos) {
   return bitMapGetPx(chunk->blocks_sight_bmp, pos.x, pos.y);
 }
 
-int terraSet(GameObject proto, MapPosition pos){
+int setTerra(GameObject proto, MapPosition pos){
   if(proto.type_enum != OBJECT_TERRAIN) return 1;
 
   MapChunk* chunk = pos.chunk_ptr;
   uint32_t offset = (pos.y * CHUNK_WIDTH) + pos.x;  
   if(pos.x < 0 ||
      pos.x >= CHUNK_WIDTH ||
-     offset >= bufferInfo(chunk->terrain)->count){
+     offset >= myBufferMeta(chunk->terrain)->top){
     return 1;
   }
 
@@ -181,8 +167,6 @@ int terraSet(GameObject proto, MapPosition pos){
 }
 
 /* Shadowcasting */
-
-// Cardinal directions
 enum {
     NORTH = 0,
     EAST = 1,
@@ -221,24 +205,23 @@ void transform_coords(int cardinal, int ox, int oy, int row, int col, int* out_x
 }
 
 // Helper functions for rounding
-int round_ties_up(double n) {
+static int round_ties_up(double n) {
       return (int)floor(n + 0.5);
 }
 
-int round_ties_down(double n) {
+static int round_ties_down(double n) {
    return (int)ceil(n - 0.5);
 }
 
-// Calculate slope as a fraction
-Fraction slope(int row_depth, int col) {
+static Fraction slope(int row_depth, int col) {
     return fractionNew(2 * col - 1, 2 * row_depth);
 }
 
-bool is_symmetric(Row* row, int col)
+static bool isSymmetric(Row* row, int col)
 {
   /* checks if slope (col/row) is 
    * between start and end slopes */
-    int depth_mul_start = row->depth * row->start_slope.num;
+  int depth_mul_start = row->depth * row->start_slope.num;
   int col_div_start = col * row->start_slope.den;
   
   int depth_mul_end = row->depth * row->end_slope.num;
@@ -248,11 +231,11 @@ bool is_symmetric(Row* row, int col)
 	  col_div_end <= depth_mul_end);
 }
 
-void shadowcastMarkVisible(BitMap* shadow_mask, MapPosition pos) {
+static void shadowcastMarkVisible(BitMap* shadow_mask, MapPosition pos) {
   bitMapSetPx(shadow_mask, pos.x, pos.y, 0);
 }
 
-void shadowcastScanRow(BitMap* dst_mask, MapPosition camera, Row current_row){
+static void shadowcastScanRow(BitMap* dst_mask, MapPosition camera, Row current_row){
   
   // allows early termination on invalid angles
   if (fractionCompare(current_row.end_slope, current_row.start_slope)) {
@@ -278,7 +261,7 @@ void shadowcastScanRow(BitMap* dst_mask, MapPosition camera, Row current_row){
       { target_x, target_y, camera.chunk_ptr };
     uint8_t is_wall = terraBlocksSight(current_pos);
     
-    if(is_wall || is_symmetric(&current_row, col)) {
+    if(is_wall || isSymmetric(&current_row, col)) {
       if(relativeDistance(current_row.depth, col) < 12.5 * 12.5)
 	shadowcastMarkVisible(dst_mask, current_pos);	  
     }
@@ -343,9 +326,9 @@ int mapChunkDraw(Gfx gfx, MapPosition camera){
   BitMap* shadow_mask = shadowcastFOV(camera);
 
   GameObjectBuffer terrain = camera.chunk_ptr->terrain;
-  struct GameObjectBufferInfo info = *bufferInfo(terrain);
-  //printf("%zu %zu %zu\n", info.capacity, info.count, draw_count);
-  for(unsigned int i = 0; i < info.count; i++){
+  struct MyBufferMeta info = *myBufferMeta(terrain);
+
+  for(unsigned int i = 0; i < info.top; i++){
     int shadow_x = i % CHUNK_WIDTH;
     int shadow_y = i / CHUNK_WIDTH;
     if(bitMapGetPx(shadow_mask, shadow_x, shadow_y) == 0){
@@ -357,8 +340,9 @@ int mapChunkDraw(Gfx gfx, MapPosition camera){
     
   }
 
-  GameObjectBuffer mobiles = camera.chunk_ptr->mobiles;
-  for(size_t i = 0; i < bufferInfo(mobiles)->count; i++){
+  GameObjectBuffer mobiles = camera.chunk_ptr->ptr_to_mobiles;
+  //    getArenaFromChunk(camera.chunk_ptr)->mobiles;
+  for(size_t i = 0; i < myBufferMeta(mobiles)->top; i++){
     
     GameObject actor = mobiles[i];
     MapPosition pos = actor.type.mob.pos;

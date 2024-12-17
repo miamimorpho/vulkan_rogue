@@ -1,4 +1,4 @@
-local vkterm = require("lua/vkterm_lib")
+vkterm = require("lua/vkterm_lib")
 local rogue = require("lua/rogue_lib")
 
 CONTROLS = {
@@ -6,10 +6,11 @@ CONTROLS = {
       ['s'] = function(object) rogue.moveMobile(object, 0, 1) end,
       ['a'] = function(object) rogue.moveMobile(object, -1, 0) end,
       ['d'] = function(object) rogue.moveMobile(object, 1, 0) end,
+      ['n'] = function(object) rogue.buildObject(object, 0) end,
       ['b'] = function(object) 
-              local tile_picker = require("lua/tile_picker")
-              vkterm.runGui(tile_picker)
-            end,       
+              local res = vkterm.runGui("lua/tile_picker.lua")
+              rogue.paintObject(object, unpack(res)) 
+              end,       
       ['left_click'] = function(object, dx, dy) rogue.moveMobile(object, dx, dy) end
 }
 

@@ -952,10 +952,10 @@ GfxGlobal* gfxScreenInit(void){
 		  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		  5 * tile_buffer_size * sizeof(GfxGlyph),
 		  &gfx->gpu_glyph_cache);  
-  gfx->caches = malloc(sizeof(GfxCache));
-  gfx->cache_x = 0;
-  gfx->cache_c = 0;
-  gfxCacheChange(gfx, "main");
+  gfx->layers = malloc(sizeof(GfxLayer));
+  gfx->layer_x = 0;
+  gfx->layer_c = 0;
+  gfxLayerChange(gfx, "main");
   // Create Draw Buffers
   gfxBufferCreate(gfx->vk.allocator,
 		  VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,

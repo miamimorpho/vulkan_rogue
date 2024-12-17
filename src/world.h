@@ -9,18 +9,21 @@
 typedef struct GameObject GameObject;
 typedef struct GameObject* GameObjectBuffer;
 
-struct GameObjectBufferInfo{
-  size_t capacity;
-  size_t count;
-};
+typedef struct MapChunk MapChunk;
+typedef struct MapChunk* MapChunkBuffer;
 
 typedef struct{
+   MapChunkBuffer map_chunks; 
+   GameObjectBuffer mobiles;
+} WorldArena;
+
+struct MapChunk{
   BitMap* blocks_sight_bmp;
   BitMap* blocks_movement_bmp;
   GameObjectBuffer terrain;
-  
-  GameObjectBuffer mobiles;
-} MapChunk;
+  MapChunkBuffer portals;
+  GameObjectBuffer ptr_to_mobiles; // pointer to WorldArena
+};
 
 typedef struct{
   int32_t x;
@@ -59,12 +62,14 @@ struct GameObject{
   GameObjectBuffer inventory;
 };
 
-MapChunk* mapChunkCreate(void);
+WorldArena createWorldArena(void);
+MapChunk* newMapChunk(MapChunk*);
 uint8_t terraBlocksMove(MapPosition pos);
 uint8_t terraBlocksSight(MapPosition pos);
-int mapSetTerrain(GameObject, MapPosition);
-GameObject* mobileCreate(MapPosition);
-BitMap* shadowcast_fov(MapPosition);
+int setTerra(GameObject, MapPosition);
+
+GameObject* newMobile(MapPosition);
+
 int mapChunkDraw(Gfx, MapPosition);
 
 #endif // WORLD_H

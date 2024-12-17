@@ -1,20 +1,38 @@
 * TODO
 
+replace malloc with realloc/calloc
+WORLD GEN!
 screen resizing revisited
 lua gui library - pick tile and editing modes to seperate debug tools from game engine
+retained mode gui?
 stitching maps?
+map generator v1
 NPCs / enemies basic basic
 pathfinding
 saving...
 
+* Arena Allocator
+i need to seperate the logical part of my code, which is pretty good, from the memory arrangement of my code.
+
+* GUI
+first, process table, pass to GPU 'static' buffer, render to screen
+start listening
+if event, redraw elements on CPU, pass to GPU 'dynamic' buffer, render to screen
+CPU memory -> GPU memory -> now we'are drawing layers
+
+gfxNextLayer(Gfx)
+gfxPresentLayers(Gfx, var args order)
+
 * Linting
 tidy vkterm
+replace strncmp with memcmp and have layers have a static sized length name
 write memory safe copy to allocation function vulkan
 add fat pointer string library, polymorphise buffers?
 message buffer -> ring buffer
 changing tileset < - > in editor
 container_of() on graphics API?
-spatial hash space
+spatial hash grid
+
 phase out C stdlib
 
 * NPCs

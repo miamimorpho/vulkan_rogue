@@ -11,10 +11,16 @@ ffi.cdef[[
     int gfxGetKey(void);
     int gfxGetScreenWidth(Gfx);
     int gfxGetScreenHeight(Gfx);
+    void gfxClear(Gfx);
+
+    int gfxRenderGlyph(Gfx, uint16_t, uint16_t, uint16_t, 
+                       uint16_t, uint16_t, uint16_t);
     int gfxRenderElement(Gfx, uint16_t x, uint16_t y,
                          const char* str,
                          uint16_t atlas_index,
 		                 uint16_t fg, uint16_t bg);
+    int gfxLayerChange(Gfx, const char*);
+    int gfxLayerPresent(Gfx, const char*);
     int gfxRefresh(Gfx);
 ]]
 
@@ -32,6 +38,11 @@ vkterm.getUnicode = ffi.C.gfxGetKey
 
 vkterm.screenWidth = function() return ffi.C.gfxGetScreenWidth(gfx_cast_ptr) end
 vkterm.screenHeight = function() return ffi.C.gfxGetScreenHeight(gfx_cast_ptr) end
+
+vkterm.clear = function(name) ffi.C.gfxClear(gfx_cast_ptr) end
+
+vkterm.layerChange = function(name) return ffi.C.gfxLayerChange(gfx_cast_ptr, name) end
+vkterm.layerPresent = function(name) return ffi.C.gfxLayerPresent(gfx_cast_ptr, name) end
 vkterm.refresh = function() return ffi.C.gfxRefresh(gfx_cast_ptr) end
 
 -- CONSTANTS --
@@ -54,68 +65,108 @@ function vkterm.isMouseClicked()
 end
 
 -- LUA ONLY GUI MODE --
-local function renderElement(element)
+
+function vkterm.renderGlyph(x, y, encoding, atlas_index, fg, bg) 
+      ffi.C.gfxRenderGlyph(gfx_cast_ptr,
+        x or 0,
+        y or 0,
+        encoding or 0,
+        atlas_index or 1,
+        fg or 15,
+        bg or 0 ) 
+end
+
+function vkterm.renderElement(element)
       ffi.C.gfxRenderElement(gfx_cast_ptr,
-        element.x,
-        element.y, 
-        element.text, 
-        element.atlas, 
-        element.fg, 
-        element.bg)
+        element.x or 0,
+        element.y or 0, 
+        element.text or " ", 
+        element.atlas or 1, 
+        element.fg or 15, 
+        element.bg or 0)
 end
 
-local function compileElement(options)
-    return {
-        text = options.text or " ",
-        x = options.x or 0,
-        y = options.y or 0,
-        fg = options.fg or 4,
-        bg = options.bg or 4,
-        atlas = options.atlas or 0,
-        width = string.len(tostring(options.text or " ")),
-        height = options.height or 1,
-        on_hover = options.on_hover or nil,
-        on_click = options.on_click or nil
-    }
+local function renderStaticElements(elements_src)
+
+    for i, e in pairs(elements_src) do
+        e.width = e.width or string.len(tostring(e.text or " "))
+        e.height = e.height or 1
+        if not e.on_draw then
+            vkterm.renderElement(e)
+        else 
+            e:on_draw()
+        end
+    end
 end
 
-local function runElementTable(elements)
+local function runObservers(elements)
+
+    vkterm.clear()
 
     local mouse_x = vkterm.mouseX()
     local mouse_y = vkterm.mouseY()
+    local screen_width = vkterm.screenWidth()
+    local screen_height = vkterm.screenHeight()
 
-    for _, element_raw in ipairs(elements) do
-        local element = compileElement(element_raw)
+    for _, element in pairs(elements) do
 
         local in_bounds = 
-            mouse_x > element.x / vkterm.screenWidth() and 
-            mouse_x <= (element.x + element.width) / vkterm.screenWidth() and
-            mouse_y > element.y / vkterm.screenHeight() and 
-            mouse_y <= (element.y + element.height) / vkterm.screenHeight()
+        
+            mouse_x > element.x / screen_width and 
+            mouse_x < (element.x + element.width) / screen_width and
+            mouse_y > element.y / screen_height and 
+            mouse_y < (element.y + element.height) / screen_height
         
         -- Handle hover state
         if in_bounds then
+
+            mouse_x_unorm = math.floor(mouse_x * screen_width)
+            mouse_y_unorm = math.floor(mouse_y * screen_height)
+
             if element.on_hover then
-                element:on_hover()
+                element:on_hover(mouse_x_unorm, 
+                                 mouse_y_unorm)
             end
             
             -- Check for click
             if vkterm.isMouseClicked() and element.on_click then
-                element:on_click()
+                element:on_click(mouse_x_unorm, mouse_y_unorm)
             end
         end
-        
-        renderElement(element)
-        if element.to_exit then return 1 end
+       
+        if element.to_exit then return element.return_value end
     end
     return 0
 end
 
-function vkterm.runGui(elements_table)
-    while(runElementTable(elements_table) == 0) do 
+function vkterm.runGui(gui_filename)
+
+    local file, err = loadfile(gui_filename)
+    if file then
+        elements = file()
+    else
+        error("Could not load file: " .. tostring(err))
+    end
+
+    vkterm.layerChange(gui_filename)
+
+    renderStaticElements(elements) 
+    vkterm.layerChange("fg")   
+
+    local res = 0;
+    while true do
       vkterm.pollEvents()
+      res = runObservers(elements)
+      if res ~= 0 then
+         break
+      end 
+  
+      vkterm.layerPresent(gui_filename)
+      vkterm.layerPresent("fg")
       vkterm.refresh()
     end
+    vkterm.layerChange("main")
+    return res
 end
 
 return vkterm
