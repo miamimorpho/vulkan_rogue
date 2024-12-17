@@ -22,7 +22,7 @@ struct MapChunk{
   BitMap* blocks_movement_bmp;
   GameObjectBuffer terrain;
   MapChunkBuffer portals;
-  GameObjectBuffer ptr_to_mobiles; // pointer to WorldArena
+  MapChunkBuffer* ptr_to_chunks;
 };
 
 typedef struct{
@@ -62,7 +62,7 @@ struct GameObject{
   GameObjectBuffer inventory;
 };
 
-WorldArena createWorldArena(void);
+WorldArena* createWorldArena(void);
 MapChunk* newMapChunk(MapChunk*);
 uint8_t terraBlocksMove(MapPosition pos);
 uint8_t terraBlocksSight(MapPosition pos);

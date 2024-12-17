@@ -1,6 +1,5 @@
 * TODO
 
-replace malloc with realloc/calloc
 WORLD GEN!
 screen resizing revisited
 lua gui library - pick tile and editing modes to seperate debug tools from game engine
@@ -10,9 +9,6 @@ map generator v1
 NPCs / enemies basic basic
 pathfinding
 saving...
-
-* Arena Allocator
-i need to seperate the logical part of my code, which is pretty good, from the memory arrangement of my code.
 
 * GUI
 first, process table, pass to GPU 'static' buffer, render to screen

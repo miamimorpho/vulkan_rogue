@@ -23,20 +23,25 @@ void objectBufferDestroy(GameObjectBuffer target){
 }
 
 MapChunkBuffer createMapChunkBuffer(size_t nmemb){
-   return myBufferMalloc(nmemb, sizeof(MapChunk));
+    return myBufferMalloc(nmemb, sizeof(MapChunk));
 }
 
-WorldArena createWorldArena(void){
-  WorldArena arena;
-  arena.mobiles = createObjectBuffer(10); 
-  arena.map_chunks = createMapChunkBuffer(10);
-  MapChunk* zeroeth_chunk = newMapChunk(arena.map_chunks);
-  zeroeth_chunk->ptr_to_mobiles = arena.mobiles;
+GameObjectBuffer getMobilesFromMapChunk(MapChunk* chunk) {
+    WorldArena* arena = container_of(chunk->ptr_to_chunks, WorldArena, map_chunks);
+    return arena->mobiles;
+}
+
+WorldArena* createWorldArena(void){
+  WorldArena* arena = malloc(sizeof(WorldArena));
+  arena->mobiles = createObjectBuffer(10); 
+  arena->map_chunks = createMapChunkBuffer(10);
+  arena->map_chunks[0].ptr_to_chunks = &arena->map_chunks;
+  MapChunk* zeroeth_chunk = newMapChunk(arena->map_chunks);
  
   return arena;
 }
 
-MapChunk* newMapChunk(MapChunk* map_chunks){
+MapChunk* newMapChunk(MapChunk* chunk){
  
   MapChunk src;
 
@@ -62,14 +67,16 @@ MapChunk* newMapChunk(MapChunk* map_chunks){
   }
 
   src.portals = NULL;
-  src.ptr_to_mobiles = map_chunks[0].ptr_to_mobiles;
-  return myBufferPush(map_chunks, &src, sizeof(MapChunk));
+  MapChunkBuffer* ptr_to_chunks_buffer = chunk->ptr_to_chunks;
+  src.ptr_to_chunks = ptr_to_chunks_buffer;
+  return myBufferPush(*ptr_to_chunks_buffer, 
+                      &src, sizeof(MapChunk));
 }
 
 GameObject* newMobile(MapPosition dst){
 
   if(dst.chunk_ptr == NULL ||
-     dst.chunk_ptr->ptr_to_mobiles == NULL){
+     dst.chunk_ptr->ptr_to_chunks == NULL){
       printf("no chunk to allocate from\n");
       return NULL;
   }
@@ -98,10 +105,7 @@ GameObject* newMobile(MapPosition dst){
   };
   objectPush(proto_mob.inventory, &proto_item);
   
-  //GameObjectBuffer mobiles = 
-    //  getArenaFromChunk(dst.chunk_ptr)->mobiles;
-  GameObjectBuffer mobiles = dst.chunk_ptr->ptr_to_mobiles;
-
+  GameObjectBuffer mobiles = getMobilesFromMapChunk(dst.chunk_ptr);
   return objectPush(mobiles, &proto_mob);
 }
 
@@ -340,8 +344,8 @@ int mapChunkDraw(Gfx gfx, MapPosition camera){
     
   }
 
-  GameObjectBuffer mobiles = camera.chunk_ptr->ptr_to_mobiles;
-  //    getArenaFromChunk(camera.chunk_ptr)->mobiles;
+  //GameObjectBuffer mobiles = camera.chunk_ptr->ptr_to_mobiles;
+  GameObjectBuffer mobiles = getMobilesFromMapChunk(camera.chunk_ptr);
   for(size_t i = 0; i < myBufferMeta(mobiles)->top; i++){
     
     GameObject actor = mobiles[i];

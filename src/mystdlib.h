@@ -6,39 +6,41 @@
 struct MyBufferMeta{
     size_t top;
     size_t size;
+    char data[];
 };
 
-static inline struct MyBufferMeta* myBufferMeta(void* buffer){
-    return ( ( struct MyBufferMeta*)buffer ) - 1;
+static inline struct MyBufferMeta* myBufferMeta(void* buffer_data){
+    return container_of(buffer_data, struct MyBufferMeta, data);
 }
 
 static inline void* myBufferMalloc(size_t nmemb, size_t stride){
+    
     if(stride && nmemb > SIZE_MAX / stride){
         fprintf(stderr, "MyBufferMalloc:integer overflow\n");
         return NULL;
     }
-    
-    struct MyBufferMeta* info_ptr = 
-        malloc( sizeof(struct MyBufferMeta) + stride * nmemb);
-    if(info_ptr == NULL){
-        fprintf(stderr, "MyBufferMalloc:malloc error\n");
-        return NULL;
-    }
-    info_ptr->top = 0;
-    info_ptr->size = stride * nmemb;
+    size_t total_size = 
+        sizeof(struct MyBufferMeta) + nmemb * stride;
 
-    return (void*)(info_ptr +1);
+    struct MyBufferMeta* meta = malloc(total_size);
+    if(meta == NULL) return NULL;
+    meta->top = 0;
+    meta->size = nmemb * stride;
+    memset(meta->data, 0, meta->size);
+
+    return meta->data;
 }
 
-static inline void myBufferFree(void* raw_ptr){
-    if(raw_ptr == NULL) return;
-    free(myBufferMeta(raw_ptr));
+static inline void myBufferFree(void* buffer){
+    if(buffer == NULL) return;
+    struct MyBufferMeta* meta = myBufferMeta(buffer);
+    free(meta);
 }
 
-static inline void* myBufferPush(void* head, void* val_ptr, size_t stride)
+static inline void* myBufferPush(void* head, const void* val_ptr, size_t stride)
 {
     struct MyBufferMeta* info = myBufferMeta(head);
-    if(info->top >= info->size / stride){
+    if(info->top * stride >= info->size){
         fprintf(stderr, "myBufferPush: buffer overflow %zu %zu\n", info->top, info->size);
         return NULL;
     }

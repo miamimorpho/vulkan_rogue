@@ -10,11 +10,11 @@ int main(void){
   Gfx gfx = gfxScreenInit();
   luaLoadTextures(gfx);
 
-  WorldArena arena = createWorldArena();
+  WorldArena* arena = createWorldArena();
 
   lua_State* L = luaStateInit(gfx, "lua/controls.lua");
 
-  MapPosition start_pos = { 2, 2, arena.map_chunks };
+  MapPosition start_pos = { 2, 2, arena->map_chunks };
   
   GameObject* player = newMobile(start_pos);
   if(player == NULL) printf("err\n");
