@@ -51,6 +51,14 @@ int layerCountGrow(GfxLayer** layer_arr_ptr, int* layer_c){
   return 0;
 }
 
+void layerBufferDestroy(GfxGlobal* gfx){
+  for(int i = 0; i < gfx->layer_c; i++){
+      free(gfx->layers[i].name);
+      free(gfx->layers[i].data);
+  }
+  free(gfx->layers);
+}
+
 void gfxClear( GfxGlobal* gfx ){
   GfxLayer* layer = &gfx->layers[gfx->layer_x];
   if(layer != NULL){
@@ -144,7 +152,7 @@ int gfxRenderGlyph(GfxGlobal* gfx, uint16_t x, uint16_t y,
 	      uint16_t fg, uint16_t bg){
 
   if(atlas_index > MAX_SAMPLERS) return 1;
-  GfxTileset tex = gfx->textures[atlas_index];
+  GfxTileset tex = gfx->tilesets[atlas_index];
   if(tex.image.handle == NULL){
     atlas_index = ASCII_TEXTURE_INDEX;
   }

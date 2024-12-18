@@ -92,7 +92,7 @@ typedef struct{
   uint32_t swapchain_x;
   uint32_t frame_x;
   
-  GfxTileset* textures;
+  GfxTileset* tilesets;
   
   GfxLayer* layers;
   int layer_x;
@@ -126,11 +126,13 @@ void gfxImageDestroy(VmaAllocator, GfxImage);
 /* Initialise Auxillaries */
 int gfxRecreateSwapchain(GfxContext* gfx);
 int gfxPipelineInit(GfxContext*);
-int gfxTexturesInit(GfxTileset**);
+int gfxTilesetsMemoryInit(GfxTileset**);
 void gfxInputInit(GLFWwindow* window);
 int gfxLayerChange(GfxGlobal* gfx, const char* name);
 
 /* Free Functions */
+void layerBufferDestroy(GfxGlobal*);
+int gfxTilesetsFree(GfxGlobal*);
 int _gfxSwapchainDestroy(GfxContext);
 int _gfxConstFree(GfxContext);
 

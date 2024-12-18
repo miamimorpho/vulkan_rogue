@@ -36,6 +36,8 @@ int main(void){
     gfxRefresh(gfx);
   }
   
+  
+  destroyWorldArena(arena);
   gfxScreenClose(gfx);
   return 0;
 }

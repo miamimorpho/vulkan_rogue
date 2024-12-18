@@ -941,7 +941,7 @@ GfxGlobal* gfxScreenInit(void){
   gfx->width_in_tiles = gfx->vk.extent.width / (ASCII_TILE_SIZE * ASCII_SCALE);
   gfx->height_in_tiles = gfx->vk.extent.height / (ASCII_TILE_SIZE * ASCII_SCALE);
   
-  gfxTexturesInit(&gfx->textures);
+  gfxTilesetsMemoryInit(&gfx->tilesets);
 
   gfx->swapchain_x = 0;
   gfx->frame_x = 0;
@@ -984,15 +984,14 @@ int gfxScreenClose(GfxGlobal* gfx){
   gfxBufferDestroy(vk.allocator, &gfx->gpu_glyph_cache);
   gfxBufferDestroy(vk.allocator, &gfx->indirect);
   
-  // free asset data
-  for(int i = 0; i < MAX_SAMPLERS; i++){
-    if(gfx->textures[i].image.handle != VK_NULL_HANDLE){
-      gfxImageDestroy(vk.allocator, gfx->textures[i].image);
-    }
-  }
+  // free layers
+  layerBufferDestroy(gfx);
+  gfxTilesetsFree(gfx);
+
 
   // free vulkan
   _gfxConstFree(gfx->vk);
+  free(gfx);
   return 0;
 }
 

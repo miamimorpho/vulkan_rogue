@@ -31,10 +31,11 @@ static inline void* myBufferMalloc(size_t nmemb, size_t stride){
     return meta->data;
 }
 
-static inline void myBufferFree(void* buffer){
-    if(buffer == NULL) return;
+static inline int myBufferFree(void* buffer){
+    if(buffer == NULL) return -1;
     struct MyBufferMeta* meta = myBufferMeta(buffer);
     free(meta);
+    return 0;
 }
 
 static inline void* myBufferPush(void* head, const void* val_ptr, size_t stride)
@@ -51,12 +52,11 @@ static inline void* myBufferPush(void* head, const void* val_ptr, size_t stride)
     return dst;
 }
 
-static inline int myBufferPop(void* root_ptr){
+static inline void* myBufferPop(void* root_ptr, size_t stride){
     struct MyBufferMeta* info = myBufferMeta(root_ptr);
-    if(info->top == 0) return -1;
-
+    if(info->top == 0) return NULL;
     info->top--;
-    return 0;
+    return (char*)root_ptr + (info->top * stride);
 }
 
 #endif // MYSTDLIB

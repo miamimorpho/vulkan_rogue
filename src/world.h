@@ -35,7 +35,6 @@ typedef enum {
     OBJECT_TERRAIN,
     OBJECT_MOBILE,
     OBJECT_ITEM,
-    // Add other types as needed
 } GameObjectType;
 
 struct GameObject{
@@ -69,6 +68,8 @@ uint8_t terraBlocksSight(MapPosition pos);
 int setTerra(GameObject, MapPosition);
 
 GameObject* newMobile(MapPosition);
+void destroyWorldArena(WorldArena*);
+
 
 int mapChunkDraw(Gfx, MapPosition);
 

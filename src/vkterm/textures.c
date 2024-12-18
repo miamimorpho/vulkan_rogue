@@ -389,7 +389,7 @@ OpenerFunc getFileOpener(const char *filename) {
 
 int gfxTextureLoad(GfxGlobal* gfx, const char* filename){
 
-  GfxTileset* textures = gfx->textures;
+  GfxTileset* textures = gfx->tilesets;
   if(textures == NULL){
     return 1;
   }
@@ -420,15 +420,26 @@ int gfxTextureLoad(GfxGlobal* gfx, const char* filename){
   return 0;
 }
 
-int gfxTexturesInit(GfxTileset** textures){
-  *textures = (GfxTileset*)malloc(MAX_SAMPLERS * sizeof(GfxTileset));
+int gfxTilesetsMemoryInit(GfxTileset** tileset_arr){
+  *tileset_arr = (GfxTileset*)malloc(MAX_SAMPLERS * sizeof(GfxTileset));
   for(unsigned int i = 0; i < MAX_SAMPLERS; i++){
-    (*textures)[i].glyph_h = 0;
-    (*textures)[i].glyph_w = 0;
-    (*textures)[i].image_w = 0;
-    (*textures)[i].image_h = 0;
-    (*textures)[i].image.handle = VK_NULL_HANDLE;
-    (*textures)[i].image.view = VK_NULL_HANDLE;
+    (*tileset_arr)[i].glyph_h = 0;
+    (*tileset_arr)[i].glyph_w = 0;
+    (*tileset_arr)[i].image_w = 0;
+    (*tileset_arr)[i].image_h = 0;
+    (*tileset_arr)[i].image.handle = VK_NULL_HANDLE;
+    (*tileset_arr)[i].image.view = VK_NULL_HANDLE;
   }
+  return 0;
+}
+
+int gfxTilesetsFree(GfxGlobal* gfx){
+  for(int i = 0; i < MAX_SAMPLERS; i++){
+      if(gfx->tilesets[i].image.handle != VK_NULL_HANDLE){
+          gfxImageDestroy(gfx->vk.allocator, gfx->tilesets[i].image);
+          free(gfx->tilesets[i].encodings);
+      }
+  }
+  free(gfx->tilesets);
   return 0;
 }

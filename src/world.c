@@ -14,16 +14,32 @@ GameObject* objectPush(GameObjectBuffer dst, GameObject* src){
   return myBufferPush(dst, src, sizeof(GameObject));
 }
 
-int objectPop(GameObjectBuffer dst){
-  return myBufferPop(dst);
+GameObject* objectPop(GameObjectBuffer dst){
+  return myBufferPop(dst, sizeof(GameObject));
 }
 
-void objectBufferDestroy(GameObjectBuffer target){
-    myBufferFree(target);
+int destroyObjectBuffer(GameObjectBuffer target){
+    return myBufferFree(target);
 }
 
 MapChunkBuffer createMapChunkBuffer(size_t nmemb){
     return myBufferMalloc(nmemb, sizeof(MapChunk));
+}
+
+
+void destroyMapChunkBuffer(MapChunkBuffer target){
+    int i;
+    struct MyBufferMeta* info = myBufferMeta(target);
+    while(( i = info->top -1) >= 0){
+       printf("win %d\n", i);
+       bitMapDestroy(target[i].blocks_sight_bmp);
+       bitMapDestroy(target[i].blocks_movement_bmp);
+       destroyObjectBuffer(target[i].terrain);
+       
+       myBufferPop(target, sizeof(MapChunk));
+    }
+
+    myBufferFree(target);
 }
 
 GameObjectBuffer getMobilesFromMapChunk(MapChunk* chunk) {
@@ -39,6 +55,12 @@ WorldArena* createWorldArena(void){
   MapChunk* zeroeth_chunk = newMapChunk(arena->map_chunks);
  
   return arena;
+}
+
+void destroyWorldArena(WorldArena* arena){
+    destroyObjectBuffer(arena->mobiles);
+    destroyMapChunkBuffer(arena->map_chunks);
+    free(arena);
 }
 
 MapChunk* newMapChunk(MapChunk* chunk){
