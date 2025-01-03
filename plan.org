@@ -2,13 +2,20 @@
 
 WORLD GEN!
 screen resizing revisited
-lua gui library - pick tile and editing modes to seperate debug tools from game engine
-retained mode gui?
-stitching maps?
 map generator v1
 NPCs / enemies basic basic
 pathfinding
 saving...
+
+* Arena Allocators
+each container needs to be backed by an arena;
+slices are implicit but need to store count;
+myBuffer is a basic stack suballocator, should be a hashmap
+hashmaps next
+
+group together allocations to a single lifetime
+so mapChunk members will all be allocated from the same arena
+and Objects, members including inventories, come from the same arena.
 
 * GUI
 first, process table, pass to GPU 'static' buffer, render to screen

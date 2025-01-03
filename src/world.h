@@ -1,28 +1,41 @@
 #ifndef WORLD_H
 #define WORLD_H
 #include "vkterm/vkterm.h"
-#include "bitmap.h"
+#include "mystdlib.h"
 
-#define CHUNK_WIDTH 32
+#define CHUNK_WIDTH 24
+#define CHUNK_SIZE CHUNK_WIDTH * CHUNK_WIDTH
 #define CHUNK_OBJECT_C 8
 
 typedef struct GameObject GameObject;
-typedef struct GameObject* GameObjectBuffer;
+// TODO use bitmap for freelist and pool
+//typedef struct GameObject* GameObjectBuffer;
+// or hashmap MapChunk:mobiles
+
 
 typedef struct MapChunk MapChunk;
-typedef struct MapChunk* MapChunkBuffer;
+//typedef struct MapChunk* MapChunkBuffer;
 
-typedef struct{
-   MapChunkBuffer map_chunks; 
-   GameObjectBuffer mobiles;
-} WorldArena;
+struct WorldArena{
+   AllocatorInterface allocator;
+   Bitmap* map_chunks_free;
+   MapChunk* map_chunks;
+   Bitmap* mobiles_free;
+   GameObject* mobiles;
+};
+
+struct GameObjectTile{
+    uint32_t unicode;
+    uint8_t atlas;
+    uint8_t fg;
+    uint8_t bg;
+};
 
 struct MapChunk{
-  BitMap* blocks_sight_bmp;
-  BitMap* blocks_movement_bmp;
-  GameObjectBuffer terrain;
-  MapChunkBuffer portals;
-  MapChunkBuffer* ptr_to_chunks;
+  struct GameObjectTile* terrain_tiles;
+  Bitmap* blocks_sight_bmp;
+  Bitmap* blocks_movement_bmp;
+  struct WorldArena* ptr_to_arena;
 };
 
 typedef struct{
@@ -39,10 +52,7 @@ typedef enum {
 
 struct GameObject{
   GameObjectType type_enum;
-  uint32_t unicode;
-  uint32_t atlas;
-  uint32_t fg;
-  uint32_t bg;
+  struct GameObjectTile tile;
   union {
     struct {
       uint8_t blocks_sight;
@@ -54,23 +64,23 @@ struct GameObject{
     } mob;
     
     struct {
-      int id;
+       int id;
     } item;
     
   } type;
-  GameObjectBuffer inventory;
+  GameObject* inventory;
 };
 
-WorldArena* createWorldArena(void);
-MapChunk* newMapChunk(MapChunk*);
-uint8_t terraBlocksMove(MapPosition pos);
-uint8_t terraBlocksSight(MapPosition pos);
-int setTerra(GameObject, MapPosition);
+struct WorldArena* createWorldArena(AllocatorInterface);
+uint8_t terraDoesBlockMove(MapPosition);
+uint8_t terraDoesBlockSight(MapPosition);
+int terraSet(GameObject, MapPosition);
 
-GameObject* newMobile(MapPosition);
-void destroyWorldArena(WorldArena*);
+GameObject* mobilePush(MapPosition);
+
+void destroyWorldArena(struct WorldArena*);
 
 
-int mapChunkDraw(Gfx, MapPosition);
+int mapChunkDraw(Gfx, struct WorldArena*, MapPosition);
 
 #endif // WORLD_H

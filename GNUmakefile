@@ -1,5 +1,5 @@
 NAME = rogue
-CFLAGS = -g -Wall -Wextra -Wpedantic -Wno-nullability-extension -fdiagnostics-color=always
+CFLAGS = -g -Wall -Wextra -Wpedantic -Wno-nullability-extension -Wstrict-prototypes -Wold-style-definition -fdiagnostics-color=always
 INCLUDE = -I/usr/local/include -I/usr/X11R6/include -I/usr/local/include/luajit-2.1
 LDFLAGS = -L/usr/local/lib
 LDADD = -lglfw -lstdc++ -lpthread -lvulkan -lm -lluajit-5.1

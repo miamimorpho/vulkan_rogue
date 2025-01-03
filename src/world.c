@@ -5,130 +5,106 @@
 #include <string.h>
 #include "mystdlib.h"
 
-GameObjectBuffer createObjectBuffer(size_t nmemb)
-{
-  return myBufferMalloc(nmemb, sizeof(GameObject));
+GameObject* getMobilesFromMapChunk(MapChunk* chunk){
+    // TODO: MapChunks and Mobiles form a linked list of arenas
+    return chunk->ptr_to_arena->mobiles;
 }
 
-GameObject* objectPush(GameObjectBuffer dst, GameObject* src){
-  return myBufferPush(dst, src, sizeof(GameObject));
-}
-
-GameObject* objectPop(GameObjectBuffer dst){
-  return myBufferPop(dst, sizeof(GameObject));
-}
-
-int destroyObjectBuffer(GameObjectBuffer target){
-    return myBufferFree(target);
-}
-
-MapChunkBuffer createMapChunkBuffer(size_t nmemb){
-    return myBufferMalloc(nmemb, sizeof(MapChunk));
-}
-
-
-void destroyMapChunkBuffer(MapChunkBuffer target){
-    int i;
-    struct MyBufferMeta* info = myBufferMeta(target);
-    while(( i = info->top -1) >= 0){
-       printf("win %d\n", i);
-       bitMapDestroy(target[i].blocks_sight_bmp);
-       bitMapDestroy(target[i].blocks_movement_bmp);
-       destroyObjectBuffer(target[i].terrain);
-       
-       myBufferPop(target, sizeof(MapChunk));
-    }
-
-    myBufferFree(target);
-}
-
-GameObjectBuffer getMobilesFromMapChunk(MapChunk* chunk) {
-    WorldArena* arena = container_of(chunk->ptr_to_chunks, WorldArena, map_chunks);
-    return arena->mobiles;
-}
-
-WorldArena* createWorldArena(void){
-  WorldArena* arena = malloc(sizeof(WorldArena));
-  arena->mobiles = createObjectBuffer(10); 
-  arena->map_chunks = createMapChunkBuffer(10);
-  arena->map_chunks[0].ptr_to_chunks = &arena->map_chunks;
-  MapChunk* zeroeth_chunk = newMapChunk(arena->map_chunks);
+MapChunk mapChunkInit(struct WorldArena* ptr_to_arena){
  
-  return arena;
-}
+  AllocatorInterface allocator = ptr_to_arena->allocator;
 
-void destroyWorldArena(WorldArena* arena){
-    destroyObjectBuffer(arena->mobiles);
-    destroyMapChunkBuffer(arena->map_chunks);
-    free(arena);
-}
-
-MapChunk* newMapChunk(MapChunk* chunk){
- 
   MapChunk src;
-
-  GameObject air = {
-    OBJECT_ITEM,
+  src.blocks_sight_bmp = bitmapCreate(CHUNK_WIDTH, CHUNK_WIDTH, allocator);
+  src.blocks_movement_bmp = bitmapCreate(CHUNK_WIDTH, CHUNK_WIDTH, allocator);
+  
+  struct GameObjectTile air = {
     .unicode = 0,
     .atlas = 2,//DRAW_TEXTURE_INDEX
     .fg = 15,
     .bg = 3,
-    .type.item = {
-      .id = 0,
-    },
-    .inventory = NULL
   };
-
-  src.blocks_sight_bmp = bitMapCreate(CHUNK_WIDTH, CHUNK_WIDTH);
-  src.blocks_movement_bmp = bitMapCreate(CHUNK_WIDTH, CHUNK_WIDTH);
-
-  const int size = CHUNK_WIDTH * CHUNK_WIDTH;
-  src.terrain = createObjectBuffer(size);
-  for(size_t i = 0; i < size; i++){
-    objectPush(src.terrain, &air);
+  const size_t tile_c = CHUNK_WIDTH * CHUNK_WIDTH;
+  src.terrain_tiles = memSliceCreate(tile_c, sizeof(struct GameObjectTile), allocator);
+  for(size_t i = 0; i < tile_c; i++){
+      src.terrain_tiles[i] = air;
   }
 
-  src.portals = NULL;
-  MapChunkBuffer* ptr_to_chunks_buffer = chunk->ptr_to_chunks;
-  src.ptr_to_chunks = ptr_to_chunks_buffer;
-  return myBufferPush(*ptr_to_chunks_buffer, 
-                      &src, sizeof(MapChunk));
+  src.ptr_to_arena = ptr_to_arena;
+  return src;
 }
 
-GameObject* newMobile(MapPosition dst){
-
-  if(dst.chunk_ptr == NULL ||
-     dst.chunk_ptr->ptr_to_chunks == NULL){
-      printf("no chunk to allocate from\n");
-      return NULL;
-  }
+GameObject mobileInit(AllocatorInterface allocator){
 
   GameObject proto_mob = {
     OBJECT_MOBILE,
-    .unicode = 1,
-    .atlas = 1,//ASCII_TEXTURE_INDEX,
-    .fg = 15,
-    .bg = 0,
-    .type.mob = {
-      .pos = dst
-    },
-    .inventory = createObjectBuffer(4)
+    .tile.unicode = 1,
+    .tile.atlas = 1,//ASCII_TEXTURE_INDEX,
+    .tile.fg = 15,
+    .tile.bg = 0,
+    .inventory = memSliceCreate(4, sizeof(GameObject), allocator)
   };
   GameObject proto_item = {
     OBJECT_ITEM,
-    .unicode = 0,
-    .atlas = 1,//ASCII_TEXTURE_INDEX,
-    .fg = 15,
-    .bg = 0,
+    .tile.unicode = 0,
+    .tile.atlas = 1,//ASCII_TEXTURE_INDEX,
+    .tile.fg = 15,
+    .tile.bg = 0,
     .type.item = {
       .id = 4
     },
     .inventory = NULL,
   };
-  objectPush(proto_mob.inventory, &proto_item);
+  proto_mob.inventory[0] = proto_item;
+  return proto_mob;
+}
+
+struct WorldArena* createWorldArena(AllocatorInterface allocator){
+  struct WorldArena* arena = allocator.mallocFn(allocator.ctx, sizeof(struct WorldArena));
+  arena->allocator = allocator;
+
+  const int mobile_c = 10;
+  arena->mobiles_free = bitmapCreate(mobile_c, 1, allocator);
+  arena->mobiles = memSliceCreate(mobile_c, sizeof(GameObject), allocator);
+  for(int i = 0; i < mobile_c; i++){
+      arena->mobiles[i] = mobileInit(allocator);
+  }
   
-  GameObjectBuffer mobiles = getMobilesFromMapChunk(dst.chunk_ptr);
-  return objectPush(mobiles, &proto_mob);
+  const int chunk_c = 10;
+  arena->map_chunks_free = bitmapCreate(chunk_c, 1, allocator);
+  arena->map_chunks = memSliceCreate(chunk_c, sizeof(MapChunk), allocator);
+  for(int i = 0; i < chunk_c; i++){
+      arena->map_chunks[i] = mapChunkInit(arena);
+  }
+
+  return arena;
+}
+
+GameObject* mobilePush(MapPosition pos){
+
+    struct WorldArena* a = pos.chunk_ptr->ptr_to_arena;
+
+    int64_t free_index = -1;
+    
+    int64_t mobile_c = memSliceSize(a->mobiles) / sizeof(GameObject);
+    printf("%lld\n", mobile_c);
+    for(int i = 0; i < mobile_c; i++){
+        if(bitmapGetPx(a->mobiles_free, i, 0) == 0){
+            free_index = i;
+            break;
+        }
+    }
+    if(free_index < 0){
+        fprintf(stderr, "no free memory slot found");
+        return NULL;
+    }
+    a->mobiles[free_index].type.mob.pos = pos;
+    bitmapSetPx(a->mobiles_free, free_index, 0, 1);
+    return &a->mobiles[free_index];
+}
+
+void destroyWorldArena(struct WorldArena* arena){
+    memArenaDestroy(arena->allocator.ctx);
 }
 
 GameObject getTerra(MapPosition pos){
@@ -136,10 +112,12 @@ GameObject getTerra(MapPosition pos){
   
   GameObject null_object = {
     OBJECT_TERRAIN,
-    .unicode = 370,
-    .atlas = 2,//DRAW_TEXTURE_INDEX,
-    .fg = 3,
-    .bg = 0,
+
+    .tile.unicode = 370,
+    .tile.atlas = 2,//DRAW_TEXTURE_INDEX,
+    .tile.fg = 3,
+    .tile.bg = 0,
+
     .type.terra = {
       .blocks_movement = 0,
       .blocks_sight = 1,
@@ -149,46 +127,54 @@ GameObject getTerra(MapPosition pos){
   uint32_t offset = (pos.y * CHUNK_WIDTH) + pos.x;  
   if(pos.x < 0 ||
      pos.x >= CHUNK_WIDTH ||
-     offset >= myBufferMeta(chunk->terrain)->top){
+     pos.y < 0 ||
+     pos.y >= CHUNK_WIDTH){
     return null_object;
   }
 
-  return chunk->terrain[offset];
+  return (GameObject){
+      OBJECT_TERRAIN,
+      .tile = chunk->terrain_tiles[offset],
+      .type.terra = {
+          .blocks_movement = terraDoesBlockMove(pos),
+          .blocks_sight = terraDoesBlockSight(pos),
+      }      
+  };
+      
 }
 
-uint8_t terraBlocksMove(MapPosition pos){
+uint8_t terraDoesBlockMove(MapPosition pos){
   MapChunk* chunk = pos.chunk_ptr;
-  return bitMapGetPx(chunk->blocks_movement_bmp, pos.x, pos.y);
+  return bitmapGetPx(chunk->blocks_movement_bmp, pos.x, pos.y);
 }
 
-uint8_t terraBlocksSight(MapPosition pos) {
+uint8_t terraDoesBlockSight(MapPosition pos) {
   MapChunk* chunk = pos.chunk_ptr;
-  return bitMapGetPx(chunk->blocks_sight_bmp, pos.x, pos.y);
+  return bitmapGetPx(chunk->blocks_sight_bmp, pos.x, pos.y);
 }
 
-int setTerra(GameObject proto, MapPosition pos){
+int terraSet(GameObject proto, MapPosition pos){
   if(proto.type_enum != OBJECT_TERRAIN) return 1;
 
   MapChunk* chunk = pos.chunk_ptr;
   uint32_t offset = (pos.y * CHUNK_WIDTH) + pos.x;  
   if(pos.x < 0 ||
      pos.x >= CHUNK_WIDTH ||
-     offset >= myBufferMeta(chunk->terrain)->top){
+     pos.y < 0 ||
+     pos.y >= CHUNK_WIDTH){
     return 1;
   }
 
   if(proto.type.terra.blocks_sight == 1){
-    BitMap* blocks_sight = chunk->blocks_sight_bmp;
-    bitMapSetPx(blocks_sight, pos.x, pos.y, 1);
+    bitmapSetPx(chunk->blocks_sight_bmp, pos.x, pos.y, 1);
   }
   if(proto.type.terra.blocks_movement == 1){
-    BitMap* blocks_movement = chunk->blocks_movement_bmp;
-    bitMapSetPx(blocks_movement, pos.x, pos.y, 1);
+    bitmapSetPx(chunk->blocks_movement_bmp, pos.x, pos.y, 1);
   }
 
   proto.type_enum = OBJECT_ITEM;
   proto.type.item.id = 0;
-  chunk->terrain[offset] = proto;
+  chunk->terrain_tiles[offset] = proto.tile;
   return 0;
 }
 
@@ -257,18 +243,20 @@ static bool isSymmetric(Row* row, int col)
 	  col_div_end <= depth_mul_end);
 }
 
-static void shadowcastMarkVisible(BitMap* shadow_mask, MapPosition pos) {
-  bitMapSetPx(shadow_mask, pos.x, pos.y, 0);
+static void shadowcastMarkVisible(Bitmap* shadow_mask, MapPosition pos) {
+  bitmapSetPx(shadow_mask, pos.x, pos.y, 0);
 }
 
-static void shadowcastScanRow(BitMap* dst_mask, MapPosition camera, Row current_row){
-  
+static void shadowcastScanRow(Bitmap* dst_mask, MapPosition camera, Row current_row){
+
+  static float SHADOWCAST_MAX = 12.5 * 12.5;
+
   // allows early termination on invalid angles
   if (fractionCompare(current_row.end_slope, current_row.start_slope)) {
     return;
   }
 
-  // int * fraction
+  // depth * slope
   int min_col = round_ties_up( (double)
     (current_row.depth * current_row.start_slope.num)
     / (double)current_row.start_slope.den);
@@ -285,10 +273,10 @@ static void shadowcastScanRow(BitMap* dst_mask, MapPosition camera, Row current_
 
     MapPosition current_pos = 
       { target_x, target_y, camera.chunk_ptr };
-    uint8_t is_wall = terraBlocksSight(current_pos);
+    uint8_t is_wall = terraDoesBlockSight(current_pos);
     
     if(is_wall || isSymmetric(&current_row, col)) {
-      if(relativeDistance(current_row.depth, col) < 12.5 * 12.5)
+      if(relativeDistance(current_row.depth, col) < SHADOWCAST_MAX)
 	shadowcastMarkVisible(dst_mask, current_pos);	  
     }
     
@@ -322,10 +310,9 @@ static void shadowcastScanRow(BitMap* dst_mask, MapPosition camera, Row current_
   
 }
 
-BitMap* shadowcastFOV(MapPosition camera){
+Bitmap* shadowcastFOV(Bitmap* shadow_mask, MapPosition camera){
 
-  BitMap* shadow_mask = bitMapCreate(128, 128);
-  bitMapFill(shadow_mask, 1);
+  bitmapFill(shadow_mask, 1);
   
   shadowcastMarkVisible(shadow_mask, camera);
   for(int cardinal = 0; cardinal < 4; cardinal++) {
@@ -342,44 +329,47 @@ BitMap* shadowcastFOV(MapPosition camera){
   return shadow_mask;
 }
 
-int mapChunkDraw(Gfx gfx, MapPosition camera){
+int mapChunkDraw(Gfx gfx, struct WorldArena* arena, MapPosition camera){
 
   gfxClear(gfx);
   
   int x_offset = camera.x - (gfxGetScreenWidth(gfx) / 2);
   int y_offset = camera.y - (gfxGetScreenHeight(gfx) / 2);
 
-  BitMap* shadow_mask = shadowcastFOV(camera);
+  AllocatorInterface allocator = arena->allocator;
+  Bitmap* shadow_mask = bitmapCreate(128, 128, allocator);
+  shadow_mask = shadowcastFOV(shadow_mask, camera);
 
-  GameObjectBuffer terrain = camera.chunk_ptr->terrain;
-  struct MyBufferMeta info = *myBufferMeta(terrain);
-
-  for(unsigned int i = 0; i < info.top; i++){
+  MapChunk ch = *camera.chunk_ptr;
+  struct GameObjectTile* terrain = ch.terrain_tiles;
+ 
+  for(int i = 0; i < CHUNK_SIZE; i++){
     int shadow_x = i % CHUNK_WIDTH;
     int shadow_y = i / CHUNK_WIDTH;
-    if(bitMapGetPx(shadow_mask, shadow_x, shadow_y) == 0){
-      GameObject tile = terrain[i];
+    if(bitmapGetPx(shadow_mask, shadow_x, shadow_y) == 0){
+      struct GameObjectTile t = terrain[i];
       int tile_x = shadow_x - x_offset;
       int tile_y = shadow_y - y_offset;
-      gfxRenderGlyph(gfx, tile_x, tile_y, tile.unicode, tile.atlas, tile.fg, tile.bg);
-    }
-    
+      //printf("%d - t.fg %d \n", i ,t.fg);
+      gfxRenderGlyph(gfx, tile_x, tile_y, 
+                     t.unicode, t.atlas, t.fg, t.bg);
+    }    
   }
 
-  //GameObjectBuffer mobiles = camera.chunk_ptr->ptr_to_mobiles;
-  GameObjectBuffer mobiles = getMobilesFromMapChunk(camera.chunk_ptr);
-  for(size_t i = 0; i < myBufferMeta(mobiles)->top; i++){
-    
-    GameObject actor = mobiles[i];
-    MapPosition pos = actor.type.mob.pos;
-    if(bitMapGetPx(shadow_mask, actor.type.mob.pos.x, actor.type.mob.pos.y) == 0){
-      gfxRenderGlyph(gfx, pos.x - x_offset, pos.y - y_offset,
-	     actor.unicode, actor.atlas,
-	     actor.fg, actor.bg);
+  GameObject* mobiles = arena->mobiles;
+  for(size_t i = 0; i < memSliceSize(mobiles) / sizeof(GameObject); i++){
+    if(bitmapGetPx(arena->mobiles_free, i, 0) == 1){
+        GameObject actor = mobiles[i];
+        MapPosition pos = actor.type.mob.pos;
+        if(bitmapGetPx(shadow_mask, actor.type.mob.pos.x, actor.type.mob.pos.y) == 0){
+            gfxRenderGlyph(gfx, pos.x - x_offset, pos.y - y_offset,
+                           actor.tile.unicode, actor.tile.atlas,
+                           actor.tile.fg, actor.tile.bg);
+        }
     }
   }
 
-  bitMapDestroy(shadow_mask);
+  bitmapDestroy(shadow_mask, allocator);
   
   return 0;
 }

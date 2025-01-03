@@ -8,7 +8,7 @@ int rogueMoveMobile(GameObject* object_ptr, int dx, int dy){
   pos.x += dx;
   pos.y += dy;
 
-  if(terraBlocksMove(pos) == 0){
+  if(terraDoesBlockMove(pos) == 0){
     object_ptr->type.mob.pos = pos;
   }
   return 0;
@@ -17,11 +17,11 @@ int rogueMoveMobile(GameObject* object_ptr, int dx, int dy){
 int roguePaintObject(GameObject* object_ptr, uint16_t inventory_index, uint16_t unicode, uint16_t atlas, uint16_t fg, uint16_t bg){
 
   if(object_ptr == NULL) return 1;
-  GameObject* item = &object_ptr->inventory[inventory_index];
-  item->unicode = unicode;
-  item->atlas = atlas;
-  item->fg = fg;
-  item->bg = bg;
+  struct GameObjectTile* tile_ptr = &object_ptr->inventory[inventory_index].tile;
+  tile_ptr->unicode = unicode;
+  tile_ptr->atlas = atlas;
+  tile_ptr->fg = fg;
+  tile_ptr->bg = bg;
 
   return 0;
 }
@@ -34,6 +34,6 @@ int rogueBuildObject(GameObject* object_ptr, uint16_t inventory_index){
   tool.type.terra.blocks_sight = 1;
   tool.type.terra.blocks_movement = 1;
 
-  setTerra(tool, object_ptr->type.mob.pos);
+  terraSet(tool, object_ptr->type.mob.pos);
   return 0;
 }
