@@ -2,6 +2,7 @@
 #define MATHS_H
 
 #include <math.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 typedef struct{

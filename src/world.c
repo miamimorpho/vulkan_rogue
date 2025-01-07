@@ -5,10 +5,13 @@
 #include <string.h>
 #include "mystdlib.h"
 
-GameObject* getMobilesFromMapChunk(MapChunk* chunk){
-    // TODO: MapChunks and Mobiles form a linked list of arenas
-    return chunk->ptr_to_arena->mobiles;
-}
+const MapPosition NULL_POS = {0};
+const struct GameObjectTile NULL_OBJECT_TILE = {
+    .unicode = 370,
+    .atlas = 2,
+    .fg = 3,
+    .bg = 0,
+};
 
 MapChunk mapChunkInit(struct WorldArena* ptr_to_arena){
  
@@ -60,7 +63,7 @@ GameObject mobileInit(AllocatorInterface allocator){
 }
 
 struct WorldArena* createWorldArena(AllocatorInterface allocator){
-  struct WorldArena* arena = allocator.mallocFn(allocator.ctx, sizeof(struct WorldArena));
+    struct WorldArena* arena = allocator.mallocFn(allocator.ctx, sizeof(struct WorldArena));
   arena->allocator = allocator;
 
   const int mobile_c = 10;
@@ -76,6 +79,9 @@ struct WorldArena* createWorldArena(AllocatorInterface allocator){
   for(int i = 0; i < chunk_c; i++){
       arena->map_chunks[i] = mapChunkInit(arena);
   }
+
+  const size_t portal_c = 4;
+  arena->portals = memSliceCreate(portal_c, sizeof(struct MapPortal), allocator);
 
   return arena;
 }
@@ -107,42 +113,6 @@ void destroyWorldArena(struct WorldArena* arena){
     memArenaDestroy(arena->allocator.ctx);
 }
 
-GameObject getTerra(MapPosition pos){
-  MapChunk* chunk = pos.chunk_ptr;
-  
-  GameObject null_object = {
-    OBJECT_TERRAIN,
-
-    .tile.unicode = 370,
-    .tile.atlas = 2,//DRAW_TEXTURE_INDEX,
-    .tile.fg = 3,
-    .tile.bg = 0,
-
-    .type.terra = {
-      .blocks_movement = 0,
-      .blocks_sight = 1,
-    }
-  };
-
-  uint32_t offset = (pos.y * CHUNK_WIDTH) + pos.x;  
-  if(pos.x < 0 ||
-     pos.x >= CHUNK_WIDTH ||
-     pos.y < 0 ||
-     pos.y >= CHUNK_WIDTH){
-    return null_object;
-  }
-
-  return (GameObject){
-      OBJECT_TERRAIN,
-      .tile = chunk->terrain_tiles[offset],
-      .type.terra = {
-          .blocks_movement = terraDoesBlockMove(pos),
-          .blocks_sight = terraDoesBlockSight(pos),
-      }      
-  };
-      
-}
-
 uint8_t terraDoesBlockMove(MapPosition pos){
   MapChunk* chunk = pos.chunk_ptr;
   return bitmapGetPx(chunk->blocks_movement_bmp, pos.x, pos.y);
@@ -151,6 +121,17 @@ uint8_t terraDoesBlockMove(MapPosition pos){
 uint8_t terraDoesBlockSight(MapPosition pos) {
   MapChunk* chunk = pos.chunk_ptr;
   return bitmapGetPx(chunk->blocks_sight_bmp, pos.x, pos.y);
+}
+
+struct GameObjectTile terraGetTile(MapPosition pos) {
+    if(pos.x < 0 ||
+       pos.x >= CHUNK_WIDTH ||
+       pos.y < 0 ||
+       pos.y >= CHUNK_WIDTH){
+        return NULL_OBJECT_TILE;
+    }
+    int offset = pos.y * CHUNK_WIDTH + pos.x;
+    return pos.chunk_ptr->terrain_tiles[offset];
 }
 
 int terraSet(GameObject proto, MapPosition pos){
@@ -178,198 +159,18 @@ int terraSet(GameObject proto, MapPosition pos){
   return 0;
 }
 
-/* Shadowcasting */
-enum {
-    NORTH = 0,
-    EAST = 1,
-    SOUTH = 2,
-    WEST = 3
-};
-
-// Row structure
-typedef struct {
-  int cardinal;
-  int depth;
-  Fraction start_slope;
-  Fraction end_slope;
-} Row;
-
-// Transform coordinates based on quadrant
-void transform_coords(int cardinal, int ox, int oy, int row, int col, int* out_x, int* out_y) {
-    switch(cardinal) {
-        case NORTH:
-            *out_x = ox + col;
-            *out_y = oy - row;
-            break;
-        case SOUTH:
-            *out_x = ox + col;
-            *out_y = oy + row;
-            break;
-        case EAST:
-            *out_x = ox + row;
-            *out_y = oy + col;
-            break;
-        case WEST:
-            *out_x = ox - row;
-            *out_y = oy + col;
-            break;
-    }
-}
-
-// Helper functions for rounding
-static int round_ties_up(double n) {
-      return (int)floor(n + 0.5);
-}
-
-static int round_ties_down(double n) {
-   return (int)ceil(n - 0.5);
-}
-
-static Fraction slope(int row_depth, int col) {
-    return fractionNew(2 * col - 1, 2 * row_depth);
-}
-
-static bool isSymmetric(Row* row, int col)
-{
-  /* checks if slope (col/row) is 
-   * between start and end slopes */
-  int depth_mul_start = row->depth * row->start_slope.num;
-  int col_div_start = col * row->start_slope.den;
-  
-  int depth_mul_end = row->depth * row->end_slope.num;
-  int col_div_end = col * row->end_slope.den;
-  
-  return (col_div_start >= depth_mul_start &&
-	  col_div_end <= depth_mul_end);
-}
-
-static void shadowcastMarkVisible(Bitmap* shadow_mask, MapPosition pos) {
-  bitmapSetPx(shadow_mask, pos.x, pos.y, 0);
-}
-
-static void shadowcastScanRow(Bitmap* dst_mask, MapPosition camera, Row current_row){
-
-  static float SHADOWCAST_MAX = 12.5 * 12.5;
-
-  // allows early termination on invalid angles
-  if (fractionCompare(current_row.end_slope, current_row.start_slope)) {
-    return;
-  }
-
-  // depth * slope
-  int min_col = round_ties_up( (double)
-    (current_row.depth * current_row.start_slope.num)
-    / (double)current_row.start_slope.den);
-  int max_col = round_ties_down( (double)
-    (current_row.depth * current_row.end_slope.num)
-    / (double)current_row.end_slope.den);
-  
-  bool prev_was_wall = false;
- 
-  for(int col = min_col; col <= max_col; col++) {    
-    int target_x, target_y;
-    transform_coords(current_row.cardinal, camera.x, camera.y, 
-		     current_row.depth, col, &target_x, &target_y);
-
-    MapPosition current_pos = 
-      { target_x, target_y, camera.chunk_ptr };
-    uint8_t is_wall = terraDoesBlockSight(current_pos);
-    
-    if(is_wall || isSymmetric(&current_row, col)) {
-      if(relativeDistance(current_row.depth, col) < SHADOWCAST_MAX)
-	shadowcastMarkVisible(dst_mask, current_pos);	  
-    }
-    
-    if(prev_was_wall && !is_wall) {
-      current_row.start_slope = slope(current_row.depth, col);
-    }
-    
-    if(!prev_was_wall && is_wall) {
-      Row next_row = {
-	.cardinal = current_row.cardinal,
-	.depth = current_row.depth + 1,
-	.start_slope = current_row.start_slope,
-	.end_slope = slope(current_row.depth, col)
-      };
-      shadowcastScanRow(dst_mask, camera, next_row);
-    }
-    
-    prev_was_wall = is_wall;
-  }// end of row scanning
-  
-  // if floor at last tile, create new tile
-  if(!prev_was_wall) {
-    Row next_row = {
-      .cardinal = current_row.cardinal,
-      .depth = current_row.depth + 1,
-      .start_slope = current_row.start_slope,
-      .end_slope = current_row.end_slope
-    };
-    shadowcastScanRow(dst_mask, camera, next_row);
-  }
-  
-}
-
-Bitmap* shadowcastFOV(Bitmap* shadow_mask, MapPosition camera){
-
-  bitmapFill(shadow_mask, 1);
-  
-  shadowcastMarkVisible(shadow_mask, camera);
-  for(int cardinal = 0; cardinal < 4; cardinal++) {
-    
-    Row first_row = {
-      .cardinal = cardinal,
-      .depth = 1,
-      .start_slope = fractionNew(-1, 1),
-      .end_slope = fractionNew(1, 1)
-    };
-    shadowcastScanRow(shadow_mask, camera, first_row);
-    
-  }
-  return shadow_mask;
-}
-
-int mapChunkDraw(Gfx gfx, struct WorldArena* arena, MapPosition camera){
-
-  gfxClear(gfx);
-  
-  int x_offset = camera.x - (gfxGetScreenWidth(gfx) / 2);
-  int y_offset = camera.y - (gfxGetScreenHeight(gfx) / 2);
-
-  AllocatorInterface allocator = arena->allocator;
-  Bitmap* shadow_mask = bitmapCreate(128, 128, allocator);
-  shadow_mask = shadowcastFOV(shadow_mask, camera);
-
-  MapChunk ch = *camera.chunk_ptr;
-  struct GameObjectTile* terrain = ch.terrain_tiles;
- 
-  for(int i = 0; i < CHUNK_SIZE; i++){
-    int shadow_x = i % CHUNK_WIDTH;
-    int shadow_y = i / CHUNK_WIDTH;
-    if(bitmapGetPx(shadow_mask, shadow_x, shadow_y) == 0){
-      struct GameObjectTile t = terrain[i];
-      int tile_x = shadow_x - x_offset;
-      int tile_y = shadow_y - y_offset;
-      //printf("%d - t.fg %d \n", i ,t.fg);
-      gfxRenderGlyph(gfx, tile_x, tile_y, 
-                     t.unicode, t.atlas, t.fg, t.bg);
-    }    
-  }
-
-  GameObject* mobiles = arena->mobiles;
-  for(size_t i = 0; i < memSliceSize(mobiles) / sizeof(GameObject); i++){
-    if(bitmapGetPx(arena->mobiles_free, i, 0) == 1){
-        GameObject actor = mobiles[i];
-        MapPosition pos = actor.type.mob.pos;
-        if(bitmapGetPx(shadow_mask, actor.type.mob.pos.x, actor.type.mob.pos.y) == 0){
-            gfxRenderGlyph(gfx, pos.x - x_offset, pos.y - y_offset,
-                           actor.tile.unicode, actor.tile.atlas,
-                           actor.tile.fg, actor.tile.bg);
-        }
-    }
-  }
-
-  bitmapDestroy(shadow_mask, allocator);
-  
-  return 0;
+int portalGetSrcDst(struct MapPortal portal, MapPosition camera, MapPosition *src, MapPosition *dst){
+      *src = NULL_POS;
+      *dst = NULL_POS;
+      if(portal.a.chunk_ptr == camera.chunk_ptr){
+          *src = portal.a;
+          *dst = portal.b;
+          return 0;
+      }
+      if(portal.b.chunk_ptr == camera.chunk_ptr){
+          *src = portal.b;
+          *dst = portal.a;
+          return 0;
+      }
+      return 1;
 }

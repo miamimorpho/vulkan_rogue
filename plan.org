@@ -7,6 +7,15 @@ NPCs / enemies basic basic
 pathfinding
 saving...
 
+* bitmaps -> bitflags
+// basic world tile properties
+blocks_sight
+blocks_movement
+is_portal
+is_object
+// extensions, possible ideas
+
+
 * Arena Allocators
 each container needs to be backed by an arena;
 slices are implicit but need to store count;

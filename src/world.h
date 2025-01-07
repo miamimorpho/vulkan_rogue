@@ -3,7 +3,7 @@
 #include "vkterm/vkterm.h"
 #include "mystdlib.h"
 
-#define CHUNK_WIDTH 24
+#define CHUNK_WIDTH 8
 #define CHUNK_SIZE CHUNK_WIDTH * CHUNK_WIDTH
 #define CHUNK_OBJECT_C 8
 
@@ -18,10 +18,11 @@ typedef struct MapChunk MapChunk;
 
 struct WorldArena{
    AllocatorInterface allocator;
-   Bitmap* map_chunks_free;
+   Bitmap* map_chunks_free; // free list
    MapChunk* map_chunks;
    Bitmap* mobiles_free;
    GameObject* mobiles;
+   struct MapPortal* portals;
 };
 
 struct GameObjectTile{
@@ -31,18 +32,26 @@ struct GameObjectTile{
     uint8_t bg;
 };
 
-struct MapChunk{
-  struct GameObjectTile* terrain_tiles;
-  Bitmap* blocks_sight_bmp;
-  Bitmap* blocks_movement_bmp;
-  struct WorldArena* ptr_to_arena;
-};
-
 typedef struct{
   int32_t x;
   int32_t y;
   MapChunk* chunk_ptr;
 } MapPosition;
+
+struct MapPortal{
+  MapPosition a;
+  MapPosition b;
+};
+
+// replace with bitfield instead of bitmap?
+struct MapChunk{
+  //int32_t x;
+  //int32_t y;
+  struct GameObjectTile* terrain_tiles;
+  Bitmap* blocks_sight_bmp;
+  Bitmap* blocks_movement_bmp;
+  struct WorldArena* ptr_to_arena;
+};
 
 typedef enum {
     OBJECT_TERRAIN,
@@ -74,6 +83,8 @@ struct GameObject{
 struct WorldArena* createWorldArena(AllocatorInterface);
 uint8_t terraDoesBlockMove(MapPosition);
 uint8_t terraDoesBlockSight(MapPosition);
+struct GameObjectTile terraGetTile(MapPosition);
+
 int terraSet(GameObject, MapPosition);
 
 GameObject* mobilePush(MapPosition);
@@ -82,5 +93,7 @@ void destroyWorldArena(struct WorldArena*);
 
 
 int mapChunkDraw(Gfx, struct WorldArena*, MapPosition);
+
+int portalGetSrcDst(struct MapPortal, MapPosition, MapPosition*, MapPosition*);
 
 #endif // WORLD_H

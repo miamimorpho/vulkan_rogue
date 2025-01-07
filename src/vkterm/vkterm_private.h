@@ -17,7 +17,7 @@ typedef struct {
   VkBuffer handle;
   VmaAllocation allocation;
   VkDeviceSize used_size;
-} GfxBuffer;
+} GfxBuffer; // linear allocator
 
 typedef struct {
   VkImage handle;

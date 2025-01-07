@@ -147,19 +147,20 @@ uint32_t pack_indices(uint16_t unicode, uint8_t atlas_index,
     bg_index;
 }
 
-int gfxRenderGlyph(GfxGlobal* gfx, uint16_t x, uint16_t y,
+int gfxRenderGlyph(GfxGlobal* gfx, int32_t x, int32_t y,
 	      uint16_t encoding, uint16_t atlas_index,
 	      uint16_t fg, uint16_t bg){
-
-  if(atlas_index > MAX_SAMPLERS) return 1;
-  GfxTileset tex = gfx->tilesets[atlas_index];
-  if(tex.image.handle == NULL){
-    atlas_index = ASCII_TEXTURE_INDEX;
-  }
 
   if(x >= ASCII_SCREEN_WIDTH || x < 0) return 1;
   if(y >= ASCII_SCREEN_HEIGHT || y < 0) return 1;
 
+// TODO, make memory safe
+  if(atlas_index > MAX_SAMPLERS) return 1;
+  if(gfx->tilesets[atlas_index].image.handle == NULL){
+    //fprintf(stderr, "gfxRenderGlyph texture_index err\n");
+    atlas_index = ASCII_TEXTURE_INDEX;
+  }
+  GfxTileset tex = gfx->tilesets[atlas_index]; 
   uint16_t unicode_uv = tex.decoder(tex.encodings, tex.glyph_c, encoding);
   
   GfxGlyph dst = {
@@ -302,8 +303,6 @@ int gfxBakeCommandBuffer(GfxGlobal* gfx)
 }
 
 int gfxRefresh(GfxGlobal* gfx){
-
-
 
   GfxContext vk = gfx->vk;
   

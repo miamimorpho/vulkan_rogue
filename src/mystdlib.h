@@ -4,12 +4,12 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define container_of(ptr, type, member) ((type*)((char *)(ptr) - offsetof(type, member)))
-
 #define KB (1024ULL)
 #define MB (1024ULL * KB)
 #define GB (1024ULL * MB)
 #define TB (1024ULL * GB)
+
+#define container_of(ptr, type, member) ((type*)((char *)(ptr) - offsetof(type, member)))
 
 typedef struct MemArena MemArena;
 typedef struct AllocatorInterface AllocatorInterface;

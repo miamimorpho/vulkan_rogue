@@ -8,6 +8,8 @@
 /* Heap based stack allocator */
 static const ptrdiff_t ARCH_ALIGNMENT = 2 * sizeof(void*);
 
+#define UINT32_DEADBEEF 0xDEADBEEF
+
 struct MemArena{
     char* beg;
     char* offset;
@@ -41,29 +43,27 @@ void memArenaPop(MemArena* a, void* allocation){
     }
 }
 
-MemArena* memArenaMalloc(size_t size){
-    MemArena a = {0};
-    char* tmp_data = malloc(size);
-    if(tmp_data == NULL){
-        fprintf(stderr, "not enough ram to allocate more MemArena.data\n");
-    }else{
-        a.beg = tmp_data;
-        a.offset = a.beg;
-        a.end = a.beg + size;
+MemArena* memArenaMalloc(size_t size) {
+    // Single malloc for both data and struct
+    char* mem = malloc(size + sizeof(MemArena));
+    if (mem == NULL) {
+        fprintf(stderr, "not enough ram to allocate MemArena\n");
+        return NULL;
     }
-
-    MemArena* a_ptr= malloc(sizeof(struct MemArena));
-    if(a_ptr == NULL){
-        fprintf(stderr, "not enough ram to allocate a single struct MemArena\n");
-    }else{
-        *a_ptr = a;
-    }
-    return a_ptr;
+    
+    // Initialize the arena struct at the end
+    MemArena* arena = (MemArena*)(mem + size);
+    arena->beg = mem;
+    arena->offset = mem;
+    arena->end = mem + size;
+    
+    return arena;
 }
 
+
 void memArenaDestroy(MemArena *a){
+    assert(a);
     free(a->beg);
-    free(a);
 }
 
 struct AllocatorInterface memArenaCreate(size_t size){
@@ -75,12 +75,15 @@ struct AllocatorInterface memArenaCreate(size_t size){
 }
 
 struct MemSlice{
+    uint32_t sentinal;
     size_t size;
     char data[];
 };
 
 static inline struct MemSlice* memSliceInfo(void* data_ptr){
-    return container_of(data_ptr, struct MemSlice, data);
+   struct MemSlice* s = container_of(data_ptr, struct MemSlice, data);
+   if(s->sentinal == UINT32_DEADBEEF) return s;
+   return NULL;
 }
 size_t memSliceSize(void* data_ptr){
     return memSliceInfo(data_ptr)->size;
@@ -95,6 +98,7 @@ void* memSliceCreate(size_t nmemb, size_t stride, struct AllocatorInterface allo
   
     size_t total_size = sizeof(struct MemSlice) + nmemb * stride;
     struct MemSlice* s =  allocator.mallocFn(allocator.ctx, total_size);
+    s->sentinal = UINT32_DEADBEEF;
     s->size = nmemb * stride;
     return s->data;
 }
