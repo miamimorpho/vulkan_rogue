@@ -13,6 +13,14 @@ const struct GameObjectTile NULL_OBJECT_TILE = {
     .bg = 0,
 };
 
+
+int mapChunkFillPaint(MapChunk target, struct GameObjectTile val){
+    for(size_t i = 0; i < CHUNK_SIZE; i++){
+        target.terrain_tiles[i] = val;
+    }
+    return 0;
+}
+
 MapChunk mapChunkInit(struct WorldArena* ptr_to_arena){
  
   AllocatorInterface allocator = ptr_to_arena->allocator;
@@ -29,9 +37,7 @@ MapChunk mapChunkInit(struct WorldArena* ptr_to_arena){
   };
   const size_t tile_c = CHUNK_WIDTH * CHUNK_WIDTH;
   src.terrain_tiles = memSliceCreate(tile_c, sizeof(struct GameObjectTile), allocator);
-  for(size_t i = 0; i < tile_c; i++){
-      src.terrain_tiles[i] = air;
-  }
+  mapChunkFillPaint(src, air);
 
   src.ptr_to_arena = ptr_to_arena;
   return src;
@@ -62,8 +68,10 @@ GameObject mobileInit(AllocatorInterface allocator){
   return proto_mob;
 }
 
-struct WorldArena* createWorldArena(AllocatorInterface allocator){
-    struct WorldArena* arena = allocator.mallocFn(allocator.ctx, sizeof(struct WorldArena));
+struct WorldArena* createWorldArena(void){
+  AllocatorInterface allocator = memArenaCreate(MB);
+
+  struct WorldArena* arena = allocator.mallocFn(allocator.ctx, sizeof(struct WorldArena));
   arena->allocator = allocator;
 
   const int mobile_c = 10;
@@ -76,8 +84,20 @@ struct WorldArena* createWorldArena(AllocatorInterface allocator){
   const int chunk_c = 10;
   arena->map_chunks_free = bitmapCreate(chunk_c, 1, allocator);
   arena->map_chunks = memSliceCreate(chunk_c, sizeof(MapChunk), allocator);
+
+  
+  struct GameObjectTile air = {
+    .unicode = 0,
+    .atlas = 2,//DRAW_TEXTURE_INDEX
+    .fg = 3,
+    .bg = 3,
+  };
+
   for(int i = 0; i < chunk_c; i++){
       arena->map_chunks[i] = mapChunkInit(arena);
+      air.fg += i;
+      air.bg += i;
+      mapChunkFillPaint(arena->map_chunks[i], air);    
   }
 
   const size_t portal_c = 4;
@@ -110,7 +130,7 @@ GameObject* mobilePush(MapPosition pos){
 }
 
 void destroyWorldArena(struct WorldArena* arena){
-    memArenaDestroy(arena->allocator.ctx);
+    memArenaDestroy(arena->allocator);
 }
 
 uint8_t terraDoesBlockMove(MapPosition pos){
@@ -124,7 +144,8 @@ uint8_t terraDoesBlockSight(MapPosition pos) {
 }
 
 struct GameObjectTile terraGetTile(MapPosition pos) {
-    if(pos.x < 0 ||
+    if(pos.chunk_ptr == NULL ||
+       pos.x < 0 ||
        pos.x >= CHUNK_WIDTH ||
        pos.y < 0 ||
        pos.y >= CHUNK_WIDTH){
@@ -159,18 +180,3 @@ int terraSet(GameObject proto, MapPosition pos){
   return 0;
 }
 
-int portalGetSrcDst(struct MapPortal portal, MapPosition camera, MapPosition *src, MapPosition *dst){
-      *src = NULL_POS;
-      *dst = NULL_POS;
-      if(portal.a.chunk_ptr == camera.chunk_ptr){
-          *src = portal.a;
-          *dst = portal.b;
-          return 0;
-      }
-      if(portal.b.chunk_ptr == camera.chunk_ptr){
-          *src = portal.b;
-          *dst = portal.a;
-          return 0;
-      }
-      return 1;
-}

@@ -20,51 +20,66 @@ typedef struct {
 
 struct ShadowcastFnCtx{
     Gfx gfx;
-    int x_offset;
-    int y_offset;
-    Bitmap* dst_mask;
+    int dx;
+    int dy;
 };
 
 typedef void (*ShadowcastFnPtr)(void*, MapPosition);
-struct ShadowcastInterface{
+struct ShadowcastEffect{
     ShadowcastFnPtr fn;
     void* ctx;
 };
 
 // TODO, static module based stack
 
-void transformByCardinal(int cardinal, int ox, int oy, int row, int col, int* out_x, int* out_y) {
+/* turns a shadowcast coordinate (row_depth,row_col) 
+ * that is relative to a single origin point into 
+ * a chunk-local position (x, y) we can use to query
+ * the world arena
+ */
+void shadowmaskToWorldspace(int cardinal, int depth, int col, MapPosition camera, MapPosition* out) {
     switch(cardinal) {
         case NORTH:
-            *out_x = ox + col;
-            *out_y = oy - row;
+            out->x = camera.x + col;
+            out->y = camera.y - depth;
             break;
         case SOUTH:
-            *out_x = ox + col;
-            *out_y = oy + row;
+            out->x = camera.x + col;
+            out->y = camera.y + depth;
             break;
         case EAST:
-            *out_x = ox + row;
-            *out_y = oy + col;
+            out->x = camera.x + depth;
+            out->y = camera.y + col;
             break;
         case WEST:
-            *out_x = ox - row;
-            *out_y = oy + col;
+            out->x = camera.x - depth;
+            out->y = camera.y + col;
             break;
     }
 }
+/* reverse of shadowmaskToWorldspace */
+void worldspaceToShadowmask(MapPosition in, MapPosition camera, int* cardinal_out, int* depth_out, int* col_out) {
+    int dx = in.x - camera.x;
+    int dy = in.y - camera.y;
 
-int getCardinal(int center_x, int center_y, int test_x, int test_y) {
-    int dx = test_x - center_x;
-    int dy = test_y - center_y;
-    
-    // If horizontal distance is greater than vertical
     if (abs(dx) > abs(dy)) {
-        return dx > 0 ? EAST : WEST;
-    } 
-    // If vertical distance is greater or equal
-    else {
-        return dy > 0 ? SOUTH : NORTH;
+        // East or West
+        *col_out = dy;
+        *depth_out = abs(dx);
+        if (dx > 0) {
+            *cardinal_out = EAST;
+        } else {
+            *cardinal_out = WEST;
+        }
+    } else {
+        // North or South
+        *col_out = dx;
+        *depth_out = abs(dy);       
+        if (dy > 0) {
+            *cardinal_out = SOUTH;
+        } else {
+            *cardinal_out = NORTH;
+        }
     }
 }
 
@@ -95,21 +110,17 @@ static bool isSymmetric(Row* row, int col)
 	  col_div_end <= depth_mul_end);
 }
 
-void shadowcastMarkVisible(struct ShadowcastFnCtx* ctx, MapPosition pos) {
-    // TODO replace with direct rendering
-    int scr_x = pos.x - ctx->x_offset;
-    int scr_y = pos.y - ctx->y_offset;
+void shadowcastRenderVisible(struct ShadowcastFnCtx* ctx, MapPosition pos) {
+ 
+    int scr_x = pos.x - ctx->dx;
+    int scr_y = pos.y - ctx->dy;
     struct GameObjectTile t = terraGetTile(pos);
-
     gfxRenderGlyph(ctx->gfx, scr_x, scr_y, 
                    t.unicode, t.atlas, t.fg, t.bg);
-    bitmapSetPx(ctx->dst_mask, pos.x, pos.y, 1);
 }
 
-static void shadowcastScanRow(struct ShadowcastInterface effect, 
-                              MapPosition camera, Row current_row){
+static void shadowcastScanRow( MapPosition camera, Row current_row, Bitmap* dst_mask, struct ShadowcastEffect effect ){
 
-    // TODO, replace all stack based allocations here, we cant detect OOM on stack allocations
   static float SHADOWCAST_MAX = 12.5 * 12.5;
 
   // allows early termination on invalid angles
@@ -128,18 +139,19 @@ static void shadowcastScanRow(struct ShadowcastInterface effect,
   
   bool prev_was_wall = false;
  
-  for(int col = min_col; col <= max_col; col++) {    
-    int target_x, target_y;
-    transformByCardinal(current_row.cardinal, camera.x, camera.y, 
-		     current_row.depth, col, &target_x, &target_y);
+  for(int col = min_col; col <= max_col; col++) {
+    MapPosition current_pos = camera;
+    shadowmaskToWorldspace(current_row.cardinal, 
+                           current_row.depth, col,
+                           camera, &current_pos);
 
-    MapPosition current_pos = 
-      { target_x, target_y, camera.chunk_ptr };
     uint8_t is_wall = terraDoesBlockSight(current_pos);
     
     if(is_wall || isSymmetric(&current_row, col)) {
-      if(relativeDistance(current_row.depth, col) < SHADOWCAST_MAX)
+      if(relativeDistance(current_row.depth, col) < SHADOWCAST_MAX){
           effect.fn(effect.ctx, current_pos);
+          bitmapSetPx(dst_mask, current_pos.x, current_pos.y, 1);
+      }
     }
     
     if(prev_was_wall && !is_wall) {
@@ -153,7 +165,7 @@ static void shadowcastScanRow(struct ShadowcastInterface effect,
           .start_slope = current_row.start_slope,
           .end_slope = slope(current_row.depth, col)
       };
-      shadowcastScanRow(effect, camera, next_row);
+      shadowcastScanRow(camera, next_row, dst_mask, effect);
     }
     
     prev_was_wall = is_wall;
@@ -166,14 +178,16 @@ static void shadowcastScanRow(struct ShadowcastInterface effect,
         .start_slope = current_row.start_slope,
         .end_slope = current_row.end_slope
     };
-    shadowcastScanRow(effect, camera, next_row);
+    shadowcastScanRow(camera, next_row, dst_mask, effect);
   }
   
 }
 
-void shadowcastFOV(struct ShadowcastInterface inter, MapPosition camera){
- 
-  inter.fn(inter.ctx, camera);
+void shadowcastFOV(MapPosition camera, Bitmap* dst_mask, 
+                   struct ShadowcastEffect effect){
+
+  effect.fn(effect.ctx, camera);
+  bitmapSetPx(dst_mask, camera.x, camera.y, 1);
   for(int cardinal = 0; cardinal < 4; cardinal++) {
     
     Row first_row = {
@@ -182,64 +196,79 @@ void shadowcastFOV(struct ShadowcastInterface inter, MapPosition camera){
       .start_slope = fractionNew(-1, 1),
       .end_slope = fractionNew(1, 1)
     };
-    shadowcastScanRow(inter, camera, first_row);
+    shadowcastScanRow(camera, first_row, dst_mask, effect);
     
   }
 }
 
-int mapChunkDraw(Gfx gfx, struct WorldArena* arena, MapPosition camera){
+void shadowcastPortal(MapPosition camera, struct MapPortal portal, Bitmap* dst_mask, struct ShadowcastEffect effect){
+
+    effect.fn(effect.ctx, portal.dst);
+    
+    int cardinal, depth, col;
+    worldspaceToShadowmask(portal.src, camera, &cardinal, &depth, &col);
+    Row first_row = {
+        .cardinal = cardinal,
+        .depth = 1,
+        .start_slope = slope(depth, col ),
+        .end_slope = slope(depth, col + 1),
+    };
+    shadowcastScanRow(portal.dst, first_row, dst_mask, effect);
+}
+
+int cameraDrawWorld(Gfx gfx, MapPosition camera, AllocatorInterface allocator){
 
   gfxClear(gfx);
   int scr_width = gfxGetScreenWidth(gfx);
   int scr_height = gfxGetScreenHeight(gfx);
 
-  int x_offset = camera.x - (scr_width / 2);
-  int y_offset = camera.y - (scr_height / 2);
-
-  AllocatorInterface allocator = arena->allocator;
   Bitmap* mask = bitmapCreate(scr_width, scr_height, allocator);
+  int dx = camera.x - (scr_width / 2);
+  int dy = camera.y - (scr_height / 2);
+
+  struct ShadowcastFnCtx effect_ctx = {
+      gfx, dx, dy
+  };
+  struct ShadowcastEffect effect = {
+      .fn = (ShadowcastFnPtr)shadowcastRenderVisible,
+      .ctx = &effect_ctx
+  }; 
 
   /* First chunk rendering pass
    * draws terrain to the screen and a visibility mask
    * bmp, this can be used to occlude sparse object data 
    * on the next pass.
    */
-  struct ShadowcastFnCtx effect_ctx = {
-      gfx, x_offset, y_offset, mask
-  };
-  struct ShadowcastInterface effect_fn = {
-      .fn = (ShadowcastFnPtr)shadowcastMarkVisible,
-      .ctx = &effect_ctx
-  }; 
-  shadowcastFOV(effect_fn, camera);
+  shadowcastFOV(camera, mask, effect);
+  struct WorldArena *arena = camera.chunk_ptr->ptr_to_arena;
 
   /* first chunk object pass
    * occludes, renders,  mobiles and items
    */
   GameObject* mobiles = arena->mobiles;
   for(size_t i = 0; i < memSliceSize(mobiles) / sizeof(GameObject); i++){
-      if(bitmapGetPx(arena->mobiles_free, i, 0) == 0) continue;    
+      if(bitmapGetPx(arena->mobiles_free, i, 0) == 0) continue;
       GameObject actor = mobiles[i];
       MapPosition pos = actor.type.mob.pos;
       if(bitmapGetPx(mask, pos.x, pos.y) == 1){
-          gfxRenderGlyph(gfx, pos.x - x_offset, pos.y - y_offset, actor.tile.unicode, actor.tile.atlas, actor.tile.fg, actor.tile.bg);
+          gfxRenderGlyph(gfx, pos.x - dx, pos.y - dy, 
+                         actor.tile.unicode, actor.tile.atlas, actor.tile.fg, actor.tile.bg);
       }
   }
 
   /* portal passes */
   struct MapPortal* portals = arena->portals;
   for(size_t i = 0; i < memSliceSize(portals) / sizeof(struct MapPortal); i++){
-      MapPosition src = {0};
-      MapPosition dst = {0};
-      if(portalGetSrcDst(portals[i], camera, &src, &dst) == 1) continue;
-      if(bitmapGetPx(mask, src.x, src.y) == 1){
-              gfxRenderGlyph(gfx, src.x - x_offset, src.y - y_offset,
-                             13, 2, 
-                             4, 4);
+      struct MapPortal port = portals[i];
+      if(port.src.chunk_ptr == NULL) continue;
+      if(bitmapGetPx(mask, port.src.x, port.src.y) == 1){
+          effect_ctx.dx = dx + port.dst.x - port.src.x;
+          effect_ctx.dy = dy + port.dst.y - port.src.y;
+          shadowcastPortal(camera, port, NULL, effect);
       }
+
   }
 
   bitmapDestroy(mask , allocator);
-  
   return 0;
 }

@@ -7,7 +7,6 @@ int rogueMoveMobile(GameObject* object_ptr, int dx, int dy){
   MapPosition pos = object_ptr->type.mob.pos;
   pos.x += dx;
   pos.y += dy;
-
   if(terraDoesBlockMove(pos) == 0){
     object_ptr->type.mob.pos = pos;
   }

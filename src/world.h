@@ -3,7 +3,7 @@
 #include "vkterm/vkterm.h"
 #include "mystdlib.h"
 
-#define CHUNK_WIDTH 8
+#define CHUNK_WIDTH 16
 #define CHUNK_SIZE CHUNK_WIDTH * CHUNK_WIDTH
 #define CHUNK_OBJECT_C 8
 
@@ -39,8 +39,8 @@ typedef struct{
 } MapPosition;
 
 struct MapPortal{
-  MapPosition a;
-  MapPosition b;
+  MapPosition src;
+  MapPosition dst;
 };
 
 // replace with bitfield instead of bitmap?
@@ -54,6 +54,7 @@ struct MapChunk{
 };
 
 typedef enum {
+    OBJECT_NULL_PADDING,
     OBJECT_TERRAIN,
     OBJECT_MOBILE,
     OBJECT_ITEM,
@@ -80,20 +81,16 @@ struct GameObject{
   GameObject* inventory;
 };
 
-struct WorldArena* createWorldArena(AllocatorInterface);
+struct WorldArena* createWorldArena(void);
+
+int mapChunkFill(MapChunk* target, GameObject val);
+int terraSet(GameObject, MapPosition);
 uint8_t terraDoesBlockMove(MapPosition);
 uint8_t terraDoesBlockSight(MapPosition);
 struct GameObjectTile terraGetTile(MapPosition);
 
-int terraSet(GameObject, MapPosition);
-
 GameObject* mobilePush(MapPosition);
 
 void destroyWorldArena(struct WorldArena*);
-
-
-int mapChunkDraw(Gfx, struct WorldArena*, MapPosition);
-
-int portalGetSrcDst(struct MapPortal, MapPosition, MapPosition*, MapPosition*);
 
 #endif // WORLD_H

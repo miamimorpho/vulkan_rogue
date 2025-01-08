@@ -11,14 +11,14 @@ typedef struct{
 } vec2;
 
 typedef struct{
-  int x;
-  int y;
+  int32_t x;
+  int32_t y;
 } ivec2;
 
 typedef struct{
-  int x;
-  int y;
-  int z;
+  int32_t x;
+  int32_t y;
+  int32_t z;
 } ivec3;
 
 typedef struct {

@@ -16,7 +16,7 @@ struct MemArena{
     char* end;
 };
 
-void* memArenaSuballoc(MemArena *a, size_t size){
+void* memArenaSuballoc(struct MemArena *a, size_t size){
     assert(a);
   
     ptrdiff_t padding = -(uintptr_t)a->offset & (ARCH_ALIGNMENT - 1);
@@ -33,7 +33,7 @@ void *p = (char*)((uintptr_t)a->offset + padding);
    return memset(p, 0, size);
 }
 
-void memArenaPop(MemArena* a, void* allocation){
+void memArenaPop(struct MemArena* a, void* allocation){
     char* p_offset = (char*)allocation;
     assert(a);
     if(p_offset < a->end && p_offset > a->beg){
@@ -43,16 +43,16 @@ void memArenaPop(MemArena* a, void* allocation){
     }
 }
 
-MemArena* memArenaMalloc(size_t size) {
+static struct MemArena* memArenaMalloc(size_t size) {
     // Single malloc for both data and struct
-    char* mem = malloc(size + sizeof(MemArena));
+    char* mem = malloc(size + sizeof(struct MemArena));
     if (mem == NULL) {
         fprintf(stderr, "not enough ram to allocate MemArena\n");
         return NULL;
     }
     
     // Initialize the arena struct at the end
-    MemArena* arena = (MemArena*)(mem + size);
+    struct MemArena* arena = (struct MemArena*)(mem + size);
     arena->beg = mem;
     arena->offset = mem;
     arena->end = mem + size;
@@ -60,18 +60,17 @@ MemArena* memArenaMalloc(size_t size) {
     return arena;
 }
 
-
-void memArenaDestroy(MemArena *a){
-    assert(a);
-    free(a->beg);
-}
-
 struct AllocatorInterface memArenaCreate(size_t size){
     return (struct AllocatorInterface){
-        .mallocFn = memArenaSuballoc,
-        .freeFn = memArenaPop,
+        .mallocFn = (MallocFnPtr)memArenaSuballoc,
+        .freeFn = (FreeFnPtr)memArenaPop,
         .ctx = memArenaMalloc(size),
         };
+}
+
+void memArenaDestroy(struct AllocatorInterface a){
+    struct MemArena* mem = (struct MemArena*)a.ctx;
+    free(mem->beg);
 }
 
 struct MemSlice{
@@ -100,6 +99,7 @@ void* memSliceCreate(size_t nmemb, size_t stride, struct AllocatorInterface allo
     struct MemSlice* s =  allocator.mallocFn(allocator.ctx, total_size);
     s->sentinal = UINT32_DEADBEEF;
     s->size = nmemb * stride;
+    memset(s->data, 0, s->size);
     return s->data;
 }
 
@@ -167,6 +167,7 @@ uint8_t bitmapGetPx(struct Bitmap* bmp, int32_t x, int32_t y){
 }
 
 uint8_t bitmapSetPx(struct Bitmap* bmp, int32_t x, int32_t y, uint8_t val){
+  if(bmp == NULL) return 0;
   if( x < 0 || x >= (int)bmp->width ||
       y < 0 || y >= (int)bmp->height){
     return 1;

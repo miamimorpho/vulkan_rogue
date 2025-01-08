@@ -11,15 +11,16 @@
 
 #define container_of(ptr, type, member) ((type*)((char *)(ptr) - offsetof(type, member)))
 
-typedef struct MemArena MemArena;
 typedef struct AllocatorInterface AllocatorInterface;
+typedef void* (*MallocFnPtr)(void*, size_t);
+typedef void  (*FreeFnPtr)(void*, void*);
 struct AllocatorInterface{
-    void* (*mallocFn)(MemArena*, size_t);
-    void  (*freeFn)(MemArena*, void*);
+    MallocFnPtr mallocFn;
+    FreeFnPtr freeFn;
     void  *ctx;
 };
 AllocatorInterface memArenaCreate(size_t size);
-void memArenaDestroy(MemArena*);
+void memArenaDestroy(AllocatorInterface);
 
 void* memSliceCreate(size_t, size_t, AllocatorInterface);
 size_t memSliceSize(void*);
