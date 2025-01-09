@@ -7,9 +7,16 @@ int rogueMoveMobile(GameObject* object_ptr, int dx, int dy){
   MapPosition pos = object_ptr->type.mob.pos;
   pos.x += dx;
   pos.y += dy;
+
   if(terraDoesBlockMove(pos) == 0){
-    object_ptr->type.mob.pos = pos;
+      object_ptr->type.mob.pos = pos;
   }
+
+  struct MapPortal portal = portalAtPos(pos);
+  if(portal.src.chunk_ptr != NULL){
+      object_ptr->type.mob.pos = portal.dst;
+  }
+
   return 0;
 }
 

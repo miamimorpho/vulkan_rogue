@@ -222,7 +222,7 @@ int cameraDrawWorld(Gfx gfx, MapPosition camera, AllocatorInterface allocator){
   int scr_width = gfxGetScreenWidth(gfx);
   int scr_height = gfxGetScreenHeight(gfx);
 
-  Bitmap* mask = bitmapCreate(scr_width, scr_height, allocator);
+  Bitmap* mask = bitmapCreate(CHUNK_WIDTH, CHUNK_WIDTH, allocator);
   int dx = camera.x - (scr_width / 2);
   int dy = camera.y - (scr_height / 2);
 
@@ -260,7 +260,7 @@ int cameraDrawWorld(Gfx gfx, MapPosition camera, AllocatorInterface allocator){
   struct MapPortal* portals = arena->portals;
   for(size_t i = 0; i < memSliceSize(portals) / sizeof(struct MapPortal); i++){
       struct MapPortal port = portals[i];
-      if(port.src.chunk_ptr == NULL) continue;
+      if(port.src.chunk_ptr != camera.chunk_ptr) continue;
       if(bitmapGetPx(mask, port.src.x, port.src.y) == 1){
           effect_ctx.dx = dx + port.dst.x - port.src.x;
           effect_ctx.dy = dy + port.dst.y - port.src.y;

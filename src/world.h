@@ -91,6 +91,9 @@ struct GameObjectTile terraGetTile(MapPosition);
 
 GameObject* mobilePush(MapPosition);
 
+struct MapPortal portalAtPos(MapPosition);
+
+
 void destroyWorldArena(struct WorldArena*);
 
 #endif // WORLD_H

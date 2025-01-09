@@ -13,7 +13,6 @@ const struct GameObjectTile NULL_OBJECT_TILE = {
     .bg = 0,
 };
 
-
 int mapChunkFillPaint(MapChunk target, struct GameObjectTile val){
     for(size_t i = 0; i < CHUNK_SIZE; i++){
         target.terrain_tiles[i] = val;
@@ -180,3 +179,15 @@ int terraSet(GameObject proto, MapPosition pos){
   return 0;
 }
 
+struct MapPortal portalAtPos(MapPosition pos){
+
+    struct WorldArena* a = pos.chunk_ptr->ptr_to_arena;
+
+    for(size_t i = 0; i < memSliceSize(a->portals) / sizeof(struct MapPortal); i++){
+        struct MapPortal port = a->portals[i];
+        if(port.src.chunk_ptr == pos.chunk_ptr &&
+           port.src.x == pos.x &&
+           port.src.y == pos.y) return port;
+    }
+    return (struct MapPortal){0};
+}

@@ -22,7 +22,9 @@ int main(void){
   MapPosition src = { 3, 3, &arena->map_chunks[0] };
   MapPosition dst = { 10, 10, &arena->map_chunks[1] };
   arena->portals[0] = (struct MapPortal){ src, dst };
-  
+  arena->portals[1] = (struct MapPortal){ dst, src };
+
+
   // ui init
   gfxLayerChange(gfx, "ui");
   gfxRenderElement(gfx, 0, 0, "Press ? for help", 1, 15, 0);
